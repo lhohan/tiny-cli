@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PATTERN='.*'
+THRESHOLD='40'
+INTERVAL='10'
+
+usage() {
+  cat <<'USAGE'
+Usage: process_cpu_alert [options]
+
+Monitor CPU usage for processes matching a regex and print ALERT when usage
+is >= threshold.
+
+Options:
+  -p, --pattern REGEX      Process regex to match against command name/path
+                           (default: .*)
+  -t, --threshold PERCENT  Alert threshold for %CPU (default: 40)
+  -i, --interval SECONDS   Poll interval in seconds (default: 10)
+  -h, --help               Show this help
+
+Examples:
+  process_cpu_alert --pattern 'mds|mdworker|mds_stores'
+  process_cpu_alert -p 'Firefox|Safari' -t 60 -i 5
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p|--pattern)
+      [[ $# -ge 2 ]] || { echo "ERROR: missing value for $1" >&2; usage; exit 2; }
+      PATTERN="$2"
+      shift 2
+      ;;
+    -t|--threshold)
+      [[ $# -ge 2 ]] || { echo "ERROR: missing value for $1" >&2; usage; exit 2; }
+      THRESHOLD="$2"
+      shift 2
+      ;;
+    -i|--interval)
+      [[ $# -ge 2 ]] || { echo "ERROR: missing value for $1" >&2; usage; exit 2; }
+      INTERVAL="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+[[ "$THRESHOLD" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "ERROR: threshold must be numeric" >&2; exit 2; }
+[[ "$INTERVAL" =~ ^[0-9]+$ ]] || { echo "ERROR: interval must be an integer" >&2; exit 2; }
+
+while true; do
+  ts=$(date '+%F %T')
+  out=$(ps -axo pid=,pcpu=,comm= | egrep "$PATTERN" | awk -v t="$THRESHOLD" '$2+0 >= t')
+  if [[ -n "$out" ]]; then
+    echo "[$ts] ALERT: CPU >= ${THRESHOLD}% for pattern: $PATTERN"
+    echo "$out"
+  else
+    echo "[$ts] ok (pattern: $PATTERN, threshold: ${THRESHOLD}%)"
+  fi
+  sleep "$INTERVAL"
+done
