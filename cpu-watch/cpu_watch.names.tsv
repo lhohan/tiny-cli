@@ -1,0 +1,27 @@
+# cpu_watch sidecar mapping: comm<TAB>program
+mds	Spotlight Metadata Server
+mdworker	Spotlight Indexer Worker
+mds_stores	Spotlight Metadata Stores
+kernel_task	macOS Kernel
+WindowServer	macOS Window Server
+/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer	macOS Window Server
+corespotlightd	Core Spotlight
+cfprefsd	Preferences Daemon
+distnoted	Distributed Notifications
+nsurlsessiond	URL Session Daemon
+backupd	Time Machine Backup
+cloudd	iCloud Daemon
+rapportd	Continuity/Rapport Daemon
+bluetoothd	Bluetooth Daemon
+airportd	Wi-Fi Daemon
+sharingd	Sharing Daemon
+softwareupdated	Software Update Daemon
+/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent	Safari/WebKit Web Content
+Google Chrome	Google Chrome
+Google Chrome Helper	Google Chrome
+Code Helper	Visual Studio Code
+zoom.us	Zoom
+photoanalysisd	Photos Analysis Daemon
+photolibraryd	Photos Library Daemon
+mediaanalysisd	Media Analysis Daemon
+cloudphotod	iCloud Photos Daemon

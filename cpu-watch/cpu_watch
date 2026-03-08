@@ -4,6 +4,8 @@ set -euo pipefail
 PATTERN='.*'
 THRESHOLD='40'
 INTERVAL='10'
+NAMES_FILE='./cpu_watch.names.tsv'
+MAP_NAMES='1'
 
 usage() {
   cat <<'USAGE'
@@ -17,6 +19,10 @@ Options:
                            (default: .*)
   -t, --threshold PERCENT  Alert threshold for %CPU (default: 40)
   -i, --interval SECONDS   Poll interval in seconds (default: 10)
+      --program-names      Enable sidecar process->program replacement (default)
+      --no-program-names   Disable sidecar replacement
+      sidecar mapping      Optional file loaded from ./cpu_watch.names.tsv
+                           format: process_name<TAB>program_name
   -h, --help               Show this help
 
 Examples:
@@ -46,6 +52,14 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
+    --program-names)
+      MAP_NAMES='1'
+      shift
+      ;;
+    --no-program-names)
+      MAP_NAMES='0'
+      shift
+      ;;
     *)
       echo "ERROR: unknown argument: $1" >&2
       usage
@@ -59,7 +73,42 @@ done
 
 while true; do
   ts=$(date '+%F %T')
-  out=$(ps -axo pid=,pcpu=,comm= | egrep "$PATTERN" | awk -v t="$THRESHOLD" '$2+0 >= t')
+  if [[ "$MAP_NAMES" == '1' && -f "$NAMES_FILE" ]]; then
+    out=$(ps -axo pid=,pcpu=,comm= | egrep "$PATTERN" | awk -v t="$THRESHOLD" -v names_file="$NAMES_FILE" '
+      function trim(s) {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+        return s
+      }
+      BEGIN {
+        while ((getline line < names_file) > 0) {
+          if (line ~ /^[[:space:]]*($|#)/) {
+            continue
+          }
+          tab_pos = index(line, "\t")
+          if (tab_pos <= 1) {
+            continue
+          }
+          key = trim(substr(line, 1, tab_pos - 1))
+          val = trim(substr(line, tab_pos + 1))
+          if (key != "" && val != "") {
+            names[key] = val
+          }
+        }
+        close(names_file)
+      }
+      $2 + 0 >= t {
+        comm = $3
+        if (comm in names) {
+          comm = names[comm] "*"
+        }
+        print $1 "\t" $2 "\t" comm
+      }')
+  else
+    out=$(ps -axo pid=,pcpu=,comm= | egrep "$PATTERN" | awk -v t="$THRESHOLD" '
+      $2 + 0 >= t {
+        print $1 "\t" $2 "\t" $3
+      }')
+  fi
   if [[ -n "$out" ]]; then
     echo "[$ts] ALERT: CPU >= ${THRESHOLD}% for pattern: $PATTERN"
     echo "$out"
