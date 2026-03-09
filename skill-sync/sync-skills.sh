@@ -234,6 +234,26 @@ check_conflicts() {
     fi
 }
 
+# Filter discovered entries to selected skills only
+# Returns subset of discovered entries as "name:source_root"
+filter_discovered_for_selected() {
+    local -n discovered_ref=$1
+    local -n selected_ref=$2
+    local -n filtered_ref=$3
+
+    declare -A selected_set
+    for skill in "${selected_ref[@]}"; do
+        selected_set[$skill]=1
+    done
+
+    for entry in "${discovered_ref[@]}"; do
+        local name="${entry%%:*}"
+        if [[ -n "${selected_set[$name]:-}" ]]; then
+            filtered_ref+=("$entry")
+        fi
+    done
+}
+
 # Build canonical dataset for listing
 # Returns array of entries with status
 build_list_data() {
@@ -304,6 +324,19 @@ output_human_list() {
     done
 }
 
+# Escape a string for safe JSON string literal output
+json_escape() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    value="${value//$'\n'/\\n}"
+    value="${value//$'\r'/\\r}"
+    value="${value//$'\t'/\\t}"
+    value="${value//$'\f'/\\f}"
+    value="${value//$'\b'/\\b}"
+    printf '%s' "$value"
+}
+
 # Output list as JSON
 output_json_list() {
     local -n data_ref=$1
@@ -320,6 +353,10 @@ output_json_list() {
         local rest="${entry#*:}"
         local status="${rest%%:*}"
         local sources="${rest#*:}"
+        local escaped_name
+        local escaped_status
+        escaped_name="$(json_escape "$name")"
+        escaped_status="$(json_escape "$status")"
         
         if [[ "$first" == true ]]; then
             first=false
@@ -328,8 +365,8 @@ output_json_list() {
         fi
         
         echo -n "  {"
-        echo -n "\"name\": \"$name\", "
-        echo -n "\"status\": \"$status\", "
+        echo -n "\"name\": \"$escaped_name\", "
+        echo -n "\"status\": \"$escaped_status\", "
         
         if [[ "$status" == "conflict" ]]; then
             # Output sources as array
@@ -337,16 +374,20 @@ output_json_list() {
             local src_first=true
             IFS='|' read -ra src_array <<< "$sources"
             for src in "${src_array[@]}"; do
+                local escaped_src
+                escaped_src="$(json_escape "$src")"
                 if [[ "$src_first" == true ]]; then
                     src_first=false
                 else
                     echo -n ", "
                 fi
-                echo -n "\"$src\""
+                echo -n "\"$escaped_src\""
             done
             echo -n "]"
         else
-            echo -n "\"source\": \"$sources\""
+            local escaped_source
+            escaped_source="$(json_escape "$sources")"
+            echo -n "\"source\": \"$escaped_source\""
         fi
         
         echo -n "}"
@@ -394,6 +435,20 @@ perform_sync() {
     # Process each selected skill
     for skill in "${selected_ref[@]}"; do
         if [[ -z "${discovered_skills[$skill]:-}" ]]; then
+            # Differentiate truly missing skills from malformed skill directories.
+            local malformed_path=""
+            for root in "${roots_ref[@]}"; do
+                local candidate_path="$root/$skill"
+                if [[ -d "$candidate_path" && ! -f "$candidate_path/SKILL.md" ]]; then
+                    malformed_path="$candidate_path"
+                    break
+                fi
+            done
+
+            if [[ -n "$malformed_path" ]]; then
+                error "Selected skill directory missing SKILL.md: $malformed_path/SKILL.md" 4
+            fi
+
             warn "Selected skill not found in any source root: $skill"
             continue
         fi
@@ -491,17 +546,6 @@ main() {
     declare -a discovered=()
     discover_skills source_roots discovered
     
-    # Check for conflicts
-    declare -a conflicts=()
-    if ! check_conflicts discovered conflicts; then
-        for conflict in "${conflicts[@]}"; do
-            local name="${conflict%%:*}"
-            local roots_str="${conflict#*:}"
-            roots_str="${roots_str//|/\n  - }"
-            error "Skill '$name' found in multiple source roots:\n  - $roots_str" 4
-        done
-    fi
-    
     case "$MODE" in
         list)
             # Build list data
@@ -515,6 +559,21 @@ main() {
             fi
             ;;
         sync)
+            # Check conflicts only for selected sync targets
+            declare -a selected_discovered=()
+            filter_discovered_for_selected discovered selected_skills selected_discovered
+
+            declare -a conflicts=()
+            if ! check_conflicts selected_discovered conflicts; then
+                for conflict in "${conflicts[@]}"; do
+                    local name="${conflict%%:*}"
+                    local roots_str="${conflict#*:}"
+                    local formatted_roots
+                    formatted_roots="  - ${roots_str//|/$'\n  - '}"
+                    error $'Skill '"$name"$' found in multiple source roots:\n'"$formatted_roots" 4
+                done
+            fi
+
             perform_sync source_roots selected_skills "$DRY_RUN"
             ;;
     esac

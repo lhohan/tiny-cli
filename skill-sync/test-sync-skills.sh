@@ -193,31 +193,44 @@ test_invalid_source_root() {
     else
         fail "No warning for invalid source root"
     fi
+
+    # Restore baseline config for later tests
+    {
+        echo "$SOURCE_ROOT1"
+        echo "$SOURCE_ROOT2"
+    } > "$CONFIG_FILE"
 }
 
 # Test 7: Duplicate skill exits with code 4
 test_duplicate_skill_exit_code() {
-    echo "Test 7: Duplicate skill in multiple roots exits with code 4"
+    echo "Test 7: Selected duplicate skill in multiple roots exits with code 4"
     
     create_skill "$SOURCE_ROOT1" "dup-skill"
     create_skill "$SOURCE_ROOT2" "dup-skill"
+    echo "dup-skill" > "$SELECTED_FILE"
     
     exit_code=0
-    "$SCRIPT_PATH" --sync 2>/dev/null || exit_code=$?
+    output=$("$SCRIPT_PATH" --sync 2>&1) || exit_code=$?
     
     if [[ $exit_code -eq 4 ]]; then
         pass "Exit code 4 for duplicate skill"
     else
         fail "Expected exit code 4, got $exit_code"
     fi
+
+    if printf '%s' "$output" | grep -q '\\n'; then
+        fail "Duplicate-skill error contains literal \\n instead of real newlines"
+    else
+        pass "Duplicate-skill error uses real newlines"
+    fi
     
     # Clean up so subsequent tests don't hit this conflict
     rm -rf "$SOURCE_ROOT1/dup-skill" "$SOURCE_ROOT2/dup-skill"
 }
 
-# Test 8: Selected skill without SKILL.md is treated as missing (warns only)
+# Test 8: Selected skill directory without SKILL.md fails with code 4
 test_invalid_skill_no_skill_md() {
-    echo "Test 8: Selected skill without SKILL.md is treated as missing (warns only)"
+    echo "Test 8: Selected skill without SKILL.md exits with code 4"
     
     # Create skill dir without SKILL.md
     mkdir -p "$SOURCE_ROOT1/bad-skill"
@@ -226,12 +239,10 @@ test_invalid_skill_no_skill_md() {
     exit_code=0
     "$SCRIPT_PATH" --sync 2>/dev/null || exit_code=$?
     
-    # Skills without SKILL.md are not discoverable
-    # So they're treated as "missing" skills which warn but don't fail
-    if [[ $exit_code -eq 0 ]]; then
-        pass "Exit code 0 for undiscoverable skill (warns only)"
+    if [[ $exit_code -eq 4 ]]; then
+        pass "Exit code 4 for selected invalid skill directory"
     else
-        fail "Expected exit code 0, got $exit_code"
+        fail "Expected exit code 4, got $exit_code"
     fi
     
     # Clean up
@@ -334,6 +345,50 @@ test_prune_unselected() {
     fi
 }
 
+# Test 13: Unrelated duplicate skills do not block targeted sync
+test_sync_ignores_unselected_conflicts() {
+    echo "Test 13: --sync ignores duplicate names that are not selected"
+
+    # Selected skill exists uniquely
+    create_skill "$SOURCE_ROOT1" "ok-skill"
+    echo "ok-skill" > "$SELECTED_FILE"
+
+    # Unselected duplicate exists in multiple roots
+    create_skill "$SOURCE_ROOT1" "dup-unselected"
+    create_skill "$SOURCE_ROOT2" "dup-unselected"
+
+    exit_code=0
+    output=$("$SCRIPT_PATH" --sync 2>&1) || exit_code=$?
+
+    if [[ $exit_code -eq 0 ]]; then
+        pass "Sync succeeded despite unrelated duplicate"
+    else
+        fail "Expected exit code 0, got $exit_code (output: $output)"
+    fi
+
+    if [[ -d "$DEST_DIR/ok-skill" && -f "$DEST_DIR/ok-skill/SKILL.md" ]]; then
+        pass "Selected skill was copied"
+    else
+        fail "Selected skill was not copied"
+    fi
+}
+
+# Test 14: --list-all --json escapes special characters
+test_list_all_json_escapes_special_chars() {
+    echo "Test 14: --list-all --json escapes quotes and backslashes"
+
+    local special_name='skill"quote\slash'
+    create_skill "$SOURCE_ROOT1" "$special_name"
+
+    output=$("$SCRIPT_PATH" --list-all --json 2>&1)
+
+    if echo "$output" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+        pass "Output remains valid JSON with special characters"
+    else
+        fail "Output is invalid JSON when names/sources contain special characters"
+    fi
+}
+
 # Run all tests
 main() {
     echo "========================================"
@@ -355,6 +410,8 @@ main() {
     test_dry_run_no_mutation
     test_sync_copy_atomic
     test_prune_unselected
+    test_sync_ignores_unselected_conflicts
+    test_list_all_json_escapes_special_chars
     
     teardown
     
