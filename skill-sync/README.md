@@ -36,8 +36,11 @@ Source root configuration file. Each line specifies a directory to search for sk
 Example:
 ```
 # Local skills directory
-~/dev/agentfiles/private-skills
-~/dev/agent-chisels/public
+# Public skills collection
+~/dev/agentfiles/skills
+# Private skills collection
+~/dev/private-agentfiles/skills
+
 ```
 
 ### `.agents/skills.selected`
