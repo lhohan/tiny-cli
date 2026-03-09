@@ -10,8 +10,23 @@ set -euo pipefail
 # Script directory and config paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${SKILL_SYNC_CONFIG:-${SCRIPT_DIR}/sync-skills.conf}"
-DEST_DIR="${SKILL_SYNC_DEST:-${SCRIPT_DIR}/../.agents/skills}"
-SELECTED_FILE="${SKILL_SYNC_SELECTED:-${SCRIPT_DIR}/../.agents/skills.selected}"
+
+# Find .agents directory starting from current working directory, walking up
+find_agents_dir() {
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+        if [[ -d "$dir/.agents" ]]; then
+            echo "$dir/.agents"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    return 1
+}
+
+AGENTS_DIR="${SKILL_SYNC_AGENTS_DIR:-$(find_agents_dir 2>/dev/null || echo "${SCRIPT_DIR}/../.agents")}"
+DEST_DIR="${SKILL_SYNC_DEST:-${AGENTS_DIR}/skills}"
+SELECTED_FILE="${SKILL_SYNC_SELECTED:-${AGENTS_DIR}/skills.selected}"
 
 # Flags
 MODE=""
