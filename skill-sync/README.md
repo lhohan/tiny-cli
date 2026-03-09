@@ -1,10 +1,25 @@
 # skill-sync
 
-Config-driven local skill sync tool for tiny-cli.
+Config-driven local skill sync tool.
+
+## Motivation
+
+Skills portability for projects. Instead of using global skills, sync skills to projects from other reference locations.
+
+### Example use case
+
+Given reference or source locations with skills:
+
+- ~/dev/agentfiles/private-skills
+- ~/dev/agent-chisels/public
+
+selected the files you want to have synced to your project.
 
 ## Overview
 
-Syncs selected local skills into `.agents/skills` based on configured source roots. The workflow is repo-local, repeatable, and includes discovery, machine-readable output, and no-op preview modes.
+Syncs selected local skills into `.agents/skills` based on configured source roots. The workflow is repo-local, repeatable, and includes discovery, machine-readable output, and no-op preview mode.
+
+Note: for Claude Code, symlink `.agents/skills` to Claude Code's skill location.
 
 ## Configuration Files
 
@@ -21,8 +36,8 @@ Source root configuration file. Each line specifies a directory to search for sk
 Example:
 ```
 # Local skills directory
-~/.config/opencode/skills
-~/.agents/skills
+~/dev/agentfiles/private-skills
+~/dev/agent-chisels/public
 ```
 
 ### `.agents/skills.selected`
@@ -38,9 +53,9 @@ The tracked selection file specifying which skills to sync:
 Example:
 ```
 # Essential skills
-debugging
-testing
-writing
+detect-jujutsu
+use-jujutsu
+test-driven-development
 ```
 
 ## Usage
@@ -116,17 +131,3 @@ Run the test suite:
 ```bash
 ./skill-sync/test-sync-skills.sh
 ```
-
-Tests cover:
-1. `--list-all` prints expected human-readable rows with source and status
-2. `--list-all` prints all matching source roots for conflict rows
-3. `--list-all --json` returns valid JSON describing discovered skills
-4. Missing selected skill prints a warning and exits with code 0
-5. Missing selected skill does not delete an existing copy in `.agents/skills`
-6. Missing, unreadable, or non-directory source root warns and is skipped
-7. Duplicate skill found in multiple source roots exits with code 4
-8. Invalid selected skill directory without SKILL.md exits with code 4
-9. Invalid flag combinations fail with code 2
-10. `--dry-run` reports intended sync and prune actions without mutating `.agents/skills`
-11. Sync copies valid selected skills into `.agents/skills` atomically
-12. Strict mirror pruning removes previously synced skills that are no longer named in `.agents/skills.selected`
