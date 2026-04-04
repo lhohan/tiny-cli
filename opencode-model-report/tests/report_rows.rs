@@ -1,6 +1,4 @@
-use opencode_model_report::v2::{
-    build_rows, ModelRow, ReportInput, SortMode, UsageLabel, UsageSource,
-};
+use opencode_model_report::{build_rows, ModelRow, ReportInput, SortMode, UsageLabel, UsageSource};
 
 #[test]
 fn report_should_split_model_id_into_provider_and_model_name() {

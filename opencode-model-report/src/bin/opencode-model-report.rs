@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use opencode_model_report::v2::runtime::{run, Cli};
+use opencode_model_report::runtime::{run, Cli};
 
 #[derive(Debug, Parser)]
 #[command(name = "opencode-model-report")]
