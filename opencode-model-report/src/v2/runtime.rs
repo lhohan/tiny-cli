@@ -240,10 +240,12 @@ fn loading_view(state: &UiState) -> Text<'static> {
 }
 
 fn report_view(rows: &[super::ModelRow], sort_mode: super::SortMode) -> Text<'static> {
-    let (model_width, active_width, input_width, output_width, prefix_width) = table_widths(rows);
+    let (provider_width, model_width, active_width, input_width, output_width, prefix_width) =
+        table_widths(rows);
     let mut lines = Vec::new();
 
     lines.push(table_header_line(
+        provider_width,
         model_width,
         active_width,
         input_width,
@@ -254,7 +256,12 @@ fn report_view(rows: &[super::ModelRow], sort_mode: super::SortMode) -> Text<'st
     for (index, row) in rows.iter().enumerate() {
         let row_style = row_style(index, row.active);
         let mut spans = vec![
-            Span::styled(ljust(&row.model, model_width), model_style(row.active)),
+            Span::styled(
+                ljust(&row.provider, provider_width),
+                model_style(row.active),
+            ),
+            Span::raw("  "),
+            Span::styled(ljust(&row.model_name, model_width), model_style(row.active)),
             Span::raw("  "),
             Span::styled(
                 ljust(if row.active { "yes" } else { "no" }, active_width),
@@ -320,6 +327,7 @@ fn footer_lines(state: &UiState) -> Vec<Line<'static>> {
 }
 
 fn table_header_line(
+    provider_width: usize,
     model_width: usize,
     active_width: usize,
     input_width: usize,
@@ -327,6 +335,8 @@ fn table_header_line(
     sort_mode: super::SortMode,
 ) -> Line<'static> {
     Line::from(vec![
+        Span::styled(ljust("PROVIDER", provider_width), table_header_style()),
+        Span::raw("  "),
         Span::styled(ljust("MODEL", model_width), table_header_style()),
         Span::raw("  "),
         Span::styled(ljust("ACTIVE", active_width), table_header_style()),
@@ -343,9 +353,13 @@ fn table_header_line(
     .style(Style::default().bg(Color::Rgb(20, 24, 35)))
 }
 
-fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize) {
+fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize, usize) {
+    let provider_width = std::iter::once("PROVIDER".len())
+        .chain(rows.iter().map(|row| row.provider.len()))
+        .max()
+        .unwrap_or(0);
     let model_width = std::iter::once("MODEL".len())
-        .chain(rows.iter().map(|row| row.model.len()))
+        .chain(rows.iter().map(|row| row.model_name.len()))
         .max()
         .unwrap_or(0);
     let active_width = "ACTIVE".len();
@@ -363,9 +377,19 @@ fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize)
         )
         .max()
         .unwrap_or(0);
-    let prefix_width = model_width + 2 + active_width + 2 + input_width + 2 + output_width + 2;
+    let prefix_width = provider_width
+        + 2
+        + model_width
+        + 2
+        + active_width
+        + 2
+        + input_width
+        + 2
+        + output_width
+        + 2;
 
     (
+        provider_width,
         model_width,
         active_width,
         input_width,

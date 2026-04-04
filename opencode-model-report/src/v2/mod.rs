@@ -125,6 +125,8 @@ pub struct UsageLabel {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelRow {
     pub model: String,
+    pub provider: String,
+    pub model_name: String,
     pub active: bool,
     pub input_cost: Option<f64>,
     pub output_cost: Option<f64>,
@@ -168,9 +170,12 @@ pub fn build_rows(input: ReportInput, sort_mode: SortMode) -> Vec<ModelRow> {
         .map(|model| {
             let usage = usage_by_model.remove(&model).unwrap_or_default();
             let (input_cost, output_cost) = costs.get(&model).copied().unwrap_or((None, None));
+            let (provider, model_name) = split_model_id(&model);
             ModelRow {
                 active: active_models.contains(&model),
                 model,
+                provider,
+                model_name,
                 input_cost,
                 output_cost,
                 usage,
@@ -226,8 +231,12 @@ pub fn load_config_bundle(_home_dir: &Path) -> Result<ConfigBundle, ConfigError>
 
 pub fn render_report_rows(_rows: &[ModelRow]) -> Vec<String> {
     let rows = _rows;
+    let provider_width = std::iter::once("PROVIDER".len())
+        .chain(rows.iter().map(|row| row.provider.len()))
+        .max()
+        .unwrap_or(0);
     let model_width = std::iter::once("MODEL".len())
-        .chain(rows.iter().map(|row| row.model.len()))
+        .chain(rows.iter().map(|row| row.model_name.len()))
         .max()
         .unwrap_or(0);
     let active_width = "ACTIVE".len();
@@ -239,11 +248,13 @@ pub fn render_report_rows(_rows: &[ModelRow]) -> Vec<String> {
         .chain(rows.iter().map(|row| format_cost(row.output_cost).len()))
         .max()
         .unwrap_or(0);
-    let prefix_width = model_width + 2 + active_width + 2 + in_width + 2 + out_width + 2;
+    let prefix_width =
+        provider_width + 2 + model_width + 2 + active_width + 2 + in_width + 2 + out_width + 2;
 
     let mut lines = Vec::new();
     lines.push(format!(
-        "{}  {}  {}  {}  USAGE",
+        "{}  {}  {}  {}  {}  USAGE",
+        ljust("PROVIDER", provider_width),
         ljust("MODEL", model_width),
         ljust("ACTIVE", active_width),
         rjust("IN", in_width),
@@ -261,8 +272,9 @@ pub fn render_report_rows(_rows: &[ModelRow]) -> Vec<String> {
         let first_usage = usage_lines.first().map(String::as_str).unwrap_or("");
 
         lines.push(format!(
-            "{}  {}  {}  {}  {}",
-            ljust(&row.model, model_width),
+            "{}  {}  {}  {}  {}  {}",
+            ljust(&row.provider, provider_width),
+            ljust(&row.model_name, model_width),
             ljust(if row.active { "yes" } else { "no" }, active_width),
             rjust(&format_cost(row.input_cost), in_width),
             rjust(&format_cost(row.output_cost), out_width),
@@ -442,6 +454,13 @@ fn compare_rows(a: &ModelRow, b: &ModelRow, mode: SortMode) -> Ordering {
         SortMode::CostAsc => cost_cmp.then(name_cmp),
         SortMode::CostDesc => compare_costs_desc(a.total_cost(), b.total_cost()).then(name_cmp),
         SortMode::ModelName => name_cmp,
+    }
+}
+
+pub fn split_model_id(model: &str) -> (String, String) {
+    match model.split_once('/') {
+        Some((provider, model_name)) => (provider.to_string(), model_name.to_string()),
+        None => (String::new(), model.to_string()),
     }
 }
 
@@ -900,15 +919,15 @@ mod tests {
         );
 
         let lines = render_report_rows(&rows);
-        assert_eq!(lines[0], "MODEL           ACTIVE  IN  OUT  USAGE");
-        assert!(lines.iter().any(|line| line.contains("provider/alpha")));
+        assert_eq!(lines[0], "PROVIDER  MODEL  ACTIVE  IN  OUT  USAGE");
+        assert!(lines.iter().any(|line| line.contains("provider  alpha")));
         assert!(lines.iter().any(|line| line.contains("yes")));
         assert!(lines.iter().any(|line| line.contains("no")));
         assert!(lines
             .iter()
             .any(|line| line.contains("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
         assert!(lines.len() > 3);
-        assert!(lines[2].starts_with("                "));
+        assert!(lines[2].starts_with(&" ".repeat(34)));
     }
 
     #[test]
@@ -935,6 +954,8 @@ mod tests {
         let mut state = UiState::new();
         state.apply_snapshot(vec![ModelRow {
             model: "provider/alpha".to_string(),
+            provider: "provider".to_string(),
+            model_name: "alpha".to_string(),
             active: true,
             input_cost: Some(1.0),
             output_cost: Some(2.0),

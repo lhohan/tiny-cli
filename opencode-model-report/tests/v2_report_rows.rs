@@ -3,6 +3,22 @@ use opencode_model_report::v2::{
 };
 
 #[test]
+fn report_should_split_model_id_into_provider_and_model_name() {
+    let rows = build_rows(
+        ReportInput {
+            active_usage: vec![],
+            available_models: vec!["provider/sub/model".to_string()],
+            costs: vec![],
+        },
+        SortMode::ModelName,
+    );
+
+    let row = &rows[0];
+    assert_eq!(row.provider, "provider");
+    assert_eq!(row.model_name, "sub/model");
+}
+
+#[test]
 fn report_should_sort_active_models_first_when_using_active_first() {
     let rows = build_rows(
         ReportInput {
