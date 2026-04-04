@@ -1,7 +1,7 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "embedded",
+  "dolt_mode": "shared",
   "dolt_database": "tiny_cli",
   "project_id": "8136e3b6-9236-4dc7-8f2b-dc2a95fac184"
 }
