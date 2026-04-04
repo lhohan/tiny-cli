@@ -9,10 +9,6 @@ use opencode_model_report::v2::runtime::{run, Cli};
 #[command(about = "Report OpenCode model usage and costs in a fullscreen TUI")]
 #[command(version)]
 struct Args {
-    /// Disable color output
-    #[arg(long)]
-    no_color: bool,
-
     /// Override config home directory
     #[arg(long = "home-dir")]
     home_dir: Option<PathBuf>,
@@ -21,7 +17,6 @@ struct Args {
 fn main() {
     let args = Args::parse();
     if let Err(err) = run(Cli {
-        no_color: args.no_color,
         home_dir: args.home_dir,
     }) {
         eprintln!("ERROR: {}", err);

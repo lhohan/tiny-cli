@@ -66,3 +66,28 @@ fn report_should_mark_inactive_models_without_usage() {
     assert!(!beta.active);
     assert!(beta.usage.is_empty());
 }
+
+#[test]
+fn report_should_sort_unknown_costs_last_when_using_cost_desc() {
+    let rows = build_rows(
+        ReportInput {
+            active_usage: vec![],
+            available_models: vec![
+                "provider/unknown".to_string(),
+                "provider/expensive".to_string(),
+                "provider/cheap".to_string(),
+            ],
+            costs: vec![
+                ("provider/expensive".to_string(), Some(10.0), Some(10.0)),
+                ("provider/cheap".to_string(), Some(1.0), Some(1.0)),
+                ("provider/unknown".to_string(), None, None),
+            ],
+        },
+        SortMode::CostDesc,
+    );
+
+    assert_eq!(
+        rows.into_iter().map(|row| row.model).collect::<Vec<_>>(),
+        vec!["provider/expensive", "provider/cheap", "provider/unknown"]
+    );
+}

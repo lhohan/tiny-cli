@@ -21,6 +21,7 @@ Provide a fast, deterministic terminal UI that shows which models are active, wh
 - Switch sort modes without leaving the TUI
 - Refresh data manually
 - Use alternate config-home locations for testing
+- Understand colour coding through an always-visible legend
 - Get a polished, attractive default presentation without extra configuration
 
 ## In Scope
@@ -82,10 +83,14 @@ Usage labels must be:
 - preserved even if repeated
 - sorted alphabetically before display
 
-Usage labels must render in different colours by config source when colour is enabled.
+Usage labels must render in different colours by config source and agent type:
 
-- OpenCode-derived labels use one colour
-- Weave-derived labels use another colour
+| Source | Colour |
+|--------|--------|
+| OpenCode `default` / `small_model` | blue |
+| OpenCode `agent.*.model` / `agents.*.model` | red |
+| Weave `agents.*.model` | green |
+| Weave `custom_agents.*.model` | yellow |
 
 ### FR-3: Available Models Refresh
 
@@ -137,6 +142,8 @@ Rows come from the refreshed available model inventory.
 - The TUI must support manual refresh only; it must not auto-refresh.
 - The TUI must not require a selection cursor in v1.
 - The TUI must provide keyboard controls only.
+- The TUI must display a two-line footer: status line and colour legend line.
+- The colour legend must remain visible at all times, separate from the main table.
 
 Required keys:
 
@@ -170,14 +177,16 @@ Sort mode behaviour:
 - `cost-desc`: total cost descending, then model name ascending
 - `model-name`: model name ascending
 
-Unknown total cost sorts last in cost-based modes.
+Unknown total cost sorts last in all cost-based modes (ascending and descending).
 
 ### FR-9: Color Behavior
 
-- Table headers use bold styling only
-- Usage labels are coloured by config source
-- `--no-color` disables colour output
+- Table headers use bold styling with styled chrome
+- Usage labels are coloured by source type per FR-2
+- Footer displays a colour legend explaining all source type colours
+- Colour output is always enabled (no monochrome fallback)
 - Colour output is emitted only when stdout is a terminal
+- Row accents use styled highlighting beyond minimal defaults
 
 ### FR-10: Error Behavior
 
@@ -212,7 +221,6 @@ The data model must preserve stable row identities so future manual reordering o
 
 - `--help`
 - `--version`
-- `--no-color`
 - `--home-dir <path>`
 
 ## Acceptance Criteria
@@ -223,6 +231,10 @@ The data model must preserve stable row identities so future manual reordering o
 4. Formatting matches the alignment and wrapping requirements.
 5. `--home-dir` works with alternate config-home locations.
 6. Startup and refresh error behaviour matches FR-10.
+7. Help output does not expose `--no-color`.
+8. Cost-descending sort places unknown-cost models last.
+9. Footer displays colour legend explaining all four source types.
+10. Usage labels render in correct colours per source type (blue, red, green, yellow).
 
 ## Rollout Notes
 

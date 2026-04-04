@@ -113,6 +113,7 @@ pub enum UsageSource {
     OpenCodeDefault,
     OpenCodeCustom,
     Weave,
+    WeaveCustom,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,7 +224,7 @@ pub fn load_config_bundle(_home_dir: &Path) -> Result<ConfigBundle, ConfigError>
     Ok(ConfigBundle { opencode, weave })
 }
 
-pub fn render_report_rows(_rows: &[ModelRow], _use_color: bool) -> Vec<String> {
+pub fn render_report_rows(_rows: &[ModelRow]) -> Vec<String> {
     let rows = _rows;
     let model_width = std::iter::once("MODEL".len())
         .chain(rows.iter().map(|row| row.model.len()))
@@ -427,6 +428,7 @@ fn source_rank(source: UsageSource) -> u8 {
         UsageSource::OpenCodeDefault => 0,
         UsageSource::OpenCodeCustom => 1,
         UsageSource::Weave => 2,
+        UsageSource::WeaveCustom => 3,
     }
 }
 
@@ -453,7 +455,12 @@ fn compare_costs(a: Option<f64>, b: Option<f64>) -> Ordering {
 }
 
 fn compare_costs_desc(a: Option<f64>, b: Option<f64>) -> Ordering {
-    compare_costs(b, a)
+    match (a, b) {
+        (Some(a), Some(b)) => b.partial_cmp(&a).unwrap_or(Ordering::Equal),
+        (None, Some(_)) => Ordering::Greater,
+        (Some(_), None) => Ordering::Less,
+        (None, None) => Ordering::Equal,
+    }
 }
 
 fn collect_active_usage(bundle: &ConfigBundle) -> Vec<(String, Vec<UsageLabel>)> {
@@ -485,7 +492,7 @@ fn collect_active_usage(bundle: &ConfigBundle) -> Vec<(String, Vec<UsageLabel>)>
         }
         for (name, cfg) in &weave.custom_agents {
             if let Some(model) = cfg.model.as_deref() {
-                record_usage(&mut active, model, name, UsageSource::Weave);
+                record_usage(&mut active, model, name, UsageSource::WeaveCustom);
             }
         }
     }
@@ -729,10 +736,11 @@ mod tests {
     use super::{
         build_rows, collect_active_usage, extract_available_models, load_config_bundle,
         parse_costs_from_api_json, parse_jsonc, render_report_rows, resolve_config_home,
-        ConfigBundle, ModelRow, OpenCodeConfig, ReportInput, SortMode, UiAction, UiKey, UiMode,
-        UiState, UsageLabel, UsageSource,
+        AgentConfig, ConfigBundle, ModelRow, OpenCodeConfig, ReportInput, SortMode, UiAction,
+        UiKey, UiMode, UiState, UsageLabel, UsageSource, WeaveConfig,
     };
     use serde::Deserialize;
+    use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
 
@@ -891,7 +899,7 @@ mod tests {
             SortMode::ModelName,
         );
 
-        let lines = render_report_rows(&rows, false);
+        let lines = render_report_rows(&rows);
         assert_eq!(lines[0], "MODEL           ACTIVE  IN  OUT  USAGE");
         assert!(lines.iter().any(|line| line.contains("provider/alpha")));
         assert!(lines.iter().any(|line| line.contains("yes")));
@@ -996,7 +1004,48 @@ mod tests {
         );
         assert_eq!(
             by_model.get("provider/epsilon").unwrap()[0].source,
+            UsageSource::WeaveCustom
+        );
+    }
+
+    #[test]
+    fn active_usage_should_distinguish_weave_agents_from_custom_agents() {
+        let bundle = ConfigBundle {
+            opencode: OpenCodeConfig {
+                model: None,
+                small_model: None,
+                agent: HashMap::new(),
+            },
+            weave: Some(WeaveConfig {
+                agents: [(
+                    "reviewer".to_string(),
+                    AgentConfig {
+                        model: Some("provider/delta".to_string()),
+                    },
+                )]
+                .into_iter()
+                .collect(),
+                custom_agents: [(
+                    "ops".to_string(),
+                    AgentConfig {
+                        model: Some("provider/epsilon".to_string()),
+                    },
+                )]
+                .into_iter()
+                .collect(),
+            }),
+        };
+
+        let usage = collect_active_usage(&bundle);
+        let by_model: std::collections::HashMap<_, _> = usage.into_iter().collect();
+
+        assert_eq!(
+            by_model.get("provider/delta").unwrap()[0].source,
             UsageSource::Weave
+        );
+        assert_eq!(
+            by_model.get("provider/epsilon").unwrap()[0].source,
+            UsageSource::WeaveCustom
         );
     }
 

@@ -23,7 +23,6 @@ use super::{
 };
 
 pub struct Cli {
-    pub no_color: bool,
     pub home_dir: Option<PathBuf>,
 }
 
@@ -80,15 +79,7 @@ pub fn run(cli: Cli) -> Result<(), RuntimeError> {
     let mut state = UiState::new();
     let mut fatal: Option<LoadError> = None;
 
-    let result = run_loop(
-        &mut terminal,
-        &mut state,
-        &rx,
-        &tx,
-        &home_dir,
-        cli.no_color,
-        &mut fatal,
-    );
+    let result = run_loop(&mut terminal, &mut state, &rx, &tx, &home_dir, &mut fatal);
 
     result?;
     if let Some(err) = fatal {
@@ -104,7 +95,6 @@ fn run_loop(
     rx: &Receiver<WorkerMessage>,
     tx: &Sender<WorkerMessage>,
     home_dir: &PathBuf,
-    no_color: bool,
     fatal: &mut Option<LoadError>,
 ) -> Result<(), RuntimeError> {
     loop {
@@ -128,7 +118,7 @@ fn run_loop(
         }
 
         terminal
-            .draw(|frame| draw(frame, state, no_color))
+            .draw(|frame| draw(frame, state))
             .map_err(|err| RuntimeError::Terminal(err.to_string()))?;
 
         if fatal.is_some() {
@@ -167,18 +157,18 @@ fn spawn_load(tx: Sender<WorkerMessage>, home_dir: PathBuf, initial: bool) {
     });
 }
 
-fn draw(frame: &mut ratatui::Frame, state: &UiState, no_color: bool) {
+fn draw(frame: &mut ratatui::Frame, state: &UiState) {
     let area = frame.area();
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),
             Constraint::Min(3),
-            Constraint::Length(1),
+            Constraint::Length(2),
         ])
         .split(area);
 
-    let header = Paragraph::new(header_line(state, no_color))
+    let header = Paragraph::new(header_line(state))
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -188,9 +178,9 @@ fn draw(frame: &mut ratatui::Frame, state: &UiState, no_color: bool) {
     frame.render_widget(header, chunks[0]);
 
     let report = if state.snapshot.is_empty() && matches!(state.mode, UiMode::Loading) {
-        loading_view(state, no_color)
+        loading_view(state)
     } else {
-        report_view(&state.visible_rows(), state.sort_mode, no_color)
+        report_view(&state.visible_rows(), state.sort_mode)
     };
 
     let panel = Paragraph::new(report)
@@ -203,65 +193,53 @@ fn draw(frame: &mut ratatui::Frame, state: &UiState, no_color: bool) {
         .wrap(Wrap { trim: false });
     frame.render_widget(panel, chunks[1]);
 
-    let footer = Paragraph::new(footer_line(state, no_color))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(footer_border_style(state)),
-        )
+    let footer = Paragraph::new(Text::from(footer_lines(state)))
+        .style(Style::default().fg(Color::Rgb(148, 163, 184)))
         .alignment(ratatui::layout::Alignment::Left);
     frame.render_widget(footer, chunks[2]);
 }
 
-fn header_line(state: &UiState, no_color: bool) -> Line<'static> {
+fn header_line(state: &UiState) -> Line<'static> {
     let mut spans = vec![Span::styled(
         " opencode-model-report ",
-        if no_color {
-            Style::default().add_modifier(Modifier::BOLD)
-        } else {
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD)
-        },
+        Style::default()
+            .fg(Color::White)
+            .add_modifier(Modifier::BOLD),
     )];
 
     spans.push(Span::raw("• "));
     spans.push(Span::styled(
         format!("sort: {}", sort_mode_label(state.sort_mode)),
-        sort_badge_style(state.sort_mode, no_color),
+        sort_badge_style(state.sort_mode),
     ));
     spans.push(Span::raw("  "));
-    spans.push(Span::styled("q quit", key_hint_style(no_color)));
+    spans.push(Span::styled("q quit", key_hint_style()));
     spans.push(Span::raw("  "));
-    spans.push(Span::styled("r refresh", key_hint_style(no_color)));
+    spans.push(Span::styled("r refresh", key_hint_style()));
     spans.push(Span::raw("  "));
-    spans.push(Span::styled("s sort", key_hint_style(no_color)));
+    spans.push(Span::styled("s sort", key_hint_style()));
 
     Line::from(spans)
 }
 
-fn loading_view(state: &UiState, no_color: bool) -> Text<'static> {
+fn loading_view(state: &UiState) -> Text<'static> {
     let mut lines = Vec::new();
     lines.push(Line::from(vec![
-        Span::styled(" ⟳ ", loading_style(no_color)),
-        Span::styled("Loading model data", loading_style(no_color)),
+        Span::styled(" ⟳ ", loading_style()),
+        Span::styled("Loading model data", loading_style()),
     ]));
     lines.push(Line::from(vec![Span::styled(
         state.status.clone(),
-        status_style(state.mode, false, no_color),
+        status_style(state.mode, false),
     )]));
     lines.push(Line::from(vec![Span::styled(
         "Fetching config, inventory, and costs.",
-        muted_style(no_color),
+        muted_style(),
     )]));
     Text::from(lines)
 }
 
-fn report_view(
-    rows: &[super::ModelRow],
-    sort_mode: super::SortMode,
-    no_color: bool,
-) -> Text<'static> {
+fn report_view(rows: &[super::ModelRow], sort_mode: super::SortMode) -> Text<'static> {
     let (model_width, active_width, input_width, output_width, prefix_width) = table_widths(rows);
     let mut lines = Vec::new();
 
@@ -270,44 +248,40 @@ fn report_view(
         active_width,
         input_width,
         output_width,
-        no_color,
         sort_mode,
     ));
 
     for (index, row) in rows.iter().enumerate() {
-        let row_style = row_style(index, row.active, no_color);
+        let row_style = row_style(index, row.active);
         let mut spans = vec![
-            Span::styled(
-                ljust(&row.model, model_width),
-                model_style(row.active, no_color),
-            ),
+            Span::styled(ljust(&row.model, model_width), model_style(row.active)),
             Span::raw("  "),
             Span::styled(
                 ljust(if row.active { "yes" } else { "no" }, active_width),
-                active_badge_style(row.active, no_color),
+                active_badge_style(row.active),
             ),
             Span::raw("  "),
             Span::styled(
                 rjust(&super::format_cost(row.input_cost), input_width),
-                cost_style(row.input_cost.is_some(), CostKind::Input, no_color),
+                cost_style(row.input_cost.is_some(), CostKind::Input),
             ),
             Span::raw("  "),
             Span::styled(
                 rjust(&super::format_cost(row.output_cost), output_width),
-                cost_style(row.output_cost.is_some(), CostKind::Output, no_color),
+                cost_style(row.output_cost.is_some(), CostKind::Output),
             ),
             Span::raw("  "),
         ];
 
         let usage_groups = wrap_usage_labels(&row.usage, 50);
         if let Some(first_group) = usage_groups.first() {
-            spans.extend(usage_group_spans(first_group, no_color));
+            spans.extend(usage_group_spans(first_group));
         }
         lines.push(Line::from(spans).style(row_style));
 
         for group in usage_groups.iter().skip(1) {
             let mut continuation = vec![Span::raw(" ".repeat(prefix_width))];
-            continuation.extend(usage_group_spans(group, no_color));
+            continuation.extend(usage_group_spans(group));
             lines.push(Line::from(continuation).style(row_style));
         }
     }
@@ -315,29 +289,34 @@ fn report_view(
     Text::from(lines)
 }
 
-fn footer_line(state: &UiState, no_color: bool) -> Line<'static> {
-    let mut spans = vec![Span::styled(
+fn footer_lines(state: &UiState) -> Vec<Line<'static>> {
+    let status_line = Line::from(vec![Span::styled(
         state.status.clone(),
-        status_style(state.mode, state.status.contains("failed"), no_color),
-    )];
-    spans.push(Span::raw("  •  "));
-    spans.push(Span::styled(
-        "OpenCode default",
-        usage_style(super::UsageSource::OpenCodeDefault, no_color),
-    ));
-    spans.push(Span::raw(" / "));
-    spans.push(Span::styled(
-        "OpenCode custom",
-        usage_style(super::UsageSource::OpenCodeCustom, no_color),
-    ));
-    spans.push(Span::raw(" / "));
-    spans.push(Span::styled(
-        "Weave",
-        usage_style(super::UsageSource::Weave, no_color),
-    ));
-    spans.push(Span::raw("  •  "));
-    spans.push(Span::styled("sorted", muted_style(no_color)));
-    Line::from(spans)
+        status_style(state.mode, state.status.contains("failed")),
+    )]);
+    let legend_line = Line::from(vec![
+        Span::styled("usage legend: ", muted_style()),
+        Span::styled(
+            "OpenCode default / small_model",
+            usage_style(super::UsageSource::OpenCodeDefault),
+        ),
+        Span::raw(" / "),
+        Span::styled(
+            "OpenCode agents",
+            usage_style(super::UsageSource::OpenCodeCustom),
+        ),
+        Span::raw(" / "),
+        Span::styled("Weave agents", usage_style(super::UsageSource::Weave)),
+        Span::raw(" / "),
+        Span::styled(
+            "Weave custom_agents",
+            usage_style(super::UsageSource::WeaveCustom),
+        ),
+        Span::raw("  •  "),
+        Span::styled("sorted", muted_style()),
+    ]);
+
+    vec![status_line, legend_line]
 }
 
 fn table_header_line(
@@ -345,28 +324,23 @@ fn table_header_line(
     active_width: usize,
     input_width: usize,
     output_width: usize,
-    no_color: bool,
     sort_mode: super::SortMode,
 ) -> Line<'static> {
     Line::from(vec![
-        Span::styled(ljust("MODEL", model_width), table_header_style(no_color)),
+        Span::styled(ljust("MODEL", model_width), table_header_style()),
         Span::raw("  "),
-        Span::styled(ljust("ACTIVE", active_width), table_header_style(no_color)),
+        Span::styled(ljust("ACTIVE", active_width), table_header_style()),
         Span::raw("  "),
-        Span::styled(rjust("IN", input_width), table_header_style(no_color)),
+        Span::styled(rjust("IN", input_width), table_header_style()),
         Span::raw("  "),
-        Span::styled(rjust("OUT", output_width), table_header_style(no_color)),
+        Span::styled(rjust("OUT", output_width), table_header_style()),
         Span::raw("  "),
         Span::styled(
             format!("USAGE  [{}]", sort_mode_label(sort_mode)),
-            table_header_style(no_color),
+            table_header_style(),
         ),
     ])
-    .style(Style::default().bg(if no_color {
-        Color::Reset
-    } else {
-        Color::Rgb(20, 24, 35)
-    }))
+    .style(Style::default().bg(Color::Rgb(20, 24, 35)))
 }
 
 fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize) {
@@ -437,35 +411,27 @@ fn wrap_usage_labels(labels: &[super::UsageLabel], width: usize) -> Vec<Vec<supe
     groups
 }
 
-fn usage_group_spans(group: &[super::UsageLabel], no_color: bool) -> Vec<Span<'static>> {
+fn usage_group_spans(group: &[super::UsageLabel]) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     for (idx, label) in group.iter().enumerate() {
         if idx > 0 {
-            spans.push(Span::styled(", ", muted_style(no_color)));
+            spans.push(Span::styled(", ", muted_style()));
         }
-        spans.push(Span::styled(
-            label.label.clone(),
-            usage_style(label.source, no_color),
-        ));
+        spans.push(Span::styled(label.label.clone(), usage_style(label.source)));
     }
     spans
 }
 
-fn usage_style(source: super::UsageSource, no_color: bool) -> Style {
-    if no_color {
-        return Style::default();
-    }
+fn usage_style(source: super::UsageSource) -> Style {
     match source {
-        super::UsageSource::OpenCodeDefault => Style::default().fg(Color::Cyan),
-        super::UsageSource::OpenCodeCustom => Style::default().fg(Color::Yellow),
-        super::UsageSource::Weave => Style::default().fg(Color::Magenta),
+        super::UsageSource::OpenCodeDefault => Style::default().fg(Color::Blue),
+        super::UsageSource::OpenCodeCustom => Style::default().fg(Color::Red),
+        super::UsageSource::Weave => Style::default().fg(Color::Green),
+        super::UsageSource::WeaveCustom => Style::default().fg(Color::Yellow),
     }
 }
 
-fn sort_badge_style(sort_mode: super::SortMode, no_color: bool) -> Style {
-    if no_color {
-        return Style::default().add_modifier(Modifier::BOLD);
-    }
+fn sort_badge_style(sort_mode: super::SortMode) -> Style {
     match sort_mode {
         super::SortMode::ActiveFirst => Style::default()
             .fg(Color::Green)
@@ -482,10 +448,7 @@ fn sort_badge_style(sort_mode: super::SortMode, no_color: bool) -> Style {
     }
 }
 
-fn status_style(mode: UiMode, has_error: bool, no_color: bool) -> Style {
-    if no_color {
-        return Style::default();
-    }
+fn status_style(mode: UiMode, has_error: bool) -> Style {
     if has_error {
         return Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
     }
@@ -498,31 +461,20 @@ fn status_style(mode: UiMode, has_error: bool, no_color: bool) -> Style {
     }
 }
 
-fn loading_style(no_color: bool) -> Style {
-    if no_color {
-        Style::default().add_modifier(Modifier::BOLD)
-    } else {
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD)
-    }
+fn loading_style() -> Style {
+    Style::default()
+        .fg(Color::Cyan)
+        .add_modifier(Modifier::BOLD)
 }
 
-fn table_header_style(no_color: bool) -> Style {
-    if no_color {
-        Style::default().add_modifier(Modifier::BOLD)
-    } else {
-        Style::default()
-            .fg(Color::Rgb(215, 223, 255))
-            .bg(Color::Rgb(20, 24, 35))
-            .add_modifier(Modifier::BOLD)
-    }
+fn table_header_style() -> Style {
+    Style::default()
+        .fg(Color::Rgb(215, 223, 255))
+        .bg(Color::Rgb(20, 24, 35))
+        .add_modifier(Modifier::BOLD)
 }
 
-fn row_style(index: usize, active: bool, no_color: bool) -> Style {
-    if no_color {
-        return Style::default();
-    }
+fn row_style(index: usize, active: bool) -> Style {
     let zebra = if index % 2 == 0 {
         Color::Reset
     } else {
@@ -541,10 +493,7 @@ fn row_style(index: usize, active: bool, no_color: bool) -> Style {
     })
 }
 
-fn model_style(active: bool, no_color: bool) -> Style {
-    if no_color {
-        return Style::default();
-    }
+fn model_style(active: bool) -> Style {
     if active {
         Style::default()
             .fg(Color::White)
@@ -554,10 +503,7 @@ fn model_style(active: bool, no_color: bool) -> Style {
     }
 }
 
-fn active_badge_style(active: bool, no_color: bool) -> Style {
-    if no_color {
-        return Style::default();
-    }
+fn active_badge_style(active: bool) -> Style {
     if active {
         Style::default()
             .fg(Color::Green)
@@ -572,10 +518,7 @@ enum CostKind {
     Output,
 }
 
-fn cost_style(known: bool, kind: CostKind, no_color: bool) -> Style {
-    if no_color {
-        return Style::default();
-    }
+fn cost_style(known: bool, kind: CostKind) -> Style {
     if !known {
         return Style::default().fg(Color::DarkGray);
     }
@@ -585,22 +528,14 @@ fn cost_style(known: bool, kind: CostKind, no_color: bool) -> Style {
     }
 }
 
-fn key_hint_style(no_color: bool) -> Style {
-    if no_color {
-        Style::default().add_modifier(Modifier::DIM)
-    } else {
-        Style::default()
-            .fg(Color::Rgb(148, 163, 184))
-            .add_modifier(Modifier::DIM)
-    }
+fn key_hint_style() -> Style {
+    Style::default()
+        .fg(Color::Rgb(148, 163, 184))
+        .add_modifier(Modifier::DIM)
 }
 
-fn muted_style(no_color: bool) -> Style {
-    if no_color {
-        Style::default()
-    } else {
-        Style::default().fg(Color::DarkGray)
-    }
+fn muted_style() -> Style {
+    Style::default().fg(Color::DarkGray)
 }
 
 fn header_border_style(state: &UiState) -> Style {
@@ -616,14 +551,6 @@ fn body_border_style(state: &UiState) -> Style {
         Style::default().fg(Color::Red)
     } else {
         Style::default().fg(Color::Rgb(88, 128, 255))
-    }
-}
-
-fn footer_border_style(state: &UiState) -> Style {
-    if state.status.contains("failed") {
-        Style::default().fg(Color::Red)
-    } else {
-        Style::default().fg(Color::DarkGray)
     }
 }
 
@@ -652,59 +579,66 @@ impl Drop for TerminalCleanup {
 
 #[cfg(test)]
 mod tests {
-    use super::{sort_badge_style, status_style, usage_style};
+    use super::{footer_lines, sort_badge_style, status_style, usage_style};
     use crate::v2::{SortMode, UiMode, UsageSource};
     use ratatui::style::Color;
 
     #[test]
     fn usage_style_should_colour_sources_differently() {
         assert_eq!(
-            usage_style(UsageSource::OpenCodeDefault, false).fg,
-            Some(Color::Cyan)
+            usage_style(UsageSource::OpenCodeDefault).fg,
+            Some(Color::Blue)
         );
         assert_eq!(
-            usage_style(UsageSource::OpenCodeCustom, false).fg,
+            usage_style(UsageSource::OpenCodeCustom).fg,
+            Some(Color::Red)
+        );
+        assert_eq!(usage_style(UsageSource::Weave).fg, Some(Color::Green));
+        assert_eq!(
+            usage_style(UsageSource::WeaveCustom).fg,
             Some(Color::Yellow)
-        );
-        assert_eq!(
-            usage_style(UsageSource::Weave, false).fg,
-            Some(Color::Magenta)
         );
     }
 
     #[test]
     fn sort_badge_style_should_use_distinct_palette() {
         assert_eq!(
-            sort_badge_style(SortMode::ActiveFirst, false).fg,
+            sort_badge_style(SortMode::ActiveFirst).fg,
             Some(Color::Green)
         );
-        assert_eq!(
-            sort_badge_style(SortMode::CostAsc, false).fg,
-            Some(Color::Cyan)
-        );
-        assert_eq!(
-            sort_badge_style(SortMode::CostDesc, false).fg,
-            Some(Color::Yellow)
-        );
-        assert_eq!(
-            sort_badge_style(SortMode::ModelName, false).fg,
-            Some(Color::Blue)
-        );
+        assert_eq!(sort_badge_style(SortMode::CostAsc).fg, Some(Color::Cyan));
+        assert_eq!(sort_badge_style(SortMode::CostDesc).fg, Some(Color::Yellow));
+        assert_eq!(sort_badge_style(SortMode::ModelName).fg, Some(Color::Blue));
     }
 
     #[test]
     fn status_style_should_signal_loading_refresh_and_error() {
         assert_eq!(
-            status_style(UiMode::Loading, false, false).fg,
+            status_style(UiMode::Loading, false).fg,
             Some(Color::DarkGray)
         );
         assert_eq!(
-            status_style(UiMode::Refreshing, false, false).fg,
+            status_style(UiMode::Refreshing, false).fg,
             Some(Color::Cyan)
         );
-        assert_eq!(
-            status_style(UiMode::Ready, true, false).fg,
-            Some(Color::Red)
-        );
+        assert_eq!(status_style(UiMode::Ready, true).fg, Some(Color::Red));
+    }
+
+    #[test]
+    fn footer_lines_should_include_usage_legend_on_separate_line() {
+        let lines = footer_lines(&crate::v2::UiState::new());
+        assert_eq!(lines.len(), 2);
+
+        let legend_text = lines[1]
+            .spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect::<String>();
+
+        assert!(legend_text.contains("usage legend"));
+        assert!(legend_text.contains("OpenCode default / small_model"));
+        assert!(legend_text.contains("OpenCode agents"));
+        assert!(legend_text.contains("Weave agents"));
+        assert!(legend_text.contains("Weave custom_agents"));
     }
 }
