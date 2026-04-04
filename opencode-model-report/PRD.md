@@ -2,15 +2,11 @@
 
 ## Product
 
-`opencode-model-report` — CLI report for model usage and model cost visibility.
+`opencode-model-report` — fullscreen ratatui TUI for model usage and cost visibility.
 
 ## Purpose
 
-Provide a fast, deterministic command-line report that shows:
-
-1. which models are actively used and where they are used,
-2. which additional models are available but currently unused,
-3. model input/output cost metadata when available.
+Provide a fast, deterministic terminal UI that shows which models are active, which are only configured, and what they cost.
 
 ## Target Users
 
@@ -20,9 +16,12 @@ Provide a fast, deterministic command-line report that shows:
 
 ## User Outcomes
 
-- Identify heavily used models quickly
-- Spot unused but available alternatives
-- Make model selection decisions with cost context
+- Identify active models quickly
+- Compare configured models in one view
+- Switch sort modes without leaving the TUI
+- Refresh data manually
+- Use alternate config-home locations for testing
+- Get a polished, attractive default presentation without extra configuration
 
 ## In Scope
 
@@ -30,15 +29,16 @@ Provide a fast, deterministic command-line report that shows:
 - Config-home override for testing and alternate locations
 - Model inventory refresh via `opencode models --refresh`
 - Cost data fetch from `https://models.dev/api.json`
-- Two-section terminal report (`Used`, `Configured`)
-- Deterministic sorting and formatting
-- Explicit error and exit behavior
+- Fullscreen ratatui TUI
+- Unified model list with active state
+- Manual refresh and sort switching
+- Deterministic sorting, wrapping, and error handling
 
 ## Out of Scope
 
-- Interactive UI/TUI
+- Automatic refresh loops
 - Automatic model changes
-- Persisting report output to storage by default
+- Persistent storage of report output
 
 ## Functional Requirements
 
@@ -109,61 +109,104 @@ Cost values are expressed per 1M tokens.
 
 If either input or output cost is missing, the total cost is treated as unknown for sorting.
 
-### FR-5: Report Sections
+### FR-5: Unified Model List
 
-The CLI must print:
+The TUI must display one list of models, not separate sections.
 
-1. `Used` table with columns: `MODEL`, `IN`, `OUT`, `USAGE`
-2. `Configured` table with columns: `MODEL`, `IN`, `OUT`
+Columns:
 
-Section headers must use bold styling only.
+1. `MODEL`
+2. `ACTIVE`
+3. `IN`
+4. `OUT`
+5. `USAGE`
 
-### FR-6: Formatting
+`ACTIVE` must render as a boolean value (`yes` / `no`).
 
-- Dynamic width alignment for `MODEL`, `IN`, `OUT`
+Rows come from the refreshed available model inventory.
+
+- `ACTIVE=yes` for models referenced in config
+- `ACTIVE=no` for other available models
+
+`USAGE` is empty for inactive rows.
+
+### FR-6: Layout and Interaction
+
+- The TUI must be fullscreen and redraw on resize.
+- The TUI must show a loading state while the initial refresh and cost fetch complete.
+- The TUI must support manual refresh only; it must not auto-refresh.
+- The TUI must not require a selection cursor in v1.
+- The TUI must provide keyboard controls only.
+
+Required keys:
+
+- `q` quit
+- `r` refresh
+- `s` cycle sort mode
+
+### FR-7: Formatting
+
+- Dynamic width alignment for `MODEL`, `ACTIVE`, `IN`, `OUT`
 - `USAGE` wrapping at 50 chars, comma-aware
 - Continuation-line indentation aligned to the `USAGE` column
 - Usage labels joined with `, `
+- Usage labels remain in alphabetical order
 
-### FR-7: Sorting
+### FR-8: Sorting
 
-- `Used`: usage count descending, tie-breaker 1: total cost ascending, tie-breaker 2: model name ascending
-- `Configured`: total cost descending, tie-breaker 1: model name ascending
-- Unknown total cost sorts last
+Default sort mode: `active-first`.
 
-### FR-8: Color Behavior
+Supported sort modes in v1:
 
-- Section headers use bold styling only
+1. `active-first`
+2. `cost-asc`
+3. `cost-desc`
+4. `model-name`
+
+Sort mode behaviour:
+
+- `active-first`: active rows first, then total cost ascending, then model name ascending
+- `cost-asc`: total cost ascending, then model name ascending
+- `cost-desc`: total cost descending, then model name ascending
+- `model-name`: model name ascending
+
+Unknown total cost sorts last in cost-based modes.
+
+### FR-9: Color Behavior
+
+- Table headers use bold styling only
 - Usage labels are coloured by config source
 - `--no-color` disables colour output
 - Colour output is emitted only when stdout is a terminal
 
-### FR-9: Exit and Error Behavior
+### FR-10: Error Behavior
 
 - Missing required config / parse / general failure: exit code `3`
 - `opencode` command missing: error + exit `3`
-- `opencode models --refresh` fails:
-  - print refresh failure message
-  - print subprocess stderr if present
-  - exit with subprocess exit code (fallback `4`)
-- `curl` missing or fetch failure: error + exit `3`
+- Initial `opencode models --refresh` failure: print refresh failure message, print subprocess stderr if present, exit with subprocess exit code (fallback `4`)
+- `curl` missing or fetch failure during initial load: error + exit `3`
+- Refresh failure after launch: keep the current snapshot and show the error in the TUI status area
 
-### FR-10: Alternate Config-Home Override
+### FR-11: Future Reordering Support
 
-The product must support execution against an alternate config-home directory for testing and non-default setups.
-
-Required behaviour:
-
-- Support `--home-dir <path>`
-- Apply the override before loading `opencode.jsonc` and `weave-opencode.jsonc`
-- Keep default auto-discovery behaviour when the flag is omitted
+The data model must preserve stable row identities so future manual reordering or additional sort/view modes can be added without rewriting the model layer.
 
 ## Non-Functional Requirements
 
 - Stable Rust toolchain
 - Minimal dependency set
-- Predictable terminal output suitable for automation parsing
+- Predictable terminal rendering suitable for human use
 - Clear, actionable error messages
+- Stable, deterministic row ordering for every supported sort mode
+- Polished default visuals with sensible spacing, readable colours, and good out-of-the-box presentation
+- Clear separation between data reading and UI rendering modules
+
+## Architecture Notes
+
+- Keep data loading, refresh, and model assembly in separate reader modules.
+- Keep terminal rendering and keyboard handling in separate UI modules.
+- The UI should consume a prepared model list and not reach into config or network code directly.
+- The data layer should not depend on terminal rendering details.
 
 ## CLI Contract
 
@@ -174,14 +217,15 @@ Required behaviour:
 
 ## Acceptance Criteria
 
-1. Report consistently renders `Used` and `Configured` sections with required columns.
-2. Sorting matches FR-7 exactly.
-3. Exit behavior matches FR-9 exactly.
-4. Output formatting (widths/wrapping/indentation) matches FR-6.
-5. Alternate config-home support is implemented and verified.
+1. The TUI opens fullscreen and shows one unified model list.
+2. `q`, `r`, and `s` behave as specified.
+3. All v1 sort modes work and switch in the TUI.
+4. Formatting matches the alignment and wrapping requirements.
+5. `--home-dir` works with alternate config-home locations.
+6. Startup and refresh error behaviour matches FR-10.
 
 ## Rollout Notes
 
-- Keep current home-dir auto-discovery for in-repo usage.
+- Keep current home-dir auto-discovery for default use.
 - Keep `weave-opencode.jsonc` optional for backward compatibility.
-- Validate with side-by-side sample runs using default and alternate config-home directories.
+- Validate with sample runs using both default and alternate config-home directories.
