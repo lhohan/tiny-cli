@@ -37,7 +37,7 @@ pub fn render_report_rows(rows: &[ModelRow]) -> Vec<String> {
 
     let mut lines = Vec::new();
     lines.push(format!(
-        "{}  {}  {}  {}  USAGE",
+        "{}  {}  {}  {}  AGENTS",
         ljust("PROVIDER", provider_width),
         ljust("MODEL", model_width),
         rjust("IN", in_width),

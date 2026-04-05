@@ -37,8 +37,8 @@ fn plain_renderer_should_produce_consistent_table_format() {
     assert!(header.contains("IN"), "Header should contain IN column");
     assert!(header.contains("OUT"), "Header should contain OUT column");
     assert!(
-        header.contains("USAGE"),
-        "Header should contain USAGE column"
+        header.contains("AGENTS"),
+        "Header should contain AGENTS column"
     );
 
     // Should have at least 3 lines (header + 2 data rows)
@@ -202,7 +202,7 @@ fn plain_renderer_should_handle_empty_rows() {
 
     // Should still have header even with no data
     assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0], "PROVIDER  MODEL  IN  OUT  USAGE");
+    assert_eq!(lines[0], "PROVIDER  MODEL  IN  OUT  AGENTS");
 }
 
 #[test]

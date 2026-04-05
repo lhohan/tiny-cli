@@ -334,10 +334,7 @@ fn table_header_line(
         Span::raw("  "),
         Span::styled(rjust("OUT", output_width), table_header_style()),
         Span::raw("  "),
-        Span::styled(
-            format!("USAGE  [{}]", sort_mode_label(sort_mode)),
-            table_header_style(),
-        ),
+        Span::styled("AGENTS".to_string(), table_header_style()),
     ])
     .style(Style::default().bg(Color::Rgb(20, 24, 35)))
 }

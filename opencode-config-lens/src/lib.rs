@@ -278,7 +278,7 @@ mod tests {
         );
 
         let lines = render_report_rows(&rows);
-        assert_eq!(lines[0], "PROVIDER  MODEL  IN  OUT  USAGE");
+        assert_eq!(lines[0], "PROVIDER  MODEL  IN  OUT  AGENTS");
         assert!(lines.iter().any(|line| line.contains("provider  alpha")));
         assert!(lines
             .iter()
