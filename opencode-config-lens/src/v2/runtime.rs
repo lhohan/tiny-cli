@@ -1,5 +1,5 @@
 use std::io::{self, Stdout};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
@@ -17,7 +17,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Terminal;
 
-use crate::{
+use super::{
     ljust, load_report_rows, resolve_config_home, rjust, LoadError, UiAction, UiKey, UiMode,
     UiState,
 };
@@ -57,7 +57,7 @@ impl RuntimeError {
 }
 
 enum WorkerMessage {
-    Loaded(Result<Vec<crate::ModelRow>, LoadError>, bool),
+    Loaded(Result<Vec<super::ModelRow>, LoadError>, bool),
 }
 
 pub fn run(cli: Cli) -> Result<(), RuntimeError> {
@@ -94,7 +94,7 @@ fn run_loop(
     state: &mut UiState,
     rx: &Receiver<WorkerMessage>,
     tx: &Sender<WorkerMessage>,
-    home_dir: &Path,
+    home_dir: &PathBuf,
     fatal: &mut Option<LoadError>,
 ) -> Result<(), RuntimeError> {
     loop {
@@ -141,7 +141,7 @@ fn run_loop(
                 if let Some(ui_key) = ui_key {
                     match state.handle_key(ui_key) {
                         UiAction::Quit => return Ok(()),
-                        UiAction::Refresh => spawn_load(tx.clone(), home_dir.to_path_buf(), false),
+                        UiAction::Refresh => spawn_load(tx.clone(), home_dir.clone(), false),
                         UiAction::None => {}
                     }
                 }
@@ -201,7 +201,6 @@ fn draw(frame: &mut ratatui::Frame, state: &UiState) {
 
 fn header_line(state: &UiState) -> Line<'static> {
     let mut spans = vec![Span::styled(
-        " opencode-model-report ",
         Style::default()
             .fg(Color::White)
             .add_modifier(Modifier::BOLD),
@@ -223,24 +222,23 @@ fn header_line(state: &UiState) -> Line<'static> {
 }
 
 fn loading_view(state: &UiState) -> Text<'static> {
-    let lines = vec![
-        Line::from(vec![
-            Span::styled(" ⟳ ", loading_style()),
-            Span::styled("Loading model data", loading_style()),
-        ]),
-        Line::from(vec![Span::styled(
-            state.status.clone(),
-            status_style(state.mode, false),
-        )]),
-        Line::from(vec![Span::styled(
-            "Fetching config, inventory, and costs.",
-            muted_style(),
-        )]),
-    ];
+    let mut lines = Vec::new();
+    lines.push(Line::from(vec![
+        Span::styled(" ⟳ ", loading_style()),
+        Span::styled("Loading model data", loading_style()),
+    ]));
+    lines.push(Line::from(vec![Span::styled(
+        state.status.clone(),
+        status_style(state.mode, false),
+    )]));
+    lines.push(Line::from(vec![Span::styled(
+        "Fetching config, inventory, and costs.",
+        muted_style(),
+    )]));
     Text::from(lines)
 }
 
-fn report_view(rows: &[crate::ModelRow], sort_mode: crate::SortMode) -> Text<'static> {
+fn report_view(rows: &[super::ModelRow], sort_mode: super::SortMode) -> Text<'static> {
     let (provider_width, model_width, active_width, input_width, output_width, prefix_width) =
         table_widths(rows);
     let mut lines = Vec::new();
@@ -270,12 +268,12 @@ fn report_view(rows: &[crate::ModelRow], sort_mode: crate::SortMode) -> Text<'st
             ),
             Span::raw("  "),
             Span::styled(
-                rjust(&crate::format_cost(row.input_cost), input_width),
+                rjust(&super::format_cost(row.input_cost), input_width),
                 cost_style(row.input_cost.is_some(), CostKind::Input),
             ),
             Span::raw("  "),
             Span::styled(
-                rjust(&crate::format_cost(row.output_cost), output_width),
+                rjust(&super::format_cost(row.output_cost), output_width),
                 cost_style(row.output_cost.is_some(), CostKind::Output),
             ),
             Span::raw("  "),
@@ -306,19 +304,19 @@ fn footer_lines(state: &UiState) -> Vec<Line<'static>> {
         Span::styled("usage legend: ", muted_style()),
         Span::styled(
             "OpenCode default / small_model",
-            usage_style(crate::UsageSource::OpenCodeDefault),
+            usage_style(super::UsageSource::OpenCodeDefault),
         ),
         Span::raw(" / "),
         Span::styled(
             "OpenCode agents",
-            usage_style(crate::UsageSource::OpenCodeCustom),
+            usage_style(super::UsageSource::OpenCodeCustom),
         ),
         Span::raw(" / "),
-        Span::styled("Weave agents", usage_style(crate::UsageSource::Weave)),
+        Span::styled("Weave agents", usage_style(super::UsageSource::Weave)),
         Span::raw(" / "),
         Span::styled(
             "Weave custom_agents",
-            usage_style(crate::UsageSource::WeaveCustom),
+            usage_style(super::UsageSource::WeaveCustom),
         ),
         Span::raw("  •  "),
         Span::styled("sorted", muted_style()),
@@ -333,7 +331,7 @@ fn table_header_line(
     active_width: usize,
     input_width: usize,
     output_width: usize,
-    sort_mode: crate::SortMode,
+    sort_mode: super::SortMode,
 ) -> Line<'static> {
     Line::from(vec![
         Span::styled(ljust("PROVIDER", provider_width), table_header_style()),
@@ -354,7 +352,7 @@ fn table_header_line(
     .style(Style::default().bg(Color::Rgb(20, 24, 35)))
 }
 
-fn table_widths(rows: &[crate::ModelRow]) -> (usize, usize, usize, usize, usize, usize) {
+fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize, usize) {
     let provider_width = std::iter::once("PROVIDER".len())
         .chain(rows.iter().map(|row| row.provider.len()))
         .max()
@@ -367,14 +365,14 @@ fn table_widths(rows: &[crate::ModelRow]) -> (usize, usize, usize, usize, usize,
     let input_width = std::iter::once("IN".len())
         .chain(
             rows.iter()
-                .map(|row| crate::format_cost(row.input_cost).len()),
+                .map(|row| super::format_cost(row.input_cost).len()),
         )
         .max()
         .unwrap_or(0);
     let output_width = std::iter::once("OUT".len())
         .chain(
             rows.iter()
-                .map(|row| crate::format_cost(row.output_cost).len()),
+                .map(|row| super::format_cost(row.output_cost).len()),
         )
         .max()
         .unwrap_or(0);
@@ -399,7 +397,7 @@ fn table_widths(rows: &[crate::ModelRow]) -> (usize, usize, usize, usize, usize,
     )
 }
 
-fn wrap_usage_labels(labels: &[crate::UsageLabel], width: usize) -> Vec<Vec<crate::UsageLabel>> {
+fn wrap_usage_labels(labels: &[super::UsageLabel], width: usize) -> Vec<Vec<super::UsageLabel>> {
     let mut groups = Vec::new();
     let mut current = Vec::new();
     let mut current_len = 0usize;
@@ -436,7 +434,7 @@ fn wrap_usage_labels(labels: &[crate::UsageLabel], width: usize) -> Vec<Vec<crat
     groups
 }
 
-fn usage_group_spans(group: &[crate::UsageLabel]) -> Vec<Span<'static>> {
+fn usage_group_spans(group: &[super::UsageLabel]) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     for (idx, label) in group.iter().enumerate() {
         if idx > 0 {
@@ -447,27 +445,27 @@ fn usage_group_spans(group: &[crate::UsageLabel]) -> Vec<Span<'static>> {
     spans
 }
 
-fn usage_style(source: crate::UsageSource) -> Style {
+fn usage_style(source: super::UsageSource) -> Style {
     match source {
-        crate::UsageSource::OpenCodeDefault => Style::default().fg(Color::Blue),
-        crate::UsageSource::OpenCodeCustom => Style::default().fg(Color::Red),
-        crate::UsageSource::Weave => Style::default().fg(Color::Green),
-        crate::UsageSource::WeaveCustom => Style::default().fg(Color::Yellow),
+        super::UsageSource::OpenCodeDefault => Style::default().fg(Color::Blue),
+        super::UsageSource::OpenCodeCustom => Style::default().fg(Color::Red),
+        super::UsageSource::Weave => Style::default().fg(Color::Green),
+        super::UsageSource::WeaveCustom => Style::default().fg(Color::Yellow),
     }
 }
 
-fn sort_badge_style(sort_mode: crate::SortMode) -> Style {
+fn sort_badge_style(sort_mode: super::SortMode) -> Style {
     match sort_mode {
-        crate::SortMode::ActiveFirst => Style::default()
+        super::SortMode::ActiveFirst => Style::default()
             .fg(Color::Green)
             .add_modifier(Modifier::BOLD),
-        crate::SortMode::CostAsc => Style::default()
+        super::SortMode::CostAsc => Style::default()
             .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD),
-        crate::SortMode::CostDesc => Style::default()
+        super::SortMode::CostDesc => Style::default()
             .fg(Color::Yellow)
             .add_modifier(Modifier::BOLD),
-        crate::SortMode::ModelName => Style::default()
+        super::SortMode::ModelName => Style::default()
             .fg(Color::Blue)
             .add_modifier(Modifier::BOLD),
     }
@@ -500,7 +498,7 @@ fn table_header_style() -> Style {
 }
 
 fn row_style(index: usize, active: bool) -> Style {
-    let zebra = if index.is_multiple_of(2) {
+    let zebra = if index % 2 == 0 {
         Color::Reset
     } else {
         Color::Rgb(18, 22, 31)
@@ -579,12 +577,12 @@ fn body_border_style(state: &UiState) -> Style {
     }
 }
 
-fn sort_mode_label(mode: crate::SortMode) -> &'static str {
+fn sort_mode_label(mode: super::SortMode) -> &'static str {
     match mode {
-        crate::SortMode::ActiveFirst => "active-first",
-        crate::SortMode::CostAsc => "cost-asc",
-        crate::SortMode::CostDesc => "cost-desc",
-        crate::SortMode::ModelName => "model-name",
+        super::SortMode::ActiveFirst => "active-first",
+        super::SortMode::CostAsc => "cost-asc",
+        super::SortMode::CostDesc => "cost-desc",
+        super::SortMode::ModelName => "model-name",
     }
 }
 
@@ -605,7 +603,7 @@ impl Drop for TerminalCleanup {
 #[cfg(test)]
 mod tests {
     use super::{footer_lines, sort_badge_style, status_style, usage_style};
-    use crate::{SortMode, UiMode, UsageSource};
+    use crate::v2::{SortMode, UiMode, UsageSource};
     use ratatui::style::Color;
 
     #[test]
@@ -651,7 +649,7 @@ mod tests {
 
     #[test]
     fn footer_lines_should_include_usage_legend_on_separate_line() {
-        let lines = footer_lines(&crate::UiState::new());
+        let lines = footer_lines(&crate::v2::UiState::new());
         assert_eq!(lines.len(), 2);
 
         let legend_text = lines[1]

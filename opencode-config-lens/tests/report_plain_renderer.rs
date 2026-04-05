@@ -1,4 +1,4 @@
-use opencode_model_report::{
+use opencode_config_lens::{
     build_rows, render_report_rows, ReportInput, SortMode, UsageLabel, UsageSource,
 };
 

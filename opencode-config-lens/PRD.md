@@ -2,7 +2,7 @@
 
 ## Product
 
-`opencode-model-report` — fullscreen ratatui TUI for model usage and cost visibility.
+`OpenCode Config Lens` — fullscreen ratatui TUI for model usage and cost visibility.
 
 ## Purpose
 

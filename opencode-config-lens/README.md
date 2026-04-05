@@ -1,6 +1,6 @@
-# opencode-model-report
+# OpenCode Config Lens
 
-A fullscreen TUI for visualising OpenCode model usage and costs.
+A fullscreen TUI for inspecting OpenCode model configuration and usage.
 
 ## What It Does
 
@@ -24,7 +24,7 @@ cargo run
 cargo run --release
 
 # Use an alternate config directory
-opencode-model-report --home-dir /path/to/config
+ocl --home-dir /path/to/config
 ```
 
 **Controls:**

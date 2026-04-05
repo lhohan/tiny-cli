@@ -1,6 +1,6 @@
 mod support;
 
-use opencode_model_report::{build_rows, ReportInput, SortMode};
+use opencode_config_lens::{build_rows, ReportInput, SortMode};
 use support::given_model_report;
 use support::scenario::fail;
 
@@ -10,9 +10,9 @@ fn startup_should_load_rows_and_mark_ready() {
         ReportInput {
             active_usage: vec![(
                 "provider/alpha".to_string(),
-                vec![opencode_model_report::UsageLabel {
+                vec![opencode_config_lens::UsageLabel {
                     label: "default".to_string(),
-                    source: opencode_model_report::UsageSource::OpenCodeDefault,
+                    source: opencode_config_lens::UsageSource::OpenCodeDefault,
                 }],
             )],
             available_models: vec!["provider/alpha".to_string()],
@@ -42,7 +42,7 @@ fn startup_should_surface_error_and_exit_code_when_load_fails() {
 
 #[test]
 fn startup_should_show_cli_help() {
-    let exe = env!("CARGO_BIN_EXE_opencode-model-report");
+    let exe = env!("CARGO_BIN_EXE_ocl");
     let output = match std::process::Command::new(exe).arg("--help").output() {
         Ok(value) => value,
         Err(err) => fail(format!("failed to run --help: {err}")),
@@ -53,7 +53,7 @@ fn startup_should_show_cli_help() {
     }
 
     let help_text = String::from_utf8_lossy(&output.stdout);
-    if !help_text.contains("opencode-model-report") {
+    if !help_text.contains("ocl") {
         fail("--help should mention program name");
     }
     if !help_text.contains("--home-dir") {

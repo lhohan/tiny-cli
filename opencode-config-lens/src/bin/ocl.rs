@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use opencode_model_report::runtime::{run, Cli};
+use opencode_config_lens::runtime::{run, Cli};
 
 #[derive(Debug, Parser)]
-#[command(name = "opencode-model-report")]
-#[command(about = "Report OpenCode model usage and costs in a fullscreen TUI")]
+#[command(name = "ocl")]
+#[command(about = "OpenCode Config Lens TUI")]
 #[command(version)]
 struct Args {
     /// Override config home directory

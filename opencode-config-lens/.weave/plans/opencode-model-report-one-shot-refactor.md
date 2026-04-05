@@ -1,4 +1,4 @@
-# opencode-model-report One-Shot Refactor
+# OpenCode Config Lens One-Shot Refactor
 
 ## TL;DR
 > **Summary**: Refactor the project into small, testable Rust modules that separate config/data loading, row assembly, TUI state/runtime/view code, and shared text formatting helpers while preserving the current fullscreen ratatui behaviour and retaining the tiny plain-text renderer for tests.
@@ -21,7 +21,7 @@ Create a complete implementation plan for a one-shot refactor of `/Users/hans/de
 ```text
 src/
   bin/
-    opencode-model-report.rs        # CLI entrypoint only
+    ocl.rs                          # CLI entrypoint only
   lib.rs                            # thin re-exports only
   cli.rs                            # clap args and CLI-to-app config mapping
   app/
@@ -139,12 +139,12 @@ Refactor the project into clear modules with explicit seams between effects, rep
 
 - [ ] 7. Phase 6 — Split ratatui runtime, view composition, widgets, and styles
   **What**: Refactor the TUI layer last, once state and ports are stable. Keep `tui/runtime.rs` responsible only for terminal setup, cleanup, event polling, resize redraws, and dispatch to the controller. Move layout composition to `tui/view.rs`, table/header/footer widget building to `tui/widgets.rs`, and palette/style functions to `tui/styles.rs`. Add focused rendering tests using ratatui `TestBackend`/buffer assertions for footer legend visibility, loading view, active/inactive row accents, and wrapped usage rendering.
-  **Files**: Modify `src/runtime.rs`, `src/bin/opencode-model-report.rs`, `src/lib.rs`; create `src/tui/mod.rs`, `src/tui/runtime.rs`, `src/tui/events.rs`, `src/tui/view.rs`, `src/tui/widgets.rs`, `src/tui/styles.rs`; modify `tests/acceptance_startup.rs`, `tests/acceptance_sorting.rs`; add module-local tests under `src/tui/*.rs`.
+  **Files**: Modify `src/runtime.rs`, `src/bin/ocl.rs`, `src/lib.rs`; create `src/tui/mod.rs`, `src/tui/runtime.rs`, `src/tui/events.rs`, `src/tui/view.rs`, `src/tui/widgets.rs`, `src/tui/styles.rs`; modify `tests/acceptance_startup.rs`, `tests/acceptance_sorting.rs`; add module-local tests under `src/tui/*.rs`.
   **Acceptance**: `cargo test tui_`; `cargo test --test acceptance_startup --test acceptance_sorting`; `cargo test`.
 
 - [ ] 8. Phase 7 — Delete legacy `src/main.rs` and make `src/lib.rs` a thin facade
   **What**: Once all behaviours are covered and the binary uses only the new modules, delete the dead duplicate `src/main.rs`. Reduce `src/lib.rs` to re-exports and crate wiring only. This is the cleanup phase, not a logic-change phase; if any test starts failing here, back out and move the remaining logic into a named module instead of reworking behaviour.
-  **Files**: Delete `src/main.rs`; modify `src/lib.rs`, `src/bin/opencode-model-report.rs`.
+  **Files**: Delete `src/main.rs`; modify `src/lib.rs`, `src/bin/ocl.rs`.
   **Acceptance**: `cargo test`; `cargo run -- --help`; `cargo test --test cli_help`.
 
 - [ ] 9. Phase 8 — Finish DSL migration and tighten behavioural coverage

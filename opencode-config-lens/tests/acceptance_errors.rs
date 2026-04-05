@@ -1,6 +1,6 @@
 mod support;
 
-use opencode_model_report::{LoadError, ModelRow};
+use opencode_config_lens::{LoadError, ModelRow};
 use support::given_model_report;
 use support::scenario::fail;
 
@@ -70,7 +70,7 @@ fn errors_should_include_refresh_failure_text() {
 
 #[test]
 fn errors_should_show_help_for_user_recovery() {
-    let exe = env!("CARGO_BIN_EXE_opencode-model-report");
+    let exe = env!("CARGO_BIN_EXE_ocl");
     let output = match std::process::Command::new(exe).arg("--help").output() {
         Ok(value) => value,
         Err(err) => fail(format!("failed to run --help: {err}")),

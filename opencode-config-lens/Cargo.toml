@@ -1,9 +1,9 @@
 [package]
-name = "opencode-model-report"
+name = "opencode-config-lens"
 version = "0.1.0"
 edition = "2021"
 authors = ["Hans"]
-description = "Report OpenCode model usage and costs"
+description = "Inspect OpenCode model configuration and usage"
 autobins = false
 
 [dependencies]
@@ -20,5 +20,5 @@ lto = true
 strip = true
 
 [[bin]]
-name = "opencode-model-report"
-path = "src/bin/opencode-model-report.rs"
+name = "ocl"
+path = "src/bin/ocl.rs"

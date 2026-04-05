@@ -1,4 +1,4 @@
-use opencode_model_report::{build_rows, ModelRow, ReportInput, SortMode, UsageLabel, UsageSource};
+use opencode_config_lens::{build_rows, ModelRow, ReportInput, SortMode, UsageLabel, UsageSource};
 
 #[test]
 fn report_should_sort_unknown_costs_last_when_using_cost_asc() {

@@ -2,7 +2,7 @@ use std::process::Command;
 
 #[test]
 fn help_should_not_expose_no_color_flag() {
-    let exe = env!("CARGO_BIN_EXE_opencode-model-report");
+    let exe = env!("CARGO_BIN_EXE_ocl");
     let output = Command::new(exe).arg("--help").output().expect("run help");
 
     assert!(output.status.success());

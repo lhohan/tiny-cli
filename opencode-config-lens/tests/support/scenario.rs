@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use opencode_model_report::{ModelRow, SortMode, UiKey, UiMode, UiState};
+use opencode_config_lens::{ModelRow, SortMode, UiKey, UiMode, UiState};
 
 pub fn given_model_report() -> GivenScenario {
     GivenScenario::new()

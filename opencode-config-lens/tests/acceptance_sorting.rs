@@ -1,9 +1,9 @@
 mod support;
 
-use opencode_model_report::{build_rows, ReportInput, SortMode, UsageLabel, UsageSource};
+use opencode_config_lens::{build_rows, ReportInput, SortMode, UsageLabel, UsageSource};
 use support::given_model_report;
 
-fn sort_fixture_rows() -> Vec<opencode_model_report::ModelRow> {
+fn sort_fixture_rows() -> Vec<opencode_config_lens::ModelRow> {
     build_rows(
         ReportInput {
             active_usage: vec![(

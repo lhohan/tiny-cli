@@ -1,6 +1,6 @@
-//! OpenCode Model Report Library
+//! OpenCode Config Lens Library
 //!
-//! This library provides functionality for reporting OpenCode model usage and costs.
+//! This library provides functionality for inspecting OpenCode model configuration and usage.
 //!
 //! ## Module Structure
 //!
@@ -480,7 +480,7 @@ mod tests {
     fn make_temp_home() -> PathBuf {
         let mut base = std::env::temp_dir();
         base.push(format!(
-            "opencode-model-report-test-{}-{}",
+            "opencode-config-lens-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
