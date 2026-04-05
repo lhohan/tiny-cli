@@ -432,9 +432,9 @@ fn usage_group_spans(group: &[crate::UsageLabel]) -> Vec<Span<'static>> {
 fn usage_style(source: crate::UsageSource) -> Style {
     match source {
         crate::UsageSource::OpenCodeDefault => Style::default().fg(Color::Blue),
-        crate::UsageSource::OpenCodeCustom => Style::default().fg(Color::Red),
-        crate::UsageSource::Weave => Style::default().fg(Color::Green),
-        crate::UsageSource::WeaveCustom => Style::default().fg(Color::Yellow),
+        crate::UsageSource::OpenCodeCustom => Style::default().fg(Color::LightCyan),
+        crate::UsageSource::Weave => Style::default().fg(Color::Rgb(255, 140, 0)),
+        crate::UsageSource::WeaveCustom => Style::default().fg(Color::Rgb(255, 179, 71)),
     }
 }
 
@@ -652,12 +652,15 @@ mod tests {
         );
         assert_eq!(
             usage_style(UsageSource::OpenCodeCustom).fg,
-            Some(Color::Red)
+            Some(Color::LightCyan)
         );
-        assert_eq!(usage_style(UsageSource::Weave).fg, Some(Color::Green));
+        assert_eq!(
+            usage_style(UsageSource::Weave).fg,
+            Some(Color::Rgb(255, 140, 0))
+        );
         assert_eq!(
             usage_style(UsageSource::WeaveCustom).fg,
-            Some(Color::Yellow)
+            Some(Color::Rgb(255, 179, 71))
         );
     }
 
