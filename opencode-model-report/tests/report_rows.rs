@@ -1,6 +1,126 @@
 use opencode_model_report::{build_rows, ModelRow, ReportInput, SortMode, UsageLabel, UsageSource};
 
 #[test]
+fn report_should_sort_unknown_costs_last_when_using_cost_asc() {
+    let rows = build_rows(
+        ReportInput {
+            active_usage: vec![],
+            available_models: vec![
+                "provider/unknown".to_string(),
+                "provider/expensive".to_string(),
+                "provider/cheap".to_string(),
+            ],
+            costs: vec![
+                ("provider/expensive".to_string(), Some(10.0), Some(10.0)),
+                ("provider/cheap".to_string(), Some(1.0), Some(1.0)),
+                ("provider/unknown".to_string(), None, None),
+            ],
+        },
+        SortMode::CostAsc,
+    );
+
+    assert_eq!(
+        rows.into_iter().map(|row| row.model).collect::<Vec<_>>(),
+        vec!["provider/cheap", "provider/expensive", "provider/unknown"]
+    );
+}
+
+#[test]
+fn report_should_use_alphabetical_tie_break_for_same_costs() {
+    let rows = build_rows(
+        ReportInput {
+            active_usage: vec![],
+            available_models: vec![
+                "provider/zebra".to_string(),
+                "provider/alpha".to_string(),
+                "provider/middle".to_string(),
+            ],
+            costs: vec![
+                // All have same cost, should be sorted alphabetically
+                ("provider/zebra".to_string(), Some(5.0), Some(5.0)),
+                ("provider/alpha".to_string(), Some(5.0), Some(5.0)),
+                ("provider/middle".to_string(), Some(5.0), Some(5.0)),
+            ],
+        },
+        SortMode::CostAsc,
+    );
+
+    let models: Vec<_> = rows.into_iter().map(|row| row.model).collect();
+    assert_eq!(
+        models,
+        vec!["provider/alpha", "provider/middle", "provider/zebra"]
+    );
+}
+
+#[test]
+fn report_should_preserve_duplicate_usage_labels() {
+    let rows = build_rows(
+        ReportInput {
+            active_usage: vec![(
+                "provider/alpha".to_string(),
+                vec![
+                    UsageLabel {
+                        label: "agent1".to_string(),
+                        source: UsageSource::OpenCodeCustom,
+                    },
+                    UsageLabel {
+                        label: "agent2".to_string(),
+                        source: UsageSource::OpenCodeCustom,
+                    },
+                    UsageLabel {
+                        label: "agent1".to_string(), // Duplicate label
+                        source: UsageSource::Weave,
+                    },
+                ],
+            )],
+            available_models: vec!["provider/alpha".to_string()],
+            costs: vec![],
+        },
+        SortMode::ModelName,
+    );
+
+    let alpha_row = rows.iter().find(|r| r.model == "provider/alpha").unwrap();
+    assert_eq!(
+        alpha_row.usage.len(),
+        3,
+        "Should preserve all usage labels including duplicates"
+    );
+}
+
+#[test]
+fn report_should_sort_usage_labels_alphabetically() {
+    let rows = build_rows(
+        ReportInput {
+            active_usage: vec![(
+                "provider/alpha".to_string(),
+                vec![
+                    UsageLabel {
+                        label: "zebra".to_string(),
+                        source: UsageSource::OpenCodeCustom,
+                    },
+                    UsageLabel {
+                        label: "alpha".to_string(),
+                        source: UsageSource::OpenCodeCustom,
+                    },
+                    UsageLabel {
+                        label: "middle".to_string(),
+                        source: UsageSource::Weave,
+                    },
+                ],
+            )],
+            available_models: vec!["provider/alpha".to_string()],
+            costs: vec![],
+        },
+        SortMode::ModelName,
+    );
+
+    let alpha_row = rows.iter().find(|r| r.model == "provider/alpha").unwrap();
+    let labels: Vec<_> = alpha_row.usage.iter().map(|u| u.label.as_str()).collect();
+    // Should be sorted alphabetically by label
+    assert_eq!(labels, vec!["alpha", "middle", "zebra"]);
+}
+
+#[test]
 fn report_should_split_model_id_into_provider_and_model_name() {
     let rows = build_rows(
         ReportInput {
