@@ -1,0 +1,15 @@
+[tasks.run]
+description = "Run opencode-model-report"
+run = "cargo run --manifest-path Cargo.toml"
+
+[tasks.release]
+description = "Build a release binary"
+run = "cargo build --release --manifest-path Cargo.toml"
+
+[tasks.test]
+description = "Run tests"
+run = "cargo test --manifest-path Cargo.toml"
+
+[tasks.check]
+description = "Run fmt, clippy, and deny warnings"
+run = "cargo fmt --manifest-path Cargo.toml --all --check && cargo clippy --manifest-path Cargo.toml --all-targets --all-features -- -D warnings"

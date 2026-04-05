@@ -11,7 +11,7 @@
 pub fn format_cost(value: Option<f64>) -> String {
     match value {
         None => "n/a".to_string(),
-        Some(v) if v == 0.0 => "0".to_string(),
+        Some(0.0) => "0".to_string(),
         Some(v) if v.fract() == 0.0 => format!("{:.0}", v),
         Some(v) => format!("{:0.10}", v)
             .trim_end_matches('0')

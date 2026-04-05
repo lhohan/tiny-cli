@@ -3,7 +3,11 @@ use std::process::{Command, Stdio};
 
 use crate::LoadError;
 
-pub fn fetch_costs() -> Result<Vec<(String, Option<f64>, Option<f64>)>, LoadError> {
+pub type CostEntry = (Option<f64>, Option<f64>);
+pub type CostRow = (String, Option<f64>, Option<f64>);
+pub type CostMap = HashMap<String, CostEntry>;
+
+pub fn fetch_costs() -> Result<Vec<CostRow>, LoadError> {
     let output = Command::new("curl")
         .args(["-fsSL", "https://models.dev/api.json"])
         .stdout(Stdio::piped())
@@ -32,9 +36,7 @@ pub fn fetch_costs() -> Result<Vec<(String, Option<f64>, Option<f64>)>, LoadErro
         .collect())
 }
 
-pub fn parse_costs_from_api_json(
-    text: &str,
-) -> serde_json::Result<HashMap<String, (Option<f64>, Option<f64>)>> {
+pub fn parse_costs_from_api_json(text: &str) -> serde_json::Result<CostMap> {
     #[derive(Debug, serde::Deserialize)]
     struct Provider {
         #[serde(default)]

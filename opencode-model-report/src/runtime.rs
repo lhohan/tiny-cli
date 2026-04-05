@@ -1,5 +1,5 @@
 use std::io::{self, Stdout};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
@@ -94,7 +94,7 @@ fn run_loop(
     state: &mut UiState,
     rx: &Receiver<WorkerMessage>,
     tx: &Sender<WorkerMessage>,
-    home_dir: &PathBuf,
+    home_dir: &Path,
     fatal: &mut Option<LoadError>,
 ) -> Result<(), RuntimeError> {
     loop {
@@ -141,7 +141,7 @@ fn run_loop(
                 if let Some(ui_key) = ui_key {
                     match state.handle_key(ui_key) {
                         UiAction::Quit => return Ok(()),
-                        UiAction::Refresh => spawn_load(tx.clone(), home_dir.clone(), false),
+                        UiAction::Refresh => spawn_load(tx.clone(), home_dir.to_path_buf(), false),
                         UiAction::None => {}
                     }
                 }
@@ -223,19 +223,20 @@ fn header_line(state: &UiState) -> Line<'static> {
 }
 
 fn loading_view(state: &UiState) -> Text<'static> {
-    let mut lines = Vec::new();
-    lines.push(Line::from(vec![
-        Span::styled(" ⟳ ", loading_style()),
-        Span::styled("Loading model data", loading_style()),
-    ]));
-    lines.push(Line::from(vec![Span::styled(
-        state.status.clone(),
-        status_style(state.mode, false),
-    )]));
-    lines.push(Line::from(vec![Span::styled(
-        "Fetching config, inventory, and costs.",
-        muted_style(),
-    )]));
+    let lines = vec![
+        Line::from(vec![
+            Span::styled(" ⟳ ", loading_style()),
+            Span::styled("Loading model data", loading_style()),
+        ]),
+        Line::from(vec![Span::styled(
+            state.status.clone(),
+            status_style(state.mode, false),
+        )]),
+        Line::from(vec![Span::styled(
+            "Fetching config, inventory, and costs.",
+            muted_style(),
+        )]),
+    ];
     Text::from(lines)
 }
 
@@ -499,7 +500,7 @@ fn table_header_style() -> Style {
 }
 
 fn row_style(index: usize, active: bool) -> Style {
-    let zebra = if index % 2 == 0 {
+    let zebra = if index.is_multiple_of(2) {
         Color::Reset
     } else {
         Color::Rgb(18, 22, 31)
