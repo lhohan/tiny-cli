@@ -25,6 +25,8 @@ pub struct OpenCodeConfig {
 pub struct AgentConfig {
     #[serde(default)]
     pub model: Option<String>,
+    #[serde(default)]
+    pub display_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
@@ -486,32 +488,52 @@ fn collect_active_usage(bundle: &ConfigBundle) -> Vec<(String, Vec<UsageLabel>)>
     let mut active: HashMap<String, Vec<UsageLabel>> = HashMap::new();
 
     if let Some(model) = bundle.opencode.model.as_deref() {
-        record_usage(&mut active, model, "default", UsageSource::OpenCodeDefault);
+        record_usage(
+            &mut active,
+            model,
+            "default".to_string(),
+            UsageSource::OpenCodeDefault,
+        );
     }
     if let Some(model) = bundle.opencode.small_model.as_deref() {
         record_usage(
             &mut active,
             model,
-            "small_model",
+            "small_model".to_string(),
             UsageSource::OpenCodeDefault,
         );
     }
 
     for (name, cfg) in &bundle.opencode.agent {
         if let Some(model) = cfg.model.as_deref() {
-            record_usage(&mut active, model, name, UsageSource::OpenCodeCustom);
+            record_usage(
+                &mut active,
+                model,
+                name.to_string(),
+                UsageSource::OpenCodeCustom,
+            );
         }
     }
 
     if let Some(weave) = bundle.weave.as_ref() {
         for (name, cfg) in &weave.agents {
             if let Some(model) = cfg.model.as_deref() {
-                record_usage(&mut active, model, name, UsageSource::Weave);
+                record_usage(
+                    &mut active,
+                    model,
+                    weave_usage_label(name, cfg),
+                    UsageSource::Weave,
+                );
             }
         }
         for (name, cfg) in &weave.custom_agents {
             if let Some(model) = cfg.model.as_deref() {
-                record_usage(&mut active, model, name, UsageSource::WeaveCustom);
+                record_usage(
+                    &mut active,
+                    model,
+                    weave_usage_label(name, cfg),
+                    UsageSource::WeaveCustom,
+                );
             }
         }
     }
@@ -522,16 +544,17 @@ fn collect_active_usage(bundle: &ConfigBundle) -> Vec<(String, Vec<UsageLabel>)>
 fn record_usage(
     active: &mut HashMap<String, Vec<UsageLabel>>,
     model: &str,
-    label: &str,
+    label: String,
     source: UsageSource,
 ) {
     active
         .entry(model.to_string())
         .or_default()
-        .push(UsageLabel {
-            label: label.to_string(),
-            source,
-        });
+        .push(UsageLabel { label, source });
+}
+
+fn weave_usage_label(name: &str, cfg: &AgentConfig) -> String {
+    cfg.display_name.as_deref().unwrap_or(name).to_string()
 }
 
 fn fetch_available_models() -> Result<Vec<String>, LoadError> {
@@ -979,6 +1002,7 @@ mod tests {
                     "builder".to_string(),
                     super::AgentConfig {
                         model: Some("provider/gamma".to_string()),
+                        display_name: None,
                     },
                 )]
                 .into_iter()
@@ -989,6 +1013,7 @@ mod tests {
                     "reviewer".to_string(),
                     super::AgentConfig {
                         model: Some("provider/delta".to_string()),
+                        display_name: None,
                     },
                 )]
                 .into_iter()
@@ -997,6 +1022,7 @@ mod tests {
                     "ops".to_string(),
                     super::AgentConfig {
                         model: Some("provider/epsilon".to_string()),
+                        display_name: None,
                     },
                 )]
                 .into_iter()
@@ -1042,6 +1068,7 @@ mod tests {
                     "reviewer".to_string(),
                     AgentConfig {
                         model: Some("provider/delta".to_string()),
+                        display_name: None,
                     },
                 )]
                 .into_iter()
@@ -1050,6 +1077,7 @@ mod tests {
                     "ops".to_string(),
                     AgentConfig {
                         model: Some("provider/epsilon".to_string()),
+                        display_name: None,
                     },
                 )]
                 .into_iter()
@@ -1067,6 +1095,49 @@ mod tests {
         assert_eq!(
             by_model.get("provider/epsilon").unwrap()[0].source,
             UsageSource::WeaveCustom
+        );
+    }
+
+    #[test]
+    fn active_usage_should_prefer_weave_display_names_when_configured() {
+        let home = make_temp_home();
+        fs::write(
+            home.join("opencode.jsonc"),
+            r#"{
+                "agent": {}
+            }"#,
+        )
+        .unwrap();
+        fs::write(
+            home.join("weave-opencode.jsonc"),
+            r#"{
+                "agents": {
+                    "reviewer": {
+                        "model": "provider/delta",
+                        "display_name": "Review Bot"
+                    }
+                },
+                "custom_agents": {
+                    "ops": {
+                        "model": "provider/epsilon",
+                        "display_name": "Ops Bot"
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let bundle = load_config_bundle(&home).unwrap();
+        let usage = collect_active_usage(&bundle);
+        let by_model: std::collections::HashMap<_, _> = usage.into_iter().collect();
+
+        assert_eq!(
+            by_model.get("provider/delta").unwrap()[0].label,
+            "Review Bot"
+        );
+        assert_eq!(
+            by_model.get("provider/epsilon").unwrap()[0].label,
+            "Ops Bot"
         );
     }
 
