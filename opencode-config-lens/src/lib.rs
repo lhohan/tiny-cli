@@ -278,15 +278,13 @@ mod tests {
         );
 
         let lines = render_report_rows(&rows);
-        assert_eq!(lines[0], "PROVIDER  MODEL  ACTIVE  IN  OUT  USAGE");
+        assert_eq!(lines[0], "PROVIDER  MODEL  IN  OUT  USAGE");
         assert!(lines.iter().any(|line| line.contains("provider  alpha")));
-        assert!(lines.iter().any(|line| line.contains("yes")));
-        assert!(lines.iter().any(|line| line.contains("no")));
         assert!(lines
             .iter()
             .any(|line| line.contains("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
         assert!(lines.len() > 3);
-        assert!(lines[2].starts_with(&" ".repeat(34)));
+        assert!(lines[2].starts_with(&" ".repeat(26)));
     }
 
     #[test]

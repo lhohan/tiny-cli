@@ -34,10 +34,6 @@ fn plain_renderer_should_produce_consistent_table_format() {
         header.contains("MODEL"),
         "Header should contain MODEL column"
     );
-    assert!(
-        header.contains("ACTIVE"),
-        "Header should contain ACTIVE column"
-    );
     assert!(header.contains("IN"), "Header should contain IN column");
     assert!(header.contains("OUT"), "Header should contain OUT column");
     assert!(
@@ -91,38 +87,6 @@ fn plain_renderer_should_right_justify_cost_columns() {
     // Should contain formatted costs
     assert!(data_line.contains("1.5") || data_line.contains("1.50"));
     assert!(data_line.contains("2.5") || data_line.contains("2.50"));
-}
-
-#[test]
-fn plain_renderer_should_show_active_status() {
-    let rows = build_rows(
-        ReportInput {
-            active_usage: vec![(
-                "test/active-model".to_string(),
-                vec![UsageLabel {
-                    label: "default".to_string(),
-                    source: UsageSource::OpenCodeDefault,
-                }],
-            )],
-            available_models: vec![
-                "test/active-model".to_string(),
-                "test/inactive-model".to_string(),
-            ],
-            costs: vec![],
-        },
-        SortMode::ModelName,
-    );
-
-    let lines = render_report_rows(&rows);
-
-    // Find lines containing the models
-    let active_line = lines.iter().find(|l| l.contains("active-model")).unwrap();
-
-    // Active model should show "yes"
-    assert!(
-        active_line.contains("yes"),
-        "Active model should show 'yes'"
-    );
 }
 
 #[test]
@@ -238,7 +202,7 @@ fn plain_renderer_should_handle_empty_rows() {
 
     // Should still have header even with no data
     assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0], "PROVIDER  MODEL  ACTIVE  IN  OUT  USAGE");
+    assert_eq!(lines[0], "PROVIDER  MODEL  IN  OUT  USAGE");
 }
 
 #[test]

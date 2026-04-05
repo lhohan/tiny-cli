@@ -239,14 +239,12 @@ fn loading_view(state: &UiState) -> Text<'static> {
 }
 
 fn report_view(rows: &[super::ModelRow], sort_mode: super::SortMode) -> Text<'static> {
-    let (provider_width, model_width, active_width, input_width, output_width, prefix_width) =
-        table_widths(rows);
+    let (provider_width, model_width, input_width, output_width, prefix_width) = table_widths(rows);
     let mut lines = Vec::new();
 
     lines.push(table_header_line(
         provider_width,
         model_width,
-        active_width,
         input_width,
         output_width,
         sort_mode,
@@ -261,11 +259,6 @@ fn report_view(rows: &[super::ModelRow], sort_mode: super::SortMode) -> Text<'st
             ),
             Span::raw("  "),
             Span::styled(ljust(&row.model_name, model_width), model_style(row.active)),
-            Span::raw("  "),
-            Span::styled(
-                ljust(if row.active { "yes" } else { "no" }, active_width),
-                active_badge_style(row.active),
-            ),
             Span::raw("  "),
             Span::styled(
                 rjust(&super::format_cost(row.input_cost), input_width),
@@ -328,7 +321,6 @@ fn footer_lines(state: &UiState) -> Vec<Line<'static>> {
 fn table_header_line(
     provider_width: usize,
     model_width: usize,
-    active_width: usize,
     input_width: usize,
     output_width: usize,
     sort_mode: super::SortMode,
@@ -337,8 +329,6 @@ fn table_header_line(
         Span::styled(ljust("PROVIDER", provider_width), table_header_style()),
         Span::raw("  "),
         Span::styled(ljust("MODEL", model_width), table_header_style()),
-        Span::raw("  "),
-        Span::styled(ljust("ACTIVE", active_width), table_header_style()),
         Span::raw("  "),
         Span::styled(rjust("IN", input_width), table_header_style()),
         Span::raw("  "),
@@ -352,7 +342,7 @@ fn table_header_line(
     .style(Style::default().bg(Color::Rgb(20, 24, 35)))
 }
 
-fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize, usize) {
+fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize) {
     let provider_width = std::iter::once("PROVIDER".len())
         .chain(rows.iter().map(|row| row.provider.len()))
         .max()
@@ -361,7 +351,6 @@ fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize,
         .chain(rows.iter().map(|row| row.model_name.len()))
         .max()
         .unwrap_or(0);
-    let active_width = "ACTIVE".len();
     let input_width = std::iter::once("IN".len())
         .chain(
             rows.iter()
@@ -376,21 +365,11 @@ fn table_widths(rows: &[super::ModelRow]) -> (usize, usize, usize, usize, usize,
         )
         .max()
         .unwrap_or(0);
-    let prefix_width = provider_width
-        + 2
-        + model_width
-        + 2
-        + active_width
-        + 2
-        + input_width
-        + 2
-        + output_width
-        + 2;
+    let prefix_width = provider_width + 2 + model_width + 2 + input_width + 2 + output_width + 2;
 
     (
         provider_width,
         model_width,
-        active_width,
         input_width,
         output_width,
         prefix_width,
@@ -523,16 +502,6 @@ fn model_style(active: bool) -> Style {
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::Rgb(148, 163, 184))
-    }
-}
-
-fn active_badge_style(active: bool) -> Style {
-    if active {
-        Style::default()
-            .fg(Color::Green)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::DarkGray)
     }
 }
 
