@@ -177,10 +177,11 @@ fn draw(frame: &mut ratatui::Frame, state: &UiState) {
         .alignment(ratatui::layout::Alignment::Left);
     frame.render_widget(header, chunks[0]);
 
+    let report_width = chunks[1].width.saturating_sub(2) as usize;
     let report = if state.snapshot.is_empty() && matches!(state.mode, UiMode::Loading) {
         loading_view(state)
     } else {
-        report_view(&state.visible_rows(), state.sort_mode)
+        report_view(&state.visible_rows(), state.sort_mode, report_width)
     };
 
     let panel = Paragraph::new(report)
@@ -240,9 +241,14 @@ fn loading_view(state: &UiState) -> Text<'static> {
     Text::from(lines)
 }
 
-fn report_view(rows: &[crate::ModelRow], sort_mode: crate::SortMode) -> Text<'static> {
+fn report_view(
+    rows: &[crate::ModelRow],
+    sort_mode: crate::SortMode,
+    available_width: usize,
+) -> Text<'static> {
     let (provider_width, model_width, active_width, input_width, output_width, prefix_width) =
         table_widths(rows);
+    let usage_width = available_width.saturating_sub(prefix_width).max(1);
     let mut lines = Vec::new();
 
     lines.push(table_header_line(
@@ -281,7 +287,7 @@ fn report_view(rows: &[crate::ModelRow], sort_mode: crate::SortMode) -> Text<'st
             Span::raw("  "),
         ];
 
-        let usage_groups = wrap_usage_labels(&row.usage, 50);
+        let usage_groups = wrap_usage_labels(&row.usage, usage_width);
         if let Some(first_group) = usage_groups.first() {
             spans.extend(usage_group_spans(first_group));
         }
@@ -602,8 +608,72 @@ impl Drop for TerminalCleanup {
 #[cfg(test)]
 mod tests {
     use super::{footer_lines, sort_badge_style, status_style, usage_style};
-    use crate::{SortMode, UiMode, UsageSource};
-    use ratatui::style::Color;
+    use crate::{ModelRow, SortMode, UiMode, UiState, UsageLabel, UsageSource};
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    fn render_lines(width: u16) -> Vec<String> {
+        let mut state = UiState::new();
+        state.apply_snapshot(vec![ModelRow {
+            model: "test/model".to_string(),
+            provider: "test".to_string(),
+            model_name: "model".to_string(),
+            active: true,
+            input_cost: Some(1.0),
+            output_cost: Some(2.0),
+            usage: vec![
+                UsageLabel {
+                    label: "usage01".to_string(),
+                    source: UsageSource::OpenCodeDefault,
+                },
+                UsageLabel {
+                    label: "usage02".to_string(),
+                    source: UsageSource::OpenCodeCustom,
+                },
+                UsageLabel {
+                    label: "usage03".to_string(),
+                    source: UsageSource::Weave,
+                },
+                UsageLabel {
+                    label: "usage04".to_string(),
+                    source: UsageSource::WeaveCustom,
+                },
+                UsageLabel {
+                    label: "usage05".to_string(),
+                    source: UsageSource::OpenCodeDefault,
+                },
+                UsageLabel {
+                    label: "usage06".to_string(),
+                    source: UsageSource::OpenCodeCustom,
+                },
+                UsageLabel {
+                    label: "usage07".to_string(),
+                    source: UsageSource::Weave,
+                },
+                UsageLabel {
+                    label: "usage08".to_string(),
+                    source: UsageSource::WeaveCustom,
+                },
+            ],
+        }]);
+
+        let backend = TestBackend::new(width, 10);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| super::draw(frame, &state))
+            .expect("draw report");
+
+        let buffer = terminal.backend().buffer();
+        let area = buffer.area();
+        (0..area.height)
+            .map(|y| {
+                let mut line = String::new();
+                for x in 0..area.width {
+                    line.push_str(buffer[(x, y)].symbol());
+                }
+                line.trim_end().to_string()
+            })
+            .collect()
+    }
 
     #[test]
     fn usage_style_should_colour_sources_differently() {
@@ -662,5 +732,33 @@ mod tests {
         assert!(legend_text.contains("OpenCode agents"));
         assert!(legend_text.contains("Weave agents"));
         assert!(legend_text.contains("Weave custom_agents"));
+    }
+
+    #[test]
+    fn report_view_should_wrap_usage_less_when_terminal_is_wide() {
+        let wide_lines = render_lines(130);
+        let narrow_lines = render_lines(80);
+
+        let labels = [
+            "usage01", "usage02", "usage03", "usage04", "usage05", "usage06", "usage07", "usage08",
+        ];
+
+        let wide_usage_lines = wide_lines
+            .iter()
+            .filter(|line| labels.iter().any(|label| line.contains(label)))
+            .count();
+        let narrow_usage_lines = narrow_lines
+            .iter()
+            .filter(|line| labels.iter().any(|label| line.contains(label)))
+            .count();
+
+        assert_eq!(
+            wide_usage_lines, 1,
+            "wide terminal should keep the usage column on one line"
+        );
+        assert!(
+            narrow_usage_lines > 1,
+            "narrow terminal should wrap the usage column"
+        );
     }
 }
