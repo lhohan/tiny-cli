@@ -8,5 +8,5 @@ fn help_should_not_expose_no_color_flag() {
     assert!(output.status.success());
     let help = String::from_utf8_lossy(&output.stdout);
     assert!(!help.contains("--no-color"));
-    assert!(help.contains("--home-dir <HOME_DIR>"));
+    assert!(help.contains("--home-dir <PATH>"));
 }
