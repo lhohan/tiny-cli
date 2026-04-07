@@ -1,5 +1,5 @@
 [tasks.run]
-description = "Run opencode-model-report"
+description = "Run TUI from source"
 run = "cargo run --manifest-path Cargo.toml"
 
 [tasks.release]

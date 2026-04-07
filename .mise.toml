@@ -1,7 +1,0 @@
-[tasks.run]
-description = "Run opencode-model-report"
-run = "cargo run --manifest-path opencode-model-report/Cargo.toml"
-
-[tasks.release]
-description = "Build a release binary"
-run = "cargo build --release --manifest-path opencode-model-report/Cargo.toml"
