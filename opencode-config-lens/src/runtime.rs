@@ -233,7 +233,7 @@ fn draw(frame: &mut ratatui::Frame, state: &UiState, paging: &mut PageState) {
         loading_view(state)
     } else {
         let page_range = paging.page_range(&row_heights);
-        report_view(&rows[page_range], state.sort_mode, &layout)
+        report_view(&rows[page_range], &layout)
     };
 
     let panel = Paragraph::new(report)
@@ -323,14 +323,10 @@ impl ReportLayout {
     }
 }
 
-fn report_view(
-    rows: &[crate::ModelRow],
-    sort_mode: crate::SortMode,
-    layout: &ReportLayout,
-) -> Text<'static> {
+fn report_view(rows: &[crate::ModelRow], layout: &ReportLayout) -> Text<'static> {
     let mut lines = Vec::new();
 
-    lines.push(table_header_line(layout, sort_mode));
+    lines.push(table_header_line(layout));
 
     for (index, row) in rows.iter().enumerate() {
         let row_style = row_style(index, row.active);
@@ -413,7 +409,7 @@ fn footer_lines(state: &UiState, page_label: &str) -> Vec<Line<'static>> {
     vec![status_line, legend_line]
 }
 
-fn table_header_line(layout: &ReportLayout, sort_mode: crate::SortMode) -> Line<'static> {
+fn table_header_line(layout: &ReportLayout) -> Line<'static> {
     Line::from(vec![
         Span::styled(
             ljust("PROVIDER", layout.provider_width),

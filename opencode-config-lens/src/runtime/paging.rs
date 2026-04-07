@@ -65,6 +65,9 @@ impl PageState {
 
     pub fn page_ranges(&self, row_heights: &[usize]) -> Vec<Range<usize>> {
         if row_heights.is_empty() {
+            // Empty report still has 1 page (page 1 of 1) for UI consistency.
+            // The range 0..0 means "page with no rows".
+            #[allow(clippy::single_range_in_vec_init)]
             return vec![0..0];
         }
 

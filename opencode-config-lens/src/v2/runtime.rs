@@ -180,7 +180,7 @@ fn draw(frame: &mut ratatui::Frame, state: &UiState) {
     let report = if state.snapshot.is_empty() && matches!(state.mode, UiMode::Loading) {
         loading_view(state)
     } else {
-        report_view(&state.visible_rows(), state.sort_mode)
+        report_view(&state.visible_rows())
     };
 
     let panel = Paragraph::new(report)
@@ -238,7 +238,7 @@ fn loading_view(state: &UiState) -> Text<'static> {
     Text::from(lines)
 }
 
-fn report_view(rows: &[super::ModelRow], sort_mode: super::SortMode) -> Text<'static> {
+fn report_view(rows: &[super::ModelRow]) -> Text<'static> {
     let (provider_width, model_width, input_width, output_width, prefix_width) = table_widths(rows);
     let mut lines = Vec::new();
 
@@ -247,7 +247,6 @@ fn report_view(rows: &[super::ModelRow], sort_mode: super::SortMode) -> Text<'st
         model_width,
         input_width,
         output_width,
-        sort_mode,
     ));
 
     for (index, row) in rows.iter().enumerate() {
@@ -323,7 +322,6 @@ fn table_header_line(
     model_width: usize,
     input_width: usize,
     output_width: usize,
-    sort_mode: super::SortMode,
 ) -> Line<'static> {
     Line::from(vec![
         Span::styled(ljust("PROVIDER", provider_width), table_header_style()),
