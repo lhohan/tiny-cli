@@ -1,9 +1,16 @@
 #![allow(dead_code)]
 
+use std::path::PathBuf;
+
 use opencode_config_lens::{ModelRow, SortMode, UiKey, UiMode, UiState};
 
 pub fn given_model_report() -> GivenScenario {
     GivenScenario::new()
+}
+
+/// Create a config-sources test DSL entry point
+pub fn given_config_sources() -> ConfigSourcesGiven {
+    ConfigSourcesGiven::new()
 }
 
 pub fn fail(message: impl Into<String>) -> ! {
@@ -237,4 +244,79 @@ impl ExitThen<'_> {
         }
         self
     }
+}
+
+/// DSL for building config-source test scenarios
+///
+/// This struct provides a fluent API for setting up config directory
+/// structures for testing config-source behavior.
+pub struct ConfigSourcesGiven {
+    opencode_content: Option<String>,
+    weave_content: Option<String>,
+}
+
+impl ConfigSourcesGiven {
+    pub fn new() -> Self {
+        Self {
+            opencode_content: None,
+            weave_content: None,
+        }
+    }
+
+    /// Set the opencode.jsonc content (required)
+    pub fn with_opencode_jsonc(mut self, content: impl Into<String>) -> Self {
+        self.opencode_content = Some(content.into());
+        self
+    }
+
+    /// Explicitly indicate no opencode.jsonc (for error cases)
+    pub fn with_no_opencode(mut self) -> Self {
+        self.opencode_content = None;
+        self
+    }
+
+    /// Set the weave-opencode.jsonc content (optional)
+    pub fn with_weave_jsonc(mut self, content: impl Into<String>) -> Self {
+        self.weave_content = Some(content.into());
+        self
+    }
+
+    /// Explicitly indicate no weave-opencode.jsonc
+    pub fn with_no_weave(mut self) -> Self {
+        self.weave_content = None;
+        self
+    }
+
+    /// Build the temp home directory and return its path
+    pub fn build_home(self) -> PathBuf {
+        use std::fs;
+
+        let home = make_temp_home();
+
+        if let Some(content) = self.opencode_content {
+            fs::write(home.join("opencode.jsonc"), content).expect("write opencode.jsonc");
+        }
+
+        if let Some(content) = self.weave_content {
+            fs::write(home.join("weave-opencode.jsonc"), content)
+                .expect("write weave-opencode.jsonc");
+        }
+
+        home
+    }
+}
+
+fn make_temp_home() -> PathBuf {
+    use std::fs;
+    let mut base = std::env::temp_dir();
+    base.push(format!(
+        "opencode-config-lens-test-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    fs::create_dir_all(&base).expect("create temp home");
+    base
 }

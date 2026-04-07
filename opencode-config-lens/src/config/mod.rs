@@ -228,6 +228,37 @@ mod tests {
     }
 
     #[test]
+    fn load_config_bundle_should_error_when_opencode_missing() {
+        let home = make_temp_home();
+        // Only create weave config, not opencode
+        fs::write(home.join("weave-opencode.jsonc"), r#"{"agents": {}}"#).unwrap();
+
+        let result = load_config_bundle(&home);
+        assert!(
+            matches!(result, Err(ConfigError::MissingConfig(_))),
+            "should error when opencode.jsonc is missing"
+        );
+    }
+
+    #[test]
+    fn load_config_bundle_should_succeed_when_weave_missing() {
+        let home = make_temp_home();
+        fs::write(
+            home.join("opencode.jsonc"),
+            r#"{"model": "provider/alpha"}"#,
+        )
+        .unwrap();
+        // Do not create weave-opencode.jsonc
+
+        let bundle = load_config_bundle(&home).unwrap();
+        assert_eq!(bundle.opencode.model.as_deref(), Some("provider/alpha"));
+        assert!(
+            bundle.weave.is_none(),
+            "weave should be None when file missing"
+        );
+    }
+
+    #[test]
     fn load_config_bundle_should_load_required_and_optional_files() {
         let home = make_temp_home();
         fs::write(
