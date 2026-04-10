@@ -18,7 +18,8 @@ use std::path::Path;
 pub mod config;
 pub use config::{
     collect_active_usage, load_config_bundle, parse_jsonc, resolve_config_home, AgentConfig,
-    ConfigBundle, ConfigError, OpenCodeConfig, WeaveConfig,
+    ConfigBundle, ConfigError, ConfigSourceFamily, ConfigUsageLabel, OpenCodeConfig, UsageClass,
+    WeaveConfig,
 };
 
 pub mod data;
@@ -87,7 +88,8 @@ impl LoadError {
 
 pub fn load_report_rows(home_dir: &Path) -> Result<Vec<ModelRow>, LoadError> {
     let bundle = load_config_bundle(home_dir)?;
-    let active_usage = collect_active_usage(&bundle);
+    let config_usage = collect_active_usage(&bundle);
+    let active_usage = report::adapter::to_report_active_usage(config_usage);
     let available_models = fetch_available_models()?;
     let costs = fetch_costs()?;
 

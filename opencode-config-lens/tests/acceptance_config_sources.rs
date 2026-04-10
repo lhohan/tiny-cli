@@ -6,7 +6,9 @@
 
 use std::collections::HashMap;
 
-use opencode_config_lens::{collect_active_usage, load_config_bundle, ConfigError, UsageSource};
+use opencode_config_lens::{
+    collect_active_usage, load_config_bundle, ConfigError, ConfigSourceFamily, UsageClass,
+};
 
 mod support;
 use support::scenario::given_config_sources;
@@ -36,8 +38,12 @@ fn config_sources_should_load_opencode_general_config_as_default_usage_class() {
 
     assert!(by_model.contains_key("provider/alpha"));
     assert_eq!(
-        by_model.get("provider/alpha").unwrap()[0].source,
-        UsageSource::OpenCodeDefault
+        by_model.get("provider/alpha").unwrap()[0].family,
+        ConfigSourceFamily::OpenCode
+    );
+    assert_eq!(
+        by_model.get("provider/alpha").unwrap()[0].class,
+        UsageClass::Default
     );
     assert_eq!(by_model.get("provider/alpha").unwrap()[0].label, "default");
 }
@@ -60,8 +66,12 @@ fn config_sources_should_load_opencode_agent_config_as_custom_usage_class() {
 
     assert!(by_model.contains_key("provider/beta"));
     assert_eq!(
-        by_model.get("provider/beta").unwrap()[0].source,
-        UsageSource::OpenCodeCustom
+        by_model.get("provider/beta").unwrap()[0].family,
+        ConfigSourceFamily::OpenCode
+    );
+    assert_eq!(
+        by_model.get("provider/beta").unwrap()[0].class,
+        UsageClass::Custom
     );
     assert_eq!(by_model.get("provider/beta").unwrap()[0].label, "coder");
 }
@@ -98,8 +108,12 @@ fn config_sources_should_load_weave_config_when_present() {
     assert!(bundle.weave.is_some());
     assert!(by_model.contains_key("provider/gamma"));
     assert_eq!(
-        by_model.get("provider/gamma").unwrap()[0].source,
-        UsageSource::Weave
+        by_model.get("provider/gamma").unwrap()[0].family,
+        ConfigSourceFamily::Weave
+    );
+    assert_eq!(
+        by_model.get("provider/gamma").unwrap()[0].class,
+        UsageClass::Default
     );
 }
 
@@ -124,12 +138,12 @@ fn config_sources_should_distinguish_weave_agents_from_custom_agents() {
     let by_model: HashMap<_, _> = usage.into_iter().collect();
 
     assert_eq!(
-        by_model.get("provider/beta").unwrap()[0].source,
-        UsageSource::Weave
+        by_model.get("provider/beta").unwrap()[0].class,
+        UsageClass::Default
     );
     assert_eq!(
-        by_model.get("provider/gamma").unwrap()[0].source,
-        UsageSource::WeaveCustom
+        by_model.get("provider/gamma").unwrap()[0].class,
+        UsageClass::Custom
     );
 }
 
@@ -218,8 +232,10 @@ fn config_sources_should_collect_usage_from_all_sources_together() {
         .expect("should have shared model");
     assert_eq!(shared_usage.len(), 3);
 
-    let sources: Vec<_> = shared_usage.iter().map(|u| u.source).collect();
-    assert!(sources.contains(&UsageSource::OpenCodeDefault));
-    assert!(sources.contains(&UsageSource::OpenCodeCustom));
-    assert!(sources.contains(&UsageSource::Weave));
+    let families: Vec<_> = shared_usage.iter().map(|u| u.family).collect();
+    let classes: Vec<_> = shared_usage.iter().map(|u| u.class).collect();
+    assert!(families.contains(&ConfigSourceFamily::OpenCode));
+    assert!(families.contains(&ConfigSourceFamily::Weave));
+    assert!(classes.contains(&UsageClass::Default));
+    assert!(classes.contains(&UsageClass::Custom));
 }

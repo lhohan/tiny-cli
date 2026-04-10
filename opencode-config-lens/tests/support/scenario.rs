@@ -308,14 +308,19 @@ impl ConfigSourcesGiven {
 
 fn make_temp_home() -> PathBuf {
     use std::fs;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
     let mut base = std::env::temp_dir();
     base.push(format!(
-        "opencode-config-lens-test-{}-{}",
+        "opencode-config-lens-test-{}-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_nanos()
+            .as_nanos(),
+        COUNTER.fetch_add(1, Ordering::SeqCst)
     ));
     fs::create_dir_all(&base).expect("create temp home");
     base

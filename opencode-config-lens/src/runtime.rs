@@ -387,24 +387,20 @@ fn footer_lines(state: &UiState, page_label: &str) -> Vec<Line<'static>> {
             status_style(state.mode, state.status.contains("failed")),
         ),
     ]);
-    let legend_line = Line::from(vec![
-        Span::styled("usage legend: ", muted_style()),
-        Span::styled("OpenCode", usage_style(crate::UsageSource::OpenCodeDefault)),
-        Span::raw(" / "),
-        Span::styled(
-            "OpenCode agents",
-            usage_style(crate::UsageSource::OpenCodeCustom),
-        ),
-        Span::raw(" / "),
-        Span::styled("Weave agents", usage_style(crate::UsageSource::Weave)),
-        Span::raw(" / "),
-        Span::styled(
-            "Weave custom_agents",
-            usage_style(crate::UsageSource::WeaveCustom),
-        ),
-        Span::raw("  •  "),
-        Span::styled("sorted", muted_style()),
-    ]);
+
+    // Build legend from report-owned metadata
+    let mut legend_spans = vec![Span::styled("usage legend: ", muted_style())];
+    let entries = crate::UsageSource::all_legend_entries();
+    for (idx, source) in entries.iter().enumerate() {
+        if idx > 0 {
+            legend_spans.push(Span::raw(" / "));
+        }
+        legend_spans.push(Span::styled(source.legend_text(), usage_style(*source)));
+    }
+    legend_spans.push(Span::raw("  •  "));
+    legend_spans.push(Span::styled("sorted", muted_style()));
+
+    let legend_line = Line::from(legend_spans);
 
     vec![status_line, legend_line]
 }

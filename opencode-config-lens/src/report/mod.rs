@@ -6,6 +6,7 @@
 //! The plain-text renderer (`plain::render_report_rows`) is the stable
 //! test-facing contract for report rendering.
 
+pub mod adapter;
 pub mod builder;
 pub mod model;
 pub mod plain;

@@ -34,6 +34,28 @@ pub enum UsageSource {
     WeaveCustom,
 }
 
+impl UsageSource {
+    /// Get the display text for the legend
+    pub fn legend_text(&self) -> &'static str {
+        match self {
+            UsageSource::OpenCodeDefault => "OpenCode",
+            UsageSource::OpenCodeCustom => "OpenCode agents",
+            UsageSource::Weave => "Weave agents",
+            UsageSource::WeaveCustom => "Weave custom_agents",
+        }
+    }
+
+    /// Get all legend entries in display order
+    pub fn all_legend_entries() -> &'static [UsageSource] {
+        &[
+            UsageSource::OpenCodeDefault,
+            UsageSource::OpenCodeCustom,
+            UsageSource::Weave,
+            UsageSource::WeaveCustom,
+        ]
+    }
+}
+
 /// A label indicating where a model is used
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UsageLabel {
