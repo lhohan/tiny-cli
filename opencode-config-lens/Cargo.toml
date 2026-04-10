@@ -2,7 +2,7 @@
 name = "opencode-config-lens"
 version = "0.1.0"
 edition = "2021"
-authors = ["Hans"]
+authors = ["hanlho"]
 description = "Inspect OpenCode model configuration and usage"
 autobins = false
 
