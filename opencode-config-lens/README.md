@@ -2,13 +2,13 @@
 
 A CLI for viewing configured agents and their models in Opencode.
 
+![Screenshot](screen.png)
+
 I was losing track of which models were assigned to which agents across multiple config files. This gives me a single view of model usage, cost per 1M tokens, and where each model is referenced.
 
 ## What It Does
 
 Scans your `~/.config/opencode/` configuration (both `opencode.jsonc` and, optionally, `weave-opencode.jsonc`), fetches current model pricing from [models.dev](https://models.dev), and displays a table showing which models are configured and actively used.
-
-![Screenshot](docs/screenshot.png)
 
 ## Usage
 
@@ -43,6 +43,6 @@ Run `mise tasks ls` to get an overview of all tasks or check [.mise.toml](.mise.
 
 ### Origin
 
-This project was fully vibe-coded based off of a single [PRD](PRD.md). For additional changes on top check the commit history.
+This project was fully vibe-coded based off of a single [PRD](PRD.md). For additional changes, functional and refactors on top, check the commit history.
 
-It's also my first experiment with building an actual TUI application using [ratatui](https://github.com/ratatui-org/ratatui). It's seemingly overkill compared to a simple CLI table, but I since I was instruction an LLM the threshold was low.
+It's also my first experiment with building an actual TUI application using [ratatui](https://github.com/ratatui-org/ratatui). It's seemingly overkill compared to a simple CLI table, but since I was instructing an LLM the threshold to try it out was low.
