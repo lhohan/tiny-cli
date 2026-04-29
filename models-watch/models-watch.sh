@@ -100,17 +100,40 @@ if [[ "$change_detected" == "true" ]]; then
         '{timestamp: $ts, added: $added, removed: $removed}' \
         > "$CHANGE_FILE"
 
-    # Notification
+    # Build human-readable message
     msg_lines=()
-    [[ "$added_json" != "[]" ]] && msg_lines+=("Added: $(echo "$added" | paste -sd ',' -)")
-    [[ "$removed_json" != "[]" ]] && msg_lines+=("Removed: $(echo "$removed" | paste -sd ',' -)")
+    if [[ -n "$added" ]]; then
+        msg_lines+=("Added:")
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && msg_lines+=("  • $line")
+        done <<< "$added"
+    fi
+    if [[ -n "$removed" ]]; then
+        [[ ${#msg_lines[@]} -gt 0 ]] && msg_lines+=("")
+        msg_lines+=("Removed:")
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && msg_lines+=("  • $line")
+        done <<< "$removed"
+    fi
 
-    msg="models-watch${msg_lines:+: ${msg_lines[*]}}"
+    msg=$(printf '%s\n' "${msg_lines[@]}")
 
     if [[ -n "$NOTIFY_FILE" ]]; then
         echo "$msg" > "$NOTIFY_FILE"
     else
-        osascript -e "display alert \"Model change detected\" message \"$msg\" giving up after 30" >/dev/null 2>&1
+        # Build AppleScript string expression: "line1" & return & "line2"
+        apple_parts=()
+        while IFS= read -r line; do
+            line="${line//\"\\\"}"
+            apple_parts+=("\"$line\"")
+        done <<< "$msg"
+
+        apple_expr="${apple_parts[0]}"
+        for ((i=1; i<${#apple_parts[@]}; i++)); do
+            apple_expr+=" & return & ${apple_parts[$i]}"
+        done
+
+        osascript -e "display alert \"models-watch\" message $apple_expr as informational giving up after 30" >/dev/null 2>&1
     fi
 fi
 
