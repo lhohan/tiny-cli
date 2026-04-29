@@ -130,6 +130,9 @@ impl ExecutionContext {
         // Stub the API URL with the fixture path.
         cmd.env("MODELS_WATCH_API_URL", format!("file://{}", self.api_fixture_path.display()));
 
+        // Suppress osascript pop-ups during tests.
+        cmd.env("MODELS_WATCH_NO_OSASCRIPT", "1");
+
         if let Some(ref notify_file) = self.notify_file {
             cmd.arg("--notify-file").arg(notify_file);
         }
@@ -252,6 +255,32 @@ impl AppResult {
             fail(format!(
                 "expected delta.removed to be {:?}, got {:?}",
                 expected, removed
+            ));
+        }
+        self
+    }
+
+    pub fn expect_delta_changed(&self, expected: &[(&str, &str, &str)]) -> &Self {
+        self.expect_delta_file();
+        let delta = self.read_latest_delta();
+        let changed: Vec<(String, String, String)> = delta["changed"]
+            .as_array()
+            .unwrap_or_else(|| fail("delta 'changed' field is not an array"))
+            .iter()
+            .map(|v| (
+                v["id"].as_str().unwrap_or("").to_string(),
+                v["old_name"].as_str().unwrap_or("").to_string(),
+                v["new_name"].as_str().unwrap_or("").to_string(),
+            ))
+            .collect();
+        let expected: Vec<(String, String, String)> = expected
+            .iter()
+            .map(|(id, old, new)| (id.to_string(), old.to_string(), new.to_string()))
+            .collect();
+        if changed != expected {
+            fail(format!(
+                "expected delta.changed to be {:?}, got {:?}",
+                expected, changed
             ));
         }
         self

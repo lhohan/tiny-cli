@@ -135,6 +135,87 @@ fn models_watch_should_notify_via_notify_file_when_change_detected() {
 // osascript path (no --notify-file)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Model name/description changes
+// ---------------------------------------------------------------------------
+
+#[test]
+fn models_watch_should_write_delta_when_model_name_changes() {
+    let prior = api_fixture(&[("model-a", "Model A")]);
+    let current = api_fixture(&[("model-a", "Model A Renamed")]);
+
+    let notify_path = std::env::temp_dir().join(format!(
+        "models-watch-notify-{}-name-change.txt",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_file(&notify_path);
+
+    given()
+        .with_api_fixture(&current)
+        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_notify_file(notify_path.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_delta_changed(&[("model-a", "Model A", "Model A Renamed")])
+        .expect_snapshot_exists();
+
+    let _ = std::fs::remove_file(&notify_path);
+}
+
+#[test]
+fn models_watch_should_report_added_and_changed_together() {
+    let prior = api_fixture(&[("model-a", "Model A")]);
+    let current = api_fixture(&[("model-a", "Model A Renamed"), ("model-b", "Model B")]);
+
+    let notify_path = std::env::temp_dir().join(format!(
+        "models-watch-notify-{}-add-and-change.txt",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_file(&notify_path);
+
+    given()
+        .with_api_fixture(&current)
+        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_notify_file(notify_path.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_delta_added(&["model-b"])
+        .expect_delta_changed(&[("model-a", "Model A", "Model A Renamed")])
+        .expect_snapshot_exists();
+
+    let _ = std::fs::remove_file(&notify_path);
+}
+
+#[test]
+fn models_watch_should_notify_changed_models_via_notify_file() {
+    let prior = api_fixture(&[("model-a", "Model A")]);
+    let current = api_fixture(&[("model-a", "Model A Renamed")]);
+
+    let notify_path = std::env::temp_dir().join(format!(
+        "models-watch-notify-{}-changed.txt",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_file(&notify_path);
+
+    given()
+        .with_api_fixture(&current)
+        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_notify_file(notify_path.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_notify_file_contains("Model A")
+        .expect_notify_file_contains("Model A Renamed");
+
+    let _ = std::fs::remove_file(&notify_path);
+}
+
+// ---------------------------------------------------------------------------
+// osascript path (no --notify-file)
+// ---------------------------------------------------------------------------
+
 #[test]
 fn models_watch_should_complete_without_notify_file_flag() {
     let prior = api_fixture(&[("model-a", "Model A")]);

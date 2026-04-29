@@ -60,6 +60,7 @@ fi
 change_detected=false
 added=""
 removed=""
+changed_json="[]"
 
 if [[ -f "$LATEST" ]]; then
     prev_ids="$(jq -r '.models | keys | sort[]' "$LATEST")"
@@ -68,7 +69,21 @@ if [[ -f "$LATEST" ]]; then
     added="$(comm -13 <(echo "$prev_ids") <(echo "$curr_ids"))"
     removed="$(comm -23 <(echo "$prev_ids") <(echo "$curr_ids"))"
 
-    if [[ -n "$added" || -n "$removed" ]]; then
+    # Detect name changes for models present in both snapshots
+    changed_json="$(jq -n \
+        --argjson prev "$(cat "$LATEST")" \
+        --argjson curr "$current" \
+        '($prev.models // {}) as $pm |
+         ($curr.models // {}) as $cm |
+         [($cm | keys[]) as $id |
+          select($pm[$id] != null and $pm[$id].name != $cm[$id].name) |
+          {id: $id, old_name: $pm[$id].name, new_name: $cm[$id].name}
+         ]
+        ')"
+
+    changed_count="$(jq 'length' <<< "$changed_json")"
+
+    if [[ -n "$added" || -n "$removed" || "$changed_count" -gt 0 ]]; then
         change_detected=true
     fi
 else
@@ -96,8 +111,9 @@ if [[ "$change_detected" == "true" ]]; then
     fi
 
     jq -n --argjson added "$added_json" --argjson removed "$removed_json" \
+        --argjson changed "$changed_json" \
         --arg ts "$TIMESTAMP" \
-        '{timestamp: $ts, added: $added, removed: $removed}' \
+        '{timestamp: $ts, added: $added, removed: $removed, changed: $changed}' \
         > "$CHANGE_FILE"
 
     # Build human-readable message
@@ -116,15 +132,24 @@ if [[ "$change_detected" == "true" ]]; then
         done <<< "$removed"
     fi
 
+    changed_count="$(jq 'length' <<< "$changed_json")"
+    if [[ "$changed_count" -gt 0 ]]; then
+        [[ ${#msg_lines[@]} -gt 0 ]] && msg_lines+=("")
+        msg_lines+=("Changed:")
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && msg_lines+=("  • $line")
+        done <<< "$(jq -r '.[] | "\(.id): \"\(.old_name)\" → \"\(.new_name)\""' <<< "$changed_json")"
+    fi
+
     msg=$(printf '%s\n' "${msg_lines[@]}")
 
     if [[ -n "$NOTIFY_FILE" ]]; then
         echo "$msg" > "$NOTIFY_FILE"
-    else
+    elif [[ -z "${MODELS_WATCH_NO_OSASCRIPT:-}" ]]; then
         # Build AppleScript string expression: "line1" & return & "line2"
         apple_parts=()
         while IFS= read -r line; do
-            line="${line//\"\\\"}"
+            line="${line//\"/\\\"}"
             apple_parts+=("\"$line\"")
         done <<< "$msg"
 
