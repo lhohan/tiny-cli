@@ -24,13 +24,122 @@ STATE_DIR="${SCRIPT_DIR}/state"
 API_URL="${MODELS_WATCH_API_URL:-https://models.dev/api.json}"
 LATEST="${STATE_DIR}/latest.json"
 
+# ---------------------------------------------------------------------------
+# utc_to_local - convert ISO UTC timestamp to local time
+#   Usage: utc_to_local "2026-04-29T09:30:00Z"
+#   macOS BSD date:  /bin/date -j -f …
+#   GNU date:        date -d …
+# ---------------------------------------------------------------------------
+utc_to_local() {
+    local utc_ts="$1"
+    local result=""
+
+    # Try BSD /bin/date first (macOS Nix environments may have GNU date in PATH)
+    if /bin/date -j -f "%Y-%m-%dT%H:%M:%SZ" "$utc_ts" "+%s" >/dev/null 2>&1; then
+        local unix_ts
+        unix_ts=$(TZ=UTC /bin/date -j -f "%Y-%m-%dT%H:%M:%SZ" "$utc_ts" "+%s" 2>/dev/null || true)
+        if [[ -n "$unix_ts" ]]; then
+            result=$(/bin/date -j -f "%s" "$unix_ts" "+%Y-%m-%d %H:%M:%S %Z" 2>/dev/null || true)
+        fi
+    # Fall back to GNU date (Linux)
+    elif date -d "$utc_ts" "+%s" >/dev/null 2>&1; then
+        result=$(date -d "$utc_ts" "+%Y-%m-%d %H:%M:%S %Z" 2>/dev/null || true)
+    fi
+
+    if [[ -z "$result" ]]; then
+        echo "$utc_ts"
+    else
+        echo "$result"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# do_report — print last 10 recorded changes in human-readable format
+# ---------------------------------------------------------------------------
+do_report() {
+    local change_files=("${STATE_DIR}"/change-*.json)
+
+    # If no files match, the glob literal is not a regular file
+    if [[ ! -f "${change_files[0]}" ]]; then
+        echo "No changes recorded yet."
+        return
+    fi
+
+    # Sort by filename (ISO timestamps sort lexicographically)
+    local sorted
+    IFS=$'\n' sorted=($(sort <<<"${change_files[*]}")); unset IFS
+
+    # Take last 10 (or all if fewer)
+    local start=0
+    local total=${#sorted[@]}
+    if [[ "$total" -gt 10 ]]; then
+        start=$(( total - 10 ))
+    fi
+
+    local first=true
+    for ((i=start; i<total; i++)); do
+        local file="${sorted[$i]}"
+        [[ "$first" == false ]] && echo ""
+        first=false
+
+        # Read timestamp and convert from UTC to local timezone
+        local ts
+        ts=$(jq -r '.timestamp' "$file")
+        local local_ts
+        local_ts=$(utc_to_local "$ts")
+        echo "$local_ts"
+
+        # Added section
+        echo "  Added:"
+        local added_count
+        added_count=$(jq '.added | length' "$file")
+        if [[ "$added_count" -eq 0 ]]; then
+            echo "    (none)"
+        else
+            while IFS= read -r model; do
+                echo "    $model"
+            done < <(jq -r '.added[]' "$file")
+        fi
+
+        # Removed section
+        echo "  Removed:"
+        local removed_count
+        removed_count=$(jq '.removed | length' "$file")
+        if [[ "$removed_count" -eq 0 ]]; then
+            echo "    (none)"
+        else
+            while IFS= read -r model; do
+                echo "    $model"
+            done < <(jq -r '.removed[]' "$file")
+        fi
+
+        # Changed section
+        echo "  Changed:"
+        local changed_count
+        changed_count=$(jq '.changed | length' "$file")
+        if [[ "$changed_count" -eq 0 ]]; then
+            echo "    (none)"
+        else
+            # Format: model-id "Old Name" → "New Name"
+            while IFS= read -r line; do
+                echo "    $line"
+            done < <(jq -r '.changed[] | "\(.id) \"\(.old_name)\" → \"\(.new_name)\""' "$file")
+        fi
+    done
+}
+
 # Parse flags
 NOTIFY_FILE=""
+DO_REPORT=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --notify-file)
             NOTIFY_FILE="$2"
             shift 2
+            ;;
+        --report)
+            DO_REPORT=true
+            shift
             ;;
         *)
             echo "Unknown flag: $1" >&2
@@ -41,6 +150,12 @@ done
 
 # Ensure state directory exists
 mkdir -p "$STATE_DIR"
+
+# --report: read existing deltas and exit; never touches the network.
+if [[ "$DO_REPORT" == "true" ]]; then
+    do_report
+    exit 0
+fi
 
 # --- Fetch current opencode-go block ---
 if [[ "$API_URL" == file://* ]]; then

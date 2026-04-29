@@ -42,12 +42,22 @@ pub fn make_temp_tool_dir() -> PathBuf {
 // Phase types: AppSpec -> ExecutionContext -> AppResult
 // ---------------------------------------------------------------------------
 
+/// A delta file entry for the `--report` test helper.
+pub struct DeltaEntry {
+    pub timestamp: String,
+    pub added: Vec<String>,
+    pub removed: Vec<String>,
+    pub changed: Vec<(String, String, String)>, // (id, old_name, new_name)
+}
+
 /// Setup phase: configure the test environment.
 pub struct AppSpec {
     tool_dir: PathBuf,
     api_fixture: Option<String>,
     prior_snapshot: Option<String>,
     notify_file: Option<PathBuf>,
+    args: Vec<String>,
+    skip_api_env: bool,
 }
 
 impl AppSpec {
@@ -57,6 +67,8 @@ impl AppSpec {
             api_fixture: None,
             prior_snapshot: None,
             notify_file: None,
+            args: Vec::new(),
+            skip_api_env: false,
         }
     }
 
@@ -78,12 +90,55 @@ impl AppSpec {
         self
     }
 
+    /// Do not set `MODELS_WATCH_API_URL` when running the script.
+    /// The script falls back to the default URL, which requires network —
+    /// used only when `--report` exits before the fetch.
+    pub fn without_api_env(mut self) -> Self {
+        self.skip_api_env = true;
+        self
+    }
+
+    /// Add a command-line argument (e.g. `--report`).
+    pub fn with_arg(mut self, arg: impl Into<String>) -> Self {
+        self.args.push(arg.into());
+        self
+    }
+
+    /// Write delta files into `state/` for `--report` tests. Each delta is written
+    /// as `state/change-<timestamp>.json`.
+    pub fn with_deltas(self, deltas: Vec<DeltaEntry>) -> Self {
+        let state_dir = self.tool_dir.join("state");
+        std::fs::create_dir_all(&state_dir).expect("create state dir for deltas");
+        for entry in &deltas {
+            let changed_arr: Vec<serde_json::Value> = entry
+                .changed
+                .iter()
+                .map(|(id, old_name, new_name)| {
+                    serde_json::json!({"id": id, "old_name": old_name, "new_name": new_name})
+                })
+                .collect();
+            let delta = serde_json::json!({
+                "timestamp": entry.timestamp,
+                "added": entry.added,
+                "removed": entry.removed,
+                "changed": changed_arr,
+            });
+            let filename = format!("change-{}.json", entry.timestamp);
+            std::fs::write(state_dir.join(&filename), delta.to_string())
+                .expect("write delta file");
+        }
+        self
+    }
+
     /// Build the execution context and return it.
     pub fn when_run(self) -> ExecutionContext {
-        // Write the API fixture to a known path so the script can "curl" it.
         let api_fixture_path = self.tool_dir.join("test_api.json");
-        if let Some(ref content) = self.api_fixture {
-            std::fs::write(&api_fixture_path, content).expect("write api fixture");
+
+        // Write the API fixture only if one was provided and we're not skipping API env.
+        if !self.skip_api_env {
+            if let Some(ref content) = self.api_fixture {
+                std::fs::write(&api_fixture_path, content).expect("write api fixture");
+            }
         }
 
         // Write prior snapshot if provided.
@@ -103,6 +158,8 @@ impl AppSpec {
             script_path,
             api_fixture_path,
             notify_file: self.notify_file,
+            args: self.args,
+            skip_api_env: self.skip_api_env,
         }
     }
 }
@@ -113,6 +170,8 @@ pub struct ExecutionContext {
     script_path: PathBuf,
     api_fixture_path: PathBuf,
     notify_file: Option<PathBuf>,
+    args: Vec<String>,
+    skip_api_env: bool,
 }
 
 impl ExecutionContext {
@@ -127,14 +186,19 @@ impl ExecutionContext {
         let mut cmd = Command::new("bash");
         cmd.arg(&script_in_tool);
 
-        // Stub the API URL with the fixture path.
-        cmd.env("MODELS_WATCH_API_URL", format!("file://{}", self.api_fixture_path.display()));
+        if !self.skip_api_env {
+            // Stub the API URL with the fixture path.
+            cmd.env("MODELS_WATCH_API_URL", format!("file://{}", self.api_fixture_path.display()));
+        }
 
         // Suppress osascript pop-ups during tests.
         cmd.env("MODELS_WATCH_NO_OSASCRIPT", "1");
 
         if let Some(ref notify_file) = self.notify_file {
             cmd.arg("--notify-file").arg(notify_file);
+        }
+        for arg in &self.args {
+            cmd.arg(arg);
         }
 
         let output = match cmd.output() {
@@ -290,6 +354,44 @@ impl AppResult {
         let latest = self.tool_dir.join("state").join("latest.json");
         if !latest.exists() {
             fail("expected state/latest.json to exist, but it does not");
+        }
+        self
+    }
+
+    /// Return the full stdout content for direct inspection.
+    pub fn stdout(&self) -> &str {
+        &self.stdout
+    }
+
+    pub fn expect_stdout_contains(&self, needle: &str) -> &Self {
+        if !self.stdout.contains(needle) {
+            fail(format!(
+                "expected stdout to contain '{}', but it did not.\n--- stdout ---\n{}",
+                needle, self.stdout
+            ));
+        }
+        self
+    }
+
+    pub fn expect_stdout_does_not_contain(&self, needle: &str) -> &Self {
+        if self.stdout.contains(needle) {
+            fail(format!(
+                "expected stdout to NOT contain '{}', but it did.\n--- stdout ---\n{}",
+                needle, self.stdout
+            ));
+        }
+        self
+    }
+
+    pub fn expect_stdout_line_count(&self, count: usize) -> &Self {
+        let actual_lines: Vec<&str> = self.stdout.lines().collect();
+        if actual_lines.len() != count {
+            fail(format!(
+                "expected {} lines in stdout, got {}.\n--- stdout ---\n{}",
+                count,
+                actual_lines.len(),
+                self.stdout
+            ));
         }
         self
     }

@@ -6,6 +6,10 @@ run = "./models-watch.sh"
 description = "Run in test mode (writes notification to file)"
 run = "./models-watch.sh --notify-file test-notify.txt"
 
+[tasks.report]
+description = "Print last 10 recorded changes"
+run = "./models-watch.sh --report"
+
 [tasks.test]
 description = "Run Rust acceptance tests"
 run = "cargo test --manifest-path tests-rust/Cargo.toml"
