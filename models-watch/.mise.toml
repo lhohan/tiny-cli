@@ -1,0 +1,11 @@
+[tasks.run]
+description = "Run in production mode (osascript popup on change)"
+run = "./models-watch.sh"
+
+[tasks.run-test]
+description = "Run in test mode (writes notification to file)"
+run = "./models-watch.sh --notify-file test-notify.txt"
+
+[tasks.test]
+description = "Run Rust acceptance tests"
+run = "cargo test --manifest-path tests-rust/Cargo.toml"
