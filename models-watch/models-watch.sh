@@ -157,17 +157,30 @@ if [[ "$DO_REPORT" == "true" ]]; then
     exit 0
 fi
 
-# --- Fetch current opencode-go block ---
+# --- Fetch current provider blocks ---
 if [[ "$API_URL" == file://* ]]; then
     raw_json="$(cat "${API_URL#file://}")"
 else
     raw_json="$(curl -sS --fail --max-time 30 "$API_URL")"
 fi
 
-current="$(echo "$raw_json" | jq '.["opencode-go"]')"
+current="$(echo "$raw_json" | jq '
+    (.["opencode-go"] // null) as $og |
+    (.["opencode"] // null) as $oc |
+    if $og == null or $oc == null then
+        null
+    else
+        {
+            models: (
+                ($og.models // {}) +
+                ($oc.models // {} | with_entries(select(.value.cost.input == 0 and .value.cost.output == 0)))
+            )
+        }
+    end
+')"
 
 if [[ -z "$current" || "$current" == "null" ]]; then
-    echo "ERROR: opencode-go block not found in API response" >&2
+    echo "ERROR: required provider blocks (opencode-go and opencode) not found in API response" >&2
     exit 3
 fi
 

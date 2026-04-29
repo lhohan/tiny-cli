@@ -1,32 +1,86 @@
 use models_watch_tests::{given, DeltaEntry};
+use serde_json::{json, Map, Value};
 
-/// Build a minimal api.json fixture containing only `opencode-go` models.
-fn api_fixture(models: &[(&str, &str)]) -> String {
-    let model_entries: Vec<String> = models
+// ---------------------------------------------------------------------------
+// Fixture builders
+// ---------------------------------------------------------------------------
+
+fn api_fixture_full(
+    opencode_go: &[(&str, &str)],
+    opencode: Option<&[(&str, &str, Option<(i64, i64)>)]>,
+) -> String {
+    let og_entries: Vec<String> = opencode_go
         .iter()
-        .map(|(id, name)| {
-            format!(
-                "\"{}\":{{\"id\":\"{}\",\"name\":\"{}\"}}",
-                id, id, name
-            )
-        })
+        .map(|(id, name)| format!("\"{}\":{{\"id\":\"{}\",\"name\":\"{}\"}}", id, id, name))
         .collect();
-    let models_block = model_entries.join(",");
-    let open = "{\"opencode-go\":{\"id\":\"opencode-go\",\"name\":\"OpenCode Go\",\"models\":{";
-    let close = "}}}";
-    format!("{}{}{}", open, models_block, close)
+    let og_block = format!(
+        "{{\"id\":\"opencode-go\",\"name\":\"OpenCode Go\",\"models\":{{{}}}}}",
+        og_entries.join(",")
+    );
+
+    match opencode {
+        Some(models) => {
+            let oc_entries: Vec<String> = models
+                .iter()
+                .map(|(id, name, cost)| {
+                    let mut obj = json!({
+                        "id": id,
+                        "name": name,
+                    });
+                    if let Some((input, output)) = cost {
+                        obj.as_object_mut().unwrap().insert(
+                            "cost".to_string(),
+                            json!({ "input": input, "output": output }),
+                        );
+                    }
+                    format!("\"{}\":{}", id, obj)
+                })
+                .collect();
+            let oc_block = format!(
+                "{{\"id\":\"opencode\",\"name\":\"OpenCode Zen\",\"models\":{{{}}}}}",
+                oc_entries.join(",")
+            );
+            format!("{{\"opencode-go\":{},\"opencode\":{}}}", og_block, oc_block)
+        }
+        None => {
+            format!("{{\"opencode-go\":{}}}", og_block)
+        }
+    }
 }
 
-/// Extract the opencode-go provider block from a raw api.json fixture.
-/// This matches what models-watch.sh stores in state/latest.json.
-fn opencode_go_block(api_json: &str) -> String {
-    // The fixture is: {"opencode-go":{...}}
-    // Extract the inner { ... } block.
-    let prefix = "{\"opencode-go\":";
-    let stripped = api_json.strip_prefix(prefix).expect("fixture has opencode-go key");
-    // Strip trailing }
-    let inner = stripped.strip_suffix("}").expect("fixture has closing brace");
-    inner.to_string()
+fn api_fixture(models: &[(&str, &str)]) -> String {
+    api_fixture_full(models, Some(&[]))
+}
+
+/// Compute the synthetic snapshot that models-watch.sh stores.
+fn snapshot_from_fixture(api_json: &str) -> String {
+    let v: Value = serde_json::from_str(api_json).unwrap();
+    let og_models = v
+        .get("opencode-go")
+        .and_then(|b| b.get("models"))
+        .and_then(|m| m.as_object())
+        .cloned()
+        .unwrap_or_default();
+    let oc_models = v
+        .get("opencode")
+        .and_then(|b| b.get("models"))
+        .and_then(|m| m.as_object())
+        .cloned()
+        .unwrap_or_default();
+
+    let free_oc: Map<String, Value> = oc_models
+        .into_iter()
+        .filter(|(_, model)| {
+            let cost = model.get("cost");
+            let input = cost.and_then(|c| c.get("input")).and_then(|v| v.as_i64());
+            let output = cost.and_then(|c| c.get("output")).and_then(|v| v.as_i64());
+            input == Some(0) && output == Some(0)
+        })
+        .collect();
+
+    let mut merged = og_models;
+    merged.extend(free_oc);
+    json!({ "models": merged }).to_string()
 }
 
 // ---------------------------------------------------------------------------
@@ -56,7 +110,7 @@ fn models_watch_should_write_no_delta_when_no_change() {
 
     given()
         .with_api_fixture(&fixture)
-        .with_prior_snapshot(opencode_go_block(&fixture)) // same snapshot, extracted
+        .with_prior_snapshot(snapshot_from_fixture(&fixture))
         .when_run()
         .then_result()
         .should_succeed()
@@ -74,7 +128,7 @@ fn models_watch_should_write_delta_when_models_added() {
 
     given()
         .with_api_fixture(&current)
-        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
         .when_run()
         .then_result()
         .should_succeed()
@@ -93,7 +147,7 @@ fn models_watch_should_write_delta_when_models_removed() {
 
     given()
         .with_api_fixture(&current)
-        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
         .when_run()
         .then_result()
         .should_succeed()
@@ -120,7 +174,7 @@ fn models_watch_should_notify_via_notify_file_when_change_detected() {
 
     given()
         .with_api_fixture(&current)
-        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
         .with_notify_file(notify_path.clone())
         .when_run()
         .then_result()
@@ -152,7 +206,7 @@ fn models_watch_should_write_delta_when_model_name_changes() {
 
     given()
         .with_api_fixture(&current)
-        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
         .with_notify_file(notify_path.clone())
         .when_run()
         .then_result()
@@ -176,7 +230,7 @@ fn models_watch_should_report_added_and_changed_together() {
 
     given()
         .with_api_fixture(&current)
-        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
         .with_notify_file(notify_path.clone())
         .when_run()
         .then_result()
@@ -201,7 +255,7 @@ fn models_watch_should_notify_changed_models_via_notify_file() {
 
     given()
         .with_api_fixture(&current)
-        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
         .with_notify_file(notify_path.clone())
         .when_run()
         .then_result()
@@ -223,7 +277,7 @@ fn models_watch_should_complete_without_notify_file_flag() {
 
     given()
         .with_api_fixture(&current)
-        .with_prior_snapshot(opencode_go_block(&prior))
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
         .when_run()
         .then_result()
         .should_succeed();
@@ -378,4 +432,114 @@ fn report_does_not_fetch_api() {
         .then_result()
         .should_succeed()
         .expect_stdout_contains("offline-model");
+}
+
+// ---------------------------------------------------------------------------
+// Zen / opencode provider tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn models_watch_should_include_free_zen_models_on_first_run() {
+    let fixture = api_fixture_full(
+        &[("model-a", "Model A")],
+        Some(&[
+            ("zen-free", "Zen Free", Some((0, 0))),
+            ("zen-paid", "Zen Paid", Some((1, 1))),
+        ]),
+    );
+
+    given()
+        .with_api_fixture(&fixture)
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_snapshot_exists()
+        .expect_delta_added(&["model-a", "zen-free"]);
+}
+
+#[test]
+fn models_watch_should_ignore_paid_zen_models() {
+    let fixture = api_fixture_full(
+        &[("model-a", "Model A")],
+        Some(&[("zen-paid", "Zen Paid", Some((1, 1)))]),
+    );
+
+    given()
+        .with_api_fixture(&fixture)
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_snapshot_exists()
+        .expect_delta_added(&["model-a"]);
+}
+
+#[test]
+fn models_watch_should_report_zen_model_becoming_free_as_added() {
+    let prior = api_fixture_full(
+        &[("model-a", "Model A")],
+        Some(&[("zen-1", "Zen One", Some((1, 1)))]),
+    );
+    let current = api_fixture_full(
+        &[("model-a", "Model A")],
+        Some(&[("zen-1", "Zen One", Some((0, 0)))]),
+    );
+
+    given()
+        .with_api_fixture(&current)
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_delta_added(&["zen-1"]);
+}
+
+#[test]
+fn models_watch_should_report_zen_model_ceasing_to_be_free_as_removed() {
+    let prior = api_fixture_full(
+        &[("model-a", "Model A")],
+        Some(&[("zen-1", "Zen One", Some((0, 0)))]),
+    );
+    let current = api_fixture_full(
+        &[("model-a", "Model A")],
+        Some(&[("zen-1", "Zen One", Some((1, 1)))]),
+    );
+
+    given()
+        .with_api_fixture(&current)
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_delta_removed(&["zen-1"]);
+}
+
+#[test]
+fn models_watch_should_report_free_zen_name_change_as_changed() {
+    let prior = api_fixture_full(
+        &[("model-a", "Model A")],
+        Some(&[("zen-1", "Zen Old", Some((0, 0)))]),
+    );
+    let current = api_fixture_full(
+        &[("model-a", "Model A")],
+        Some(&[("zen-1", "Zen New", Some((0, 0)))]),
+    );
+
+    given()
+        .with_api_fixture(&current)
+        .with_prior_snapshot(snapshot_from_fixture(&prior))
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_delta_changed(&[("zen-1", "Zen Old", "Zen New")]);
+}
+
+#[test]
+fn models_watch_should_exit_3_when_opencode_block_missing() {
+    let fixture = api_fixture_full(&[("model-a", "Model A")], None);
+
+    given()
+        .with_api_fixture(&fixture)
+        .when_run()
+        .then_result()
+        .should_exit_with(3);
 }

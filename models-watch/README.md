@@ -1,6 +1,6 @@
 # models-watch
 
-Detect when [opencode-go](https://opencode.ai/docs/zen) models change on [models.dev](https://models.dev).
+Detect when [opencode-go](https://opencode.ai/docs/zen) and free OpenCode Zen models change on [models.dev](https://models.dev).
 
 ## Usage
 
@@ -42,7 +42,7 @@ No changes recorded yet.
 ## What it does
 
 1. Fetches `https://models.dev/api.json`.
-2. Extracts the `opencode-go` provider block.
+2. Extracts the `opencode-go` provider block and free models from the `opencode` block (where `cost.input` and `cost.output` are both `0`).
 3. Compares model IDs against the last snapshot (`state/latest.json`).
 4. On first run or when models are added/removed/changed, writes a JSON delta file (`state/change-<timestamp>.json`).
 5. Notifies on change.
@@ -67,7 +67,7 @@ All runtime state lives under `state/` relative to the script:
 
 | File | Purpose |
 |------|---------|
-| `state/latest.json` | Most recent snapshot (used for comparison on next run) |
+| `state/latest.json` | Synthetic merged snapshot of watched models (used for comparison on next run) |
 | `state/change-<timestamp>.json` | Delta file, written only when models are added or removed |
 
 ## Testing
