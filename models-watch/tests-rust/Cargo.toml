@@ -1,0 +1,13 @@
+[package]
+name = "models-watch-tests"
+version = "0.1.0"
+edition = "2021"
+description = "Acceptance tests for models-watch"
+autobins = false
+
+[dependencies]
+serde_json = "1"
+
+[[test]]
+name = "acceptance"
+path = "tests/acceptance.rs"
