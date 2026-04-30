@@ -17,18 +17,18 @@ Detect when [opencode-go](https://opencode.ai/docs/zen) and free OpenCode Zen mo
 ```
 2026-04-29 10:34:45 BST
   Added:
-    model-a
-    model-b
+    opencode-go/model-a
+    opencode/model-b
   Removed:
     (none)
   Changed:
-    model-y "Old Name" → "New Name"
+    opencode/model-y "Old Name" → "New Name"
 
 2026-04-28 12:15:00 BST
   Added:
-    model-z
+    opencode-go/model-z
   Removed:
-    model-x
+    opencode/model-x
   Changed:
     (none)
 ```
@@ -43,7 +43,7 @@ No changes recorded yet.
 
 1. Fetches `https://models.dev/api.json`.
 2. Extracts the `opencode-go` provider block and free models from the `opencode` block (where `cost.input` and `cost.output` are both `0`).
-3. Compares model IDs against the last snapshot (`state/latest.json`).
+3. Compares provider-prefixed model IDs (`opencode-go/<id>` and `opencode/<id>`) against the last snapshot (`state/latest.json`).
 4. On first run or when models are added/removed/changed, writes a JSON delta file (`state/change-<timestamp>.json`).
 5. Notifies on change.
 
@@ -67,8 +67,8 @@ All runtime state lives under `state/` relative to the script:
 
 | File | Purpose |
 |------|---------|
-| `state/latest.json` | Synthetic merged snapshot of watched models (used for comparison on next run) |
-| `state/change-<timestamp>.json` | Delta file, written only when models are added or removed |
+| `state/latest.json` | Synthetic merged snapshot of watched models, keyed by provider-prefixed model ID (used for comparison on next run) |
+| `state/change-<timestamp>.json` | Delta file, written when models are added, removed, or renamed |
 
 ## Testing
 

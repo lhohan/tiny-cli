@@ -6,8 +6,9 @@
 #   ./models-watch.sh [--notify-file <path>]
 #
 # Fetches https://models.dev/api.json, extracts the opencode-go provider
-# block, compares model IDs against the last snapshot, and writes a minimal
-# JSON delta file only when models are added or removed.
+# block and free opencode models, compares provider-prefixed model IDs against
+# the last snapshot, and writes a JSON delta file when models are added,
+# removed, or renamed.
 #
 # State lives in ./state/ relative to this script:
 #   state/latest.json              — most recent snapshot (kept for next comparison)
@@ -120,10 +121,9 @@ do_report() {
         if [[ "$changed_count" -eq 0 ]]; then
             echo "    (none)"
         else
-            # Format: model-id "Old Name" → "New Name"
-            while IFS= read -r line; do
-                echo "    $line"
-            done < <(jq -r '.changed[] | "\(.id) \"\(.old_name)\" → \"\(.new_name)\""' "$file")
+            while IFS=$'\t' read -r model_id old_name new_name; do
+                echo "    $model_id \"$old_name\" → \"$new_name\""
+            done < <(jq -r '.changed[] | [.id, .old_name, .new_name] | @tsv' "$file")
         fi
     done
 }
@@ -172,8 +172,15 @@ current="$(echo "$raw_json" | jq '
     else
         {
             models: (
-                ($og.models // {}) +
-                ($oc.models // {} | with_entries(select(.value.cost.input == 0 and .value.cost.output == 0)))
+                (($og.models // {})
+                    | to_entries
+                    | map({key: ("opencode-go/" + .key), value: .value})
+                    | from_entries) +
+                (($oc.models // {})
+                    | with_entries(select(.value.cost.input == 0 and .value.cost.output == 0))
+                    | to_entries
+                    | map({key: ("opencode/" + .key), value: .value})
+                    | from_entries)
             )
         }
     end
@@ -264,9 +271,9 @@ if [[ "$change_detected" == "true" ]]; then
     if [[ "$changed_count" -gt 0 ]]; then
         [[ ${#msg_lines[@]} -gt 0 ]] && msg_lines+=("")
         msg_lines+=("Changed:")
-        while IFS= read -r line; do
-            [[ -n "$line" ]] && msg_lines+=("  • $line")
-        done <<< "$(jq -r '.[] | "\(.id): \"\(.old_name)\" → \"\(.new_name)\""' <<< "$changed_json")"
+        while IFS=$'\t' read -r model_id old_name new_name; do
+            [[ -n "$model_id" ]] && msg_lines+=("  • $model_id: \"$old_name\" → \"$new_name\"")
+        done < <(jq -r '.[] | [.id, .old_name, .new_name] | @tsv' <<< "$changed_json")
     fi
 
     msg=$(printf '%s\n' "${msg_lines[@]}")

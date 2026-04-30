@@ -68,6 +68,11 @@ fn snapshot_from_fixture(api_json: &str) -> String {
         .cloned()
         .unwrap_or_default();
 
+    let prefixed_og: Map<String, Value> = og_models
+        .into_iter()
+        .map(|(id, model)| (format!("opencode-go/{id}"), model))
+        .collect();
+
     let free_oc: Map<String, Value> = oc_models
         .into_iter()
         .filter(|(_, model)| {
@@ -76,9 +81,10 @@ fn snapshot_from_fixture(api_json: &str) -> String {
             let output = cost.and_then(|c| c.get("output")).and_then(|v| v.as_i64());
             input == Some(0) && output == Some(0)
         })
+        .map(|(id, model)| (format!("opencode/{id}"), model))
         .collect();
 
-    let mut merged = og_models;
+    let mut merged = prefixed_og;
     merged.extend(free_oc);
     json!({ "models": merged }).to_string()
 }
@@ -132,7 +138,7 @@ fn models_watch_should_write_delta_when_models_added() {
         .when_run()
         .then_result()
         .should_succeed()
-        .expect_delta_added(&["model-b"])
+        .expect_delta_added(&["opencode-go/model-b"])
         .expect_snapshot_exists();
 }
 
@@ -151,7 +157,7 @@ fn models_watch_should_write_delta_when_models_removed() {
         .when_run()
         .then_result()
         .should_succeed()
-        .expect_delta_removed(&["model-b"])
+        .expect_delta_removed(&["opencode-go/model-b"])
         .expect_snapshot_exists();
 }
 
@@ -179,7 +185,7 @@ fn models_watch_should_notify_via_notify_file_when_change_detected() {
         .when_run()
         .then_result()
         .should_succeed()
-        .expect_notify_file_contains("new-model");
+        .expect_notify_file_contains("opencode-go/new-model");
 
     // Clean up
     let _ = std::fs::remove_file(&notify_path);
@@ -211,7 +217,7 @@ fn models_watch_should_write_delta_when_model_name_changes() {
         .when_run()
         .then_result()
         .should_succeed()
-        .expect_delta_changed(&[("model-a", "Model A", "Model A Renamed")])
+        .expect_delta_changed(&[("opencode-go/model-a", "Model A", "Model A Renamed")])
         .expect_snapshot_exists();
 
     let _ = std::fs::remove_file(&notify_path);
@@ -235,8 +241,8 @@ fn models_watch_should_report_added_and_changed_together() {
         .when_run()
         .then_result()
         .should_succeed()
-        .expect_delta_added(&["model-b"])
-        .expect_delta_changed(&[("model-a", "Model A", "Model A Renamed")])
+        .expect_delta_added(&["opencode-go/model-b"])
+        .expect_delta_changed(&[("opencode-go/model-a", "Model A", "Model A Renamed")])
         .expect_snapshot_exists();
 
     let _ = std::fs::remove_file(&notify_path);
@@ -260,6 +266,7 @@ fn models_watch_should_notify_changed_models_via_notify_file() {
         .when_run()
         .then_result()
         .should_succeed()
+        .expect_notify_file_contains("opencode-go/model-a")
         .expect_notify_file_contains("Model A")
         .expect_notify_file_contains("Model A Renamed");
 
@@ -329,6 +336,30 @@ fn report_shows_all_deltas_when_fewer_than_ten() {
         .expect_stdout_contains("alpha")
         .expect_stdout_contains("bravo")
         .expect_stdout_contains("charlie");
+}
+
+#[test]
+fn report_displays_provider_prefixed_entries() {
+    let deltas = vec![DeltaEntry {
+        timestamp: "2026-04-29T10:00:00Z".to_string(),
+        added: vec!["opencode-go/model-a".to_string()],
+        removed: vec!["opencode/zen-free".to_string()],
+        changed: vec![(
+            "opencode/zen-1".to_string(),
+            "Zen Old".to_string(),
+            "Zen New".to_string(),
+        )],
+    }];
+
+    given()
+        .with_deltas(deltas)
+        .with_arg("--report")
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_stdout_contains("opencode-go/model-a")
+        .expect_stdout_contains("opencode/zen-free")
+        .expect_stdout_contains("opencode/zen-1 \"Zen Old\" → \"Zen New\"");
 }
 
 #[test]
@@ -454,7 +485,7 @@ fn models_watch_should_include_free_zen_models_on_first_run() {
         .then_result()
         .should_succeed()
         .expect_snapshot_exists()
-        .expect_delta_added(&["model-a", "zen-free"]);
+        .expect_delta_added(&["opencode-go/model-a", "opencode/zen-free"]);
 }
 
 #[test]
@@ -470,7 +501,7 @@ fn models_watch_should_ignore_paid_zen_models() {
         .then_result()
         .should_succeed()
         .expect_snapshot_exists()
-        .expect_delta_added(&["model-a"]);
+        .expect_delta_added(&["opencode-go/model-a"]);
 }
 
 #[test]
@@ -490,7 +521,7 @@ fn models_watch_should_report_zen_model_becoming_free_as_added() {
         .when_run()
         .then_result()
         .should_succeed()
-        .expect_delta_added(&["zen-1"]);
+        .expect_delta_added(&["opencode/zen-1"]);
 }
 
 #[test]
@@ -510,7 +541,7 @@ fn models_watch_should_report_zen_model_ceasing_to_be_free_as_removed() {
         .when_run()
         .then_result()
         .should_succeed()
-        .expect_delta_removed(&["zen-1"]);
+        .expect_delta_removed(&["opencode/zen-1"]);
 }
 
 #[test]
@@ -530,7 +561,22 @@ fn models_watch_should_report_free_zen_name_change_as_changed() {
         .when_run()
         .then_result()
         .should_succeed()
-        .expect_delta_changed(&[("zen-1", "Zen Old", "Zen New")]);
+        .expect_delta_changed(&[("opencode/zen-1", "Zen Old", "Zen New")]);
+}
+
+#[test]
+fn models_watch_should_track_same_model_id_per_provider_separately() {
+    let fixture = api_fixture_full(
+        &[("shared-model", "Go Shared")],
+        Some(&[("shared-model", "Zen Shared", Some((0, 0)))]),
+    );
+
+    given()
+        .with_api_fixture(&fixture)
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_delta_added(&["opencode-go/shared-model", "opencode/shared-model"]);
 }
 
 #[test]
