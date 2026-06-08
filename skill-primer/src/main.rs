@@ -1,4 +1,21 @@
 fn main() {
+    match Cli::parse().command {
+        Command::Prime => print_catalog(),
+        Command::Help => print_help(),
+    }
+}
+
+fn print_help() {
+    println!("Usage: skill-primer <COMMAND>");
+    println!();
+    println!("Commands:");
+    println!(
+        "  prime    Print skill loading instructions and skill catalog. Use to 'prime' a coding agent."
+    );
+    println!("  help     Print this help message");
+}
+
+fn print_catalog() {
     println!("## Skills");
     println!();
     println!(
@@ -67,4 +84,23 @@ fn main() {
         println!("  </skill>");
     }
     println!("</available_skills>");
+}
+
+enum Command {
+    Prime,
+    Help,
+}
+
+struct Cli {
+    command: Command,
+}
+
+impl Cli {
+    fn parse() -> Self {
+        let command = match std::env::args().nth(1).as_deref() {
+            Some("prime") => Command::Prime,
+            _ => Command::Help,
+        };
+        Cli { command }
+    }
 }

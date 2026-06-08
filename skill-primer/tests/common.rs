@@ -56,8 +56,10 @@ impl CmdResult {
         self.expect_output("<available_skills>")
             .expect_output("</available_skills>")
     }
-    pub fn stdout_str(&self) -> String {
-        let output = self.result.get_output();
-        String::from_utf8_lossy(&output.stdout).to_string()
+    pub fn expect_help(self) -> Self {
+        self.expect_output("Usage:")
+            .expect_output("Commands:")
+            .expect_output("prime")
     }
+
 }
