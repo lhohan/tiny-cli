@@ -6,13 +6,13 @@ pub struct Cmd;
 /// Action phase — holds args and managed fixtures before execution.
 pub struct CmdSetup {
     args: Vec<String>,
-    _include_dirs: Vec<assert_fs::TempDir>,
+    _include_dirs: Vec<(String, assert_fs::TempDir)>,
 }
 
 /// Assert phase — wraps assert_cmd result and keeps fixtures alive.
 pub struct CmdResult {
     result: assert_cmd::assert::Assert,
-    _include_dirs: Vec<assert_fs::TempDir>,
+    _include_dirs: Vec<(String, assert_fs::TempDir)>,
 }
 
 impl Cmd {
@@ -37,45 +37,41 @@ impl CmdSetup {
         self
     }
 
-    /// Create a temporary include directory and add `--include <path>`.
-    /// The directory is retained until the assertion phase completes.
-    pub fn with_include_dir(mut self) -> Self {
+    /// Create a named temporary include directory and add `--include <path>`.
+    /// The name is cosmetic (for test readability); skills are added to the
+    /// most recently pushed directory.
+    pub fn with_include_dir(mut self, name: &str) -> Self {
         let tmp = assert_fs::TempDir::new().unwrap();
         let path = tmp.to_str().unwrap().to_string();
-        self._include_dirs.push(tmp);
+        self._include_dirs.push((name.to_string(), tmp));
         self.args.push("--include".to_string());
         self.args.push(path);
         self
     }
 
-    /// Add a skill fixture inside the managed include directory at `index`.
-    /// Creates `{include_dir[index]}/{name}/SKILL.md` with frontmatter and body.
-    ///
-    /// # Panics
-    /// Panics if `index` is out of range (no `with_include_dir()` call at that
-    /// position).
-    pub fn with_skill_in(self, index: usize, name: &str, description: &str, body: &str) -> Self {
-        let dir = self
-            ._include_dirs
-            .get(index)
-            .unwrap_or_else(|| panic!("with_skill_in({index}): no include dir at index {index}; call with_include_dir() first"));
+    pub fn with_empty_include_dir(self) -> Self {
+        self.with_include_dir("empty")
+    }
+
+    /// Add a skill fixture to the most recently created include directory.
+    /// If no include directory has been created yet, one is auto-provisioned.
+    /// Creates `{include_dir}/{name}/SKILL.md` with frontmatter and body.
+    pub fn with_skill(mut self, name: &str, description: &str, body: &str) -> Self {
+        if self._include_dirs.is_empty() {
+            let tmp = assert_fs::TempDir::new().unwrap();
+            let path = tmp.to_str().unwrap().to_string();
+            self._include_dirs.push(("auto".to_string(), tmp));
+            self.args.push("--include".to_string());
+            self.args.push(path);
+        }
+        let dir = &self._include_dirs.last().unwrap().1;
         let skill_file = dir.child(format!("{name}/SKILL.md"));
         let content = format!("---\nname: {name}\ndescription: {description}\n---\n{body}");
         skill_file.write_str(&content).unwrap();
         self
     }
 
-    /// Add a skill fixture inside the **first** managed include directory.
-    ///
-    /// Convenience wrapper around `with_skill_in(0, …)`.
-    ///
-    /// # Panics
-    /// Panics if no `with_include_dir()` has been called.
-    pub fn with_skill(self, name: &str, description: &str, body: &str) -> Self {
-        self.with_skill_in(0, name, description, body)
-    }
-
-    /// Build and execute the binary.
+    /// Execute against the binary.
     pub fn when_run(self) -> CmdResult {
         let mut cmd = assert_cmd::Command::cargo_bin("skills-primer").unwrap();
         cmd.args(&self.args);

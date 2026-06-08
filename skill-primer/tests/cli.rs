@@ -28,9 +28,9 @@ fn help_flag_should_print_help() {
 }
 
 #[test]
-fn discovers_skills_from_include_directory() {
+fn prime_should_discover_skills_when_include_provided() {
     Cmd::given()
-        .with_include_dir()
+        .with_include_dir("skills-dir")
         .with_skill(
             "example-skill",
             "Use when testing example scenarios.",
@@ -42,21 +42,21 @@ fn discovers_skills_from_include_directory() {
 }
 
 #[test]
-fn empty_include_directory_yields_zero_skills() {
+fn prime_should_report_no_skills_when_include_empty() {
     Cmd::given()
-        .with_include_dir()
+        .with_empty_include_dir()
         .when_run()
         .should_succeed()
         .expect_available_skills();
 }
 
 #[test]
-fn multiple_include_directories_combine_skills() {
+fn prime_should_merge_skills_from_multiple_includes() {
     Cmd::given()
-        .with_include_dir()
-        .with_include_dir()
-        .with_skill_in(0, "skill-a", "First skill.", "# Skill A")
-        .with_skill_in(1, "skill-b", "Second skill.", "# Skill B")
+        .with_include_dir("first")
+        .with_skill("skill-a", "First skill.", "# Skill A")
+        .with_include_dir("second")
+        .with_skill("skill-b", "Second skill.", "# Skill B")
         .when_run()
         .should_succeed()
         .expect_skill("skill-a", "First skill.")
@@ -66,7 +66,7 @@ fn multiple_include_directories_combine_skills() {
 // ── Failure / edge cases ────────────────────────────────────
 
 #[test]
-fn bad_frontmatter_should_skip() {
+fn prime_should_skip_skill_with_bad_frontmatter() {
     use assert_fs::fixture::{FileWriteStr, PathChild};
     let tmp = assert_fs::TempDir::new().unwrap();
     // SKILL.md with frontmatter delimiters but unparseable YAML.
@@ -84,7 +84,7 @@ fn bad_frontmatter_should_skip() {
 }
 
 #[test]
-fn skill_without_frontmatter_is_skipped() {
+fn prime_should_skip_skill_without_frontmatter() {
     use assert_fs::fixture::{FileWriteStr, PathChild};
     let tmp = assert_fs::TempDir::new().unwrap();
     // SKILL.md that exists but has no frontmatter delimiters.
