@@ -2,6 +2,7 @@
 ## Code
 
 - This is a simple single purpose CLI tool, the code should reflect that. Refactor and create code that is clear and simple.
+- Order functions top-down (caller-before-callee): put `main()` and public entry points first, then helpers in the order they're called. The reader encounters high-level logic first and drills down.
 
 ## Fluent DSL Test Pattern (Type-State Builder)
 
