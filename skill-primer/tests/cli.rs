@@ -1,7 +1,5 @@
 mod common;
 use common::Cmd;
-use indoc::indoc;
-use assert_fs::fixture::{PathChild, FileWriteStr};
 
 #[test]
 fn prime_should_output_skills_instructions() {
@@ -9,14 +7,15 @@ fn prime_should_output_skills_instructions() {
         .args(&["prime"])
         .when_run()
         .should_succeed()
-        .expect_skills_header()
-        .expect_instructions()
-        .expect_available_skills();
+        .expect_prime_instructions();
 }
 
 #[test]
 fn no_arg_should_print_help() {
-    Cmd::given().when_run().should_succeed().expect_help();
+    Cmd::given()
+        .when_run()
+        .should_succeed()
+        .expect_help_printed();
 }
 
 #[test]
@@ -25,72 +24,92 @@ fn help_flag_should_print_help() {
         .arg("help")
         .when_run()
         .should_succeed()
-        .expect_help();
+        .expect_help_printed();
 }
 
 #[test]
 fn discovers_skills_from_include_directory() {
-    let tmp = assert_fs::TempDir::new().unwrap();
-    let skill_file = tmp.child("example-skill/SKILL.md");
-    skill_file.write_str(indoc! {r#"
-        ---
-        name: example-skill
-        description: Use when testing example scenarios.
-        ---
-        # Example Skill
-        Do the thing.
-    "#}).unwrap();
-
     Cmd::given()
-        .arg("--include").arg(tmp.to_str().unwrap())
+        .with_include_dir()
+        .with_skill(
+            "example-skill",
+            "Use when testing example scenarios.",
+            "# Example Skill\nDo the thing.",
+        )
         .when_run()
         .should_succeed()
-        .expect_output("example-skill")
-        .expect_output("Use when testing example scenarios");
+        .expect_skill("example-skill", "Use when testing example scenarios");
 }
 
 #[test]
 fn empty_include_directory_yields_zero_skills() {
-    let tmp = assert_fs::TempDir::new().unwrap();
-
     Cmd::given()
-        .arg("--include").arg(tmp.to_str().unwrap())
+        .with_include_dir()
         .when_run()
         .should_succeed()
-        .expect_output("<available_skills>")
-        .expect_output("</available_skills>");
-    // No skill names should appear between the tags.
+        .expect_available_skills();
 }
 
 #[test]
 fn multiple_include_directories_combine_skills() {
-    let tmp1 = assert_fs::TempDir::new().unwrap();
-    let skill_file1 = tmp1.child("skill-a/SKILL.md");
-    skill_file1.write_str(indoc! {r#"
-        ---
-        name: skill-a
-        description: First skill.
-        ---
-        # Skill A
-    "#}).unwrap();
-
-    let tmp2 = assert_fs::TempDir::new().unwrap();
-    let skill_file2 = tmp2.child("skill-b/SKILL.md");
-    skill_file2.write_str(indoc! {r#"
-        ---
-        name: skill-b
-        description: Second skill.
-        ---
-        # Skill B
-    "#}).unwrap();
-
     Cmd::given()
-        .arg("--include").arg(tmp1.to_str().unwrap())
-        .arg("--include").arg(tmp2.to_str().unwrap())
+        .with_include_dir()
+        .with_include_dir()
+        .with_skill_in(0, "skill-a", "First skill.", "# Skill A")
+        .with_skill_in(1, "skill-b", "Second skill.", "# Skill B")
         .when_run()
         .should_succeed()
-        .expect_output("skill-a")
-        .expect_output("First skill.")
-        .expect_output("skill-b")
-        .expect_output("Second skill.");
+        .expect_skill("skill-a", "First skill.")
+        .expect_skill("skill-b", "Second skill.");
+}
+
+// ── Failure / edge cases ────────────────────────────────────
+
+#[test]
+fn bad_frontmatter_should_skip() {
+    use assert_fs::fixture::{FileWriteStr, PathChild};
+    let tmp = assert_fs::TempDir::new().unwrap();
+    // SKILL.md with frontmatter delimiters but unparseable YAML.
+    // Serde_yaml returns `Err` for bad YAML, so the skill is skipped.
+    tmp.child("broken/SKILL.md")
+        .write_str("---\nname: broken\ndescription: [unclosed\n---\n# Nope\n")
+        .unwrap();
+
+    Cmd::given()
+        .arg("--include")
+        .arg(tmp.to_str().unwrap())
+        .when_run()
+        .should_succeed()
+        .expect_available_skills();
+}
+
+#[test]
+fn skill_without_frontmatter_is_skipped() {
+    use assert_fs::fixture::{FileWriteStr, PathChild};
+    let tmp = assert_fs::TempDir::new().unwrap();
+    // SKILL.md that exists but has no frontmatter delimiters.
+    tmp.child("no-frontmatter/SKILL.md")
+        .write_str("# Just a heading\n")
+        .unwrap();
+
+    Cmd::given()
+        .arg("--include")
+        .arg(tmp.to_str().unwrap())
+        .when_run()
+        .should_succeed()
+        .expect_available_skills();
+}
+
+#[test]
+fn empty_subdirectory_with_no_skilly_md_produces_no_skills() {
+    use assert_fs::fixture::{PathChild, PathCreateDir};
+    let tmp = assert_fs::TempDir::new().unwrap();
+    tmp.child("empty-subdir").create_dir_all().unwrap();
+
+    Cmd::given()
+        .arg("--include")
+        .arg(tmp.to_str().unwrap())
+        .when_run()
+        .should_succeed()
+        .expect_available_skills();
 }
