@@ -26,7 +26,7 @@ All three commands use the same discovery pipeline. If any `--include` paths are
 | Skill dedup | First skill name wins by discovery order |
 | Duplicate warning | `warning: duplicate skill 'foo' at /path/to/SKILL.md, keeping first` |
 | XML ownership | XML escaping and XML assembly live in `lib.rs` |
-| Warning transport | Library returns structured warnings; `main.rs` prints them to `stderr` |
+| Warning transport | Library returns rendered `stderr` lines; `main.rs` prints them |
 | `show-config` path states | `exists`, `missing`, `error` |
 | `show-config` path-state warnings | No `stderr` warnings for `missing` or `error` rows; stdout status is the contract |
 | `list-skills` format | `[{name-column}] /path/to/SKILL.md` with width 24 and character-safe truncation |
@@ -80,77 +80,61 @@ error   /path
 The library interface is part of the contract. `main.rs` should call explicit library entry points rather than reconstructing behavior itself.
 
 ```rust
-pub enum CliError {
-    EmptyIncludePath,
-    IncludePathIsFile { path: PathBuf },
+pub struct PrimeOutput {
+    pub instructions: String,
+    pub stderr: Vec<String>,
 }
 
-pub enum PathStatus {
-    Exists,
-    Missing,
-    Error,
+pub struct ShowConfigOutput {
+    pub search_paths: Vec<String>,
+    pub stderr: Vec<String>,
 }
 
-pub struct SearchPathRow {
-    pub path: PathBuf,
-    pub status: PathStatus,
+pub struct ListSkillsOutput {
+    pub skill_paths: Vec<String>,
+    pub stderr: Vec<String>,
 }
-
-pub struct DiscoveredSkill {
-    pub name: String,
-    pub description: String,
-    pub path: PathBuf,
-}
-
-pub enum DiscoveryWarning {
-    DuplicateSkill { name: String, losing_path: PathBuf },
-    InvalidFrontmatter { path: PathBuf },
-    UnreadableSkillFile { path: PathBuf },
-    InvalidSkillName { name: String, path: PathBuf, reason: String },
-    MissingIncludeDirectory { path: PathBuf },
-    UnreadableSearchDirectory { path: PathBuf },
-}
-
-pub struct DiscoveryResult<T> {
-    pub value: T,
-    pub warnings: Vec<DiscoveryWarning>,
-}
-
-pub fn resolve_search_paths(
-    include_dirs: &[PathBuf],
-    cwd: &Path,
-) -> Result<DiscoveryResult<Vec<SearchPathRow>>, CliError>;
-
-pub fn discover_skills(
-    search_paths: &[SearchPathRow],
-) -> DiscoveryResult<Vec<DiscoveredSkill>>;
 
 pub fn generate_prime_output(
-    skills: &[DiscoveredSkill],
-) -> String;
+    include_dirs: &[PathBuf],
+    cwd: &Path,
+) -> Result<PrimeOutput, Vec<String>>;
+
+pub fn generate_show_config_output(
+    include_dirs: &[PathBuf],
+    cwd: &Path,
+) -> Result<ShowConfigOutput, Vec<String>>;
+
+pub fn generate_list_skills_output(
+    include_dirs: &[PathBuf],
+    cwd: &Path,
+) -> Result<ListSkillsOutput, Vec<String>>;
 ```
 
 Notes:
 
-- Exact type names may vary slightly during implementation, but the boundary must stay equivalent to this shape.
+- These signatures are the contract. Do not replace them with public warning enums or tuple returns.
+- `Ok(...stderr...)` means the command succeeds and prints any non-fatal `stderr` lines before exiting `0`.
+- `Err(Vec<String>)` means the command fails, prints each error line to `stderr`, and exits non-zero.
 - `main.rs` is responsible for:
   - calling `std::env::current_dir()`
-  - mapping `CliError` to exact error text and exit codes
-  - printing `show-config` rows
-  - printing `list-skills` rows
-  - printing `prime` output
-  - rendering `DiscoveryWarning` variants as exact `stderr` strings
+  - invoking exactly one command generator
+  - printing `instructions`, `search_paths`, or `skill_paths`
+  - printing `stderr` lines from successful results
+  - printing fatal error lines from `Err(Vec<String>)`
 - `lib.rs` is responsible for:
   - path resolution
+  - repo root detection
   - directory traversal
   - scan ordering
   - skill parsing and validation
   - duplicate detection
+  - formatting exact warning and error strings
   - XML escaping and XML assembly
 
 ## Error and Warning Contract
 
-The library returns structured warnings with command data. `main.rs` renders exact `stderr` strings.
+The library returns exact `stderr` lines with command data. `main.rs` prints them without reformatting.
 
 ### Hard errors
 
@@ -225,32 +209,27 @@ These exit non-zero for every command.
 Goal: move discovery logic out of `main.rs` and establish a library-owned output pipeline.
 
 - Create `src/lib.rs`
-- Move scan types and helpers into the library:
-  - `Skill`
-  - `SkillFrontmatter`
-  - `ScanResult`
-  - `ScanWarning`
-  - `scan_skill_directory`
-  - `parse_skill_frontmatter`
-  - `validate_skill_name`
+- Move scan types and helpers into the library.
 - Move XML escaping into the library or a library-owned helper module.
-- Introduce the library interface from the `Interfaces` section.
+- Introduce only the library entry point needed to preserve current behavior:
+  - `generate_prime_output`
 - Keep `src/main.rs` thin:
   - parse CLI args
   - dispatch subcommands
-  - call library entry points
-  - print stdout payloads
-  - render warnings to `stderr`
+  - call `generate_prime_output`
+  - print returned `instructions`
+  - print returned `stderr` lines unchanged
   - exit non-zero on hard include errors
+- Do not add `show-config` or `list-skills` generators in this phase.
 
 ### Phase 2: Add `show-config`
 
 Goal: add the first human-facing inspection command with include-only behavior first.
 
 - Add `show-config` to the clap subcommand enum.
-- Implement output for explicit include paths only.
-- Render status lines with `exists`, `missing`, and `error`.
-- Do not emit path-state stderr warnings for `show-config`.
+- Implement `generate_show_config_output(include_dirs, cwd) -> Result<ShowConfigOutput, Vec<String>>` for explicit include paths only.
+- Fill `search_paths` with rendered status lines using `exists`, `missing`, and `error`.
+- Keep `stderr` empty for path-state rows in `show-config`.
 - Extend the CLI test DSL with:
   - working-directory control
   - line-based stdout assertions
@@ -260,20 +239,21 @@ Goal: add the first human-facing inspection command with include-only behavior f
 
 Goal: teach `show-config` the full default search model.
 
-- Implement repo-root detection with `jj` then `git`.
-- Implement upward walk from CWD to repo root or home directory.
+- Implement repo-root detection with `jj` then `git` inside the library.
+- Implement upward walk from CWD to repo root or home directory inside `generate_show_config_output`.
 - Add static home-directory candidates.
 - Add path deduplication with first occurrence preserved.
-- Add deterministic directory ordering.
-- Verify search-path ordering and status rendering through integration tests and root-detection unit tests.
+- Add deterministic directory ordering for later discovery work.
+- Verify rendered `search_paths` ordering and status output through integration tests and root-detection unit tests.
 
 ### Phase 4: Add `list-skills`
 
 Goal: expose discovered skills without the `prime` XML wrapper.
 
-- Reuse the resolved path list and scan logic.
-- Apply first-win deduplication by skill name.
-- Render aligned `[name] path` output with width 24 and character-safe truncation.
+- Implement `generate_list_skills_output(include_dirs, cwd) -> Result<ListSkillsOutput, Vec<String>>`.
+- Reuse the internal path-resolution and scan logic.
+- Fill `skill_paths` with aligned `[name] path` output using width 24 and character-safe truncation.
+- Fill `stderr` with non-fatal warning lines.
 - Preserve discovery order in output.
 
 ### Phase 5: Rewire `prime`
@@ -281,8 +261,10 @@ Goal: expose discovered skills without the `prime` XML wrapper.
 Goal: make `prime` use the shared pipeline without changing its instruction block.
 
 - Keep the existing human instructions.
-- Generate XML in the library.
-- Reuse the same path-resolution, scan, dedup, and warning pipeline as `list-skills`.
+- Evolve `generate_prime_output(include_dirs, cwd) -> Result<PrimeOutput, Vec<String>>` from the Phase 1 extraction to the final shared-pipeline form.
+- Generate the final `instructions` string in the library.
+- Reuse the same internal path-resolution, scan, dedup, and warning pipeline as `list-skills`.
+- Return non-fatal warning lines in `PrimeOutput.stderr`.
 - Update duplicate warnings to reference the losing skill file path.
 
 ### Phase 6: Update docs and command expectations
@@ -296,6 +278,7 @@ Goal: make `prime` use the shared pipeline without changing its instruction bloc
 ### Refactor safety
 
 - Existing `prime` and scan tests continue to pass after the `lib.rs` split, except tests intentionally changed for explicit subcommands.
+- `main.rs` remains a thin pass-through that prints returned stdout payloads and returned `stderr` lines without reformatting them.
 
 ### CLI acceptance
 
@@ -315,6 +298,7 @@ Goal: make `prime` use the shared pipeline without changing its instruction bloc
 - permission or stat failures render as `error`
 - duplicate paths are collapsed with first occurrence preserved
 - path-state rows do not also emit `stderr` warnings
+- `show-config` prints returned `search_paths` lines exactly as provided by the library
 
 ### `list-skills`
 
@@ -325,6 +309,7 @@ Goal: make `prime` use the shared pipeline without changing its instruction bloc
 - long names are truncated character-safely with `...`
 - printed paths start at the same column across rows
 - include override works the same way as `prime` and `show-config`
+- `list-skills` prints returned `skill_paths` lines exactly as provided by the library
 
 ### `prime`
 
@@ -333,6 +318,7 @@ Goal: make `prime` use the shared pipeline without changing its instruction bloc
 - duplicate-skill warning references the losing skill file path
 - XML output still escapes content correctly
 - warnings are emitted with exact locked text
+- `prime` prints returned `instructions` exactly as provided by the library
 
 ### Root detection
 

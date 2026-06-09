@@ -1,6 +1,9 @@
 [tasks.setup]
-description = "Install development dependencies (nextest, etc.)"
-run = "cargo install cargo-nextest --locked"
+description = "Install development dependencies (nextest, cargo-watch, etc.)"
+run = """
+cargo install cargo-nextest --locked && \
+cargo install cargo-watch --locked
+"""
 
 [tasks.verify]
 description = "Run linter, formatter check, and tests"
@@ -10,6 +13,11 @@ cargo clippy --all-targets -- -D warnings && \
 cargo fmt --check && \
 cargo nextest run
 """
+
+[tasks.watch]
+description = "Watch files and run nextest on changes"
+depends = ["setup"]
+run = "cargo watch -x 'nextest run'"
 
 [tasks.install]
 description = "Build and install the binary to ~/.cargo/bin"
