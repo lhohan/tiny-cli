@@ -1,6 +1,6 @@
 mod common;
-use common::Cmd;
 use assert_fs::fixture::{FileWriteStr, PathChild};
+use common::Cmd;
 
 #[test]
 fn prime_should_escape_xml_in_skill_name_and_description() {

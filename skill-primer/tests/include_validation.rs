@@ -32,7 +32,7 @@ fn prime_should_fail_when_include_path_has_no_value() {
 #[case::path_does_not_exist(
     "/nonexistent/path/that/does/not/exist",
     true,
-    "warning: include directory not found",
+    "warning: include directory not found"
 )]
 fn include_path_validation(
     #[case] path: &str,

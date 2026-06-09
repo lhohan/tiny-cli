@@ -62,7 +62,7 @@ fn prime_should_deduplicate_skills_by_name_from_multiple_includes() {
         .should_succeed()
         .expect_skill("shared-skill", "Shared description")
         .expect_output_count("<name>shared-skill</name>", 1)
-        .expect_stderr_contains("warning: skipping duplicate skill 'shared-skill'")
+        .expect_stderr_contains("warning: duplicate skill 'shared-skill' at ")
         .expect_stderr_dir("second")
-        .expect_stderr_contains("already included from earlier include directory");
+        .expect_stderr_contains("/SKILL.md, keeping first");
 }

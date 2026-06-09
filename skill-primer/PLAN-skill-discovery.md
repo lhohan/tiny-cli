@@ -80,9 +80,9 @@ error   /path
 The library interface is part of the contract. `main.rs` should call explicit library entry points rather than reconstructing behavior itself.
 
 ```rust
-pub struct PrimeOutput {
+pub struct PrimeResponse {
     pub instructions: String,
-    pub stderr: Vec<String>,
+    pub warnings: Vec<String>,
 }
 
 pub struct ShowConfigOutput {
@@ -98,7 +98,7 @@ pub struct ListSkillsOutput {
 pub fn generate_prime_output(
     include_dirs: &[PathBuf],
     cwd: &Path,
-) -> Result<PrimeOutput, Vec<String>>;
+) -> Result<PrimeResponse, Vec<String>>;
 
 pub fn generate_show_config_output(
     include_dirs: &[PathBuf],
