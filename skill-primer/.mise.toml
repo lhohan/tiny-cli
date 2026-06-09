@@ -1,5 +1,8 @@
+[tools]
+rust = "latest"
+
 [tasks.setup]
-description = "Install development dependencies (nextest, cargo-watch, etc.)"
+description = "Install development dependencies (nextest, cargo-watch)"
 run = """
 cargo install cargo-nextest --locked && \
 cargo install cargo-watch --locked
@@ -18,6 +21,10 @@ cargo nextest run
 description = "Watch files and run nextest on changes"
 depends = ["setup"]
 run = "cargo watch -x 'nextest run'"
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "cargo clean"
 
 [tasks.install]
 description = "Build and install the binary to ~/.cargo/bin"
