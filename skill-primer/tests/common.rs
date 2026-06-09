@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use assert_fs::fixture::{FileWriteStr, PathChild};
 use predicates::prelude::PredicateBooleanExt;
 

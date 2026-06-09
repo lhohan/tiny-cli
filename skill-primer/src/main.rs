@@ -15,10 +15,16 @@ struct Skill {
     path: PathBuf,
 }
 
+#[derive(Debug)]
+enum ScanWarning {
+    InvalidFrontmatter(PathBuf),
+    Unreadable(PathBuf),
+    InvalidName { name: String, path: PathBuf, reason: String },
+}
+
 struct ScanResult {
     skills: Vec<Skill>,
-    invalid_frontmatter: Vec<PathBuf>,
-    unreadable: Vec<PathBuf>,
+    warnings: Vec<ScanWarning>,
 }
 
 #[derive(Parser)]
@@ -104,12 +110,19 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
             continue;
         }
         let result = scan_skill_directory(dir);
-        for path in &result.invalid_frontmatter {
-            eprintln!("warning: SKILL.md has invalid or missing frontmatter: {}",
-                path.display());
-        }
-        for path in &result.unreadable {
-            eprintln!("warning: unable to read SKILL.md: {}", path.display());
+        for warning in &result.warnings {
+            match warning {
+                ScanWarning::InvalidFrontmatter(path) => {
+                    eprintln!("warning: SKILL.md has invalid or missing frontmatter: {}",
+                        path.display());
+                }
+                ScanWarning::Unreadable(path) => {
+                    eprintln!("warning: unable to read SKILL.md: {}", path.display());
+                }
+                ScanWarning::InvalidName { name, path, reason } => {
+                    eprintln!("warning: skill '{}' has invalid name: {} ({})", name, reason, path.display());
+                }
+            }
         }
         for skill in result.skills {
             if let Some(first_dir) = seen_names.get(&skill.name) {
@@ -136,8 +149,7 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
 
 fn scan_skill_directory(dir: &PathBuf) -> ScanResult {
     let mut skills = Vec::new();
-    let mut invalid_frontmatter = Vec::new();
-    let mut unreadable = Vec::new();
+    let mut warnings = Vec::new();
 
     if let Ok(entries) = fs::read_dir(dir) {
         let entries: Vec<_> = entries.flatten().collect();
@@ -152,6 +164,14 @@ fn scan_skill_directory(dir: &PathBuf) -> ScanResult {
             if let Ok(content) = fs::read_to_string(&path) {
                 match parse_skill_frontmatter(&content) {
                     Some(frontmatter) => {
+                        // Validate the skill name per spec
+                        if let Err(reason) = validate_skill_name(&frontmatter.name) {
+                            warnings.push(ScanWarning::InvalidName {
+                                name: frontmatter.name.clone(),
+                                path: path.clone(),
+                                reason,
+                            });
+                        }
                         skills.push(Skill {
                             name: frontmatter.name,
                             description: frontmatter.description,
@@ -162,16 +182,16 @@ fn scan_skill_directory(dir: &PathBuf) -> ScanResult {
                         // If the file has frontmatter delimiters, parsing was attempted but failed
                         let trimmed = content.strip_prefix("\u{FEFF}").unwrap_or(&content).trim_start();
                         if trimmed.starts_with("---") {
-                            invalid_frontmatter.push(path);
+                            warnings.push(ScanWarning::InvalidFrontmatter(path));
                         }
                         // Otherwise it's a markdown file without frontmatter — ignore silently
                     }
                 }
             } else {
-                unreadable.push(path);
+                warnings.push(ScanWarning::Unreadable(path));
             }
             // Do not recurse into subdirectories of a skill directory
-            return ScanResult { skills, invalid_frontmatter, unreadable };
+            return ScanResult { skills, warnings };
         }
 
         // Otherwise recurse into subdirectories
@@ -180,13 +200,48 @@ fn scan_skill_directory(dir: &PathBuf) -> ScanResult {
             if path.is_dir() {
                 let sub = scan_skill_directory(&path);
                 skills.extend(sub.skills);
-                invalid_frontmatter.extend(sub.invalid_frontmatter);
-                unreadable.extend(sub.unreadable);
+                warnings.extend(sub.warnings);
             }
         }
     }
 
-    ScanResult { skills, invalid_frontmatter, unreadable }
+    ScanResult { skills, warnings }
+}
+
+fn validate_skill_name(name: &str) -> Result<(), String> {
+    if name.len() > 64 {
+        return Err("name exceeds 64 characters".to_string());
+    }
+    
+    let chars: Vec<char> = name.chars().collect();
+    
+    if chars.is_empty() {
+        return Err("name is empty".to_string());
+    }
+    
+    if chars[0] == '-' {
+        return Err("name starts with hyphen".to_string());
+    }
+    
+    if chars[chars.len() - 1] == '-' {
+        return Err("name ends with hyphen".to_string());
+    }
+    
+    let mut prev_hyphen = false;
+    for &c in &chars {
+        if c == '-' {
+            if prev_hyphen {
+                return Err("name contains consecutive hyphens".to_string());
+            }
+            prev_hyphen = true;
+        } else if !c.is_ascii_lowercase() && !c.is_ascii_digit() {
+            return Err(format!("name contains invalid character '{}'", c));
+        } else {
+            prev_hyphen = false;
+        }
+    }
+    
+    Ok(())
 }
 
 fn parse_skill_frontmatter(content: &str) -> Option<SkillFrontmatter> {
@@ -332,3 +387,4 @@ mod tests {
         assert_eq!(result.description, "multi-line\n---\nvalue");
     }
 }
+
