@@ -40,7 +40,9 @@ Foo::given()
 <!-- skills-primer BEGIN-->
 ## Agent skills integration
 
-Run `cargo run -- --include ~/.agents/skills prime` for to integrate agent skills in this project. Follow those instructions before proceeding with any task. Report available skill in format:
+Run `cargo run -- --include ~/.agents/skills prime` for to integrate agent skills in this project. Follow those instructions before proceeding with any task. 
+
+IMPORTANT: report available skills NOW in format:
 
 ```
 *Available skills:* skill-a, skill-b, etc.
