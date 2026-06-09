@@ -37,6 +37,23 @@ Foo::given()
     .expect_exit_code(0);
 ```
 
+## Verification
+
+Use `mise` for all project commands. After making changes:
+
+- `mise verify` — runs clippy (`-D warnings`), `cargo fmt --check`, and nextest tests
+
+Run `mise verify` before committing.
+
+## Project commands
+
+- `mise verify` — runs clippy (`-D warnings`), `cargo fmt --check`, and nextest tests
+- `mise install` — builds and installs the binary to `~/.cargo/bin`
+- `mise setup` — installs dev tooling (nextest) — run once per machine
+
+If a command seems to be missing run `mise tasks` to try and discover it.
+
+
 <!-- skills-primer BEGIN-->
 ## Agent skills integration
 

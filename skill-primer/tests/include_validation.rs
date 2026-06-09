@@ -9,6 +9,7 @@ fn prime_should_fail_when_include_is_a_file() {
     std::fs::write(&file_path, "this is a file, not a directory").unwrap();
 
     Cmd::given()
+        .arg("prime")
         .arg("--include")
         .arg(file_path.to_str().unwrap())
         .when_run()
@@ -19,6 +20,7 @@ fn prime_should_fail_when_include_is_a_file() {
 #[test]
 fn prime_should_fail_when_include_path_has_no_value() {
     Cmd::given()
+        .arg("prime")
         .arg("--include")
         .when_run()
         .should_fail()
@@ -38,6 +40,7 @@ fn include_path_validation(
     #[case] expected_stderr: &str,
 ) {
     let result = Cmd::given()
+        .arg("prime")
         .arg("--include")
         .arg(path)
         .when_run();

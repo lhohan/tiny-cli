@@ -1,0 +1,16 @@
+[tasks.setup]
+description = "Install development dependencies (nextest, etc.)"
+run = "cargo install cargo-nextest --locked"
+
+[tasks.verify]
+description = "Run linter, formatter check, and tests"
+depends = ["setup"]
+run = """
+cargo clippy --all-targets -- -D warnings && \
+cargo fmt --check && \
+cargo nextest run
+"""
+
+[tasks.install]
+description = "Build and install the binary to ~/.cargo/bin"
+run = "cargo install --path . --force"

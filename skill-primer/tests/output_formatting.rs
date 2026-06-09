@@ -5,6 +5,7 @@ use assert_fs::fixture::{FileWriteStr, PathChild};
 #[test]
 fn prime_should_escape_xml_in_skill_name_and_description() {
     Cmd::given()
+        .arg("prime")
         .with_skill("<script>alert(1)</script>", "A & B <test>", "# Body")
         .when_run()
         .should_succeed()
@@ -24,6 +25,7 @@ fn prime_should_not_treat_nested_skill_md_as_separate_skill() {
         .unwrap();
 
     Cmd::given()
+        .arg("prime")
         .arg("--include")
         .arg(tmp.to_str().unwrap())
         .when_run()
