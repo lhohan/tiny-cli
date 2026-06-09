@@ -15,6 +15,12 @@ struct Skill {
     path: PathBuf,
 }
 
+struct ScanResult {
+    skills: Vec<Skill>,
+    invalid_frontmatter: Vec<PathBuf>,
+    unreadable: Vec<PathBuf>,
+}
+
 #[derive(Parser)]
 #[command(name = "skill-primer")]
 #[command(about = "Print skill loading instructions and skill catalog")]
@@ -45,6 +51,21 @@ fn main() {
     }
 }
 
+fn escape_xml(text: &str) -> String {
+    let mut escaped = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '&' => escaped.push_str("&amp;"),
+            '<' => escaped.push_str("&lt;"),
+            '>' => escaped.push_str("&gt;"),
+            '"' => escaped.push_str("&quot;"),
+            '\'' => escaped.push_str("&apos;"),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
+}
+
 fn handle_prime(include_dirs: &[PathBuf]) {
     print!("{}", indoc! {r#"
 ## Skills
@@ -68,8 +89,36 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
 
     // Scan all include directories for skills
     let mut all_skills = Vec::new();
+    let mut seen_names = std::collections::HashMap::new();
     for dir in include_dirs {
-        all_skills.extend(scan_skill_directory(dir));
+        if dir.as_os_str().is_empty() {
+            eprintln!("error: include path cannot be empty");
+            std::process::exit(1);
+        }
+        if dir.is_file() {
+            eprintln!("error: include path '{}' is a file, not a directory", dir.display());
+            std::process::exit(1);
+        }
+        if !dir.exists() {
+            eprintln!("warning: include directory not found: {}", dir.display());
+            continue;
+        }
+        let result = scan_skill_directory(dir);
+        for path in &result.invalid_frontmatter {
+            eprintln!("warning: SKILL.md has invalid or missing frontmatter: {}",
+                path.display());
+        }
+        for path in &result.unreadable {
+            eprintln!("warning: unable to read SKILL.md: {}", path.display());
+        }
+        for skill in result.skills {
+            if let Some(first_dir) = seen_names.get(&skill.name) {
+                eprintln!("warning: skipping duplicate skill '{}' in {:?}; already included from earlier include directory: {:?}", skill.name, dir, first_dir);
+            } else {
+                seen_names.insert(skill.name.clone(), dir.clone());
+                all_skills.push(skill);
+            }
+        }
     }
 
     println!("<available_skills>");
@@ -80,51 +129,206 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
                 <description>{description}</description>
                 <location>{location}</location>
               </skill>
-        "}, name = skill.name, description = skill.description, location = skill.path.display());
+        "}, name = escape_xml(&skill.name), description = escape_xml(&skill.description), location = escape_xml(&skill.path.display().to_string()));
     }
     println!("</available_skills>");
 }
 
-fn scan_skill_directory(dir: &PathBuf) -> Vec<Skill> {
+fn scan_skill_directory(dir: &PathBuf) -> ScanResult {
     let mut skills = Vec::new();
+    let mut invalid_frontmatter = Vec::new();
+    let mut unreadable = Vec::new();
 
     if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
+        let entries: Vec<_> = entries.flatten().collect();
 
-            if path.is_dir() {
-                // Recursively scan subdirectories
-                skills.extend(scan_skill_directory(&path));
-            } else if path.file_name().is_some_and(|f| f == "SKILL.md") {
-                // Parse SKILL.md file
-                if let Ok(content) = fs::read_to_string(&path)
-                    && let Some(frontmatter) = parse_skill_frontmatter(&content)
-                {
-                    skills.push(Skill {
-                        name: frontmatter.name,
-                        description: frontmatter.description,
-                        path,
-                    });
+        // Check if this directory is a skill directory (contains SKILL.md)
+        let skill_file = entries
+            .iter()
+            .find(|e| e.path().file_name().is_some_and(|f| f == "SKILL.md"));
+
+        if let Some(entry) = skill_file {
+            let path = entry.path();
+            if let Ok(content) = fs::read_to_string(&path) {
+                match parse_skill_frontmatter(&content) {
+                    Some(frontmatter) => {
+                        skills.push(Skill {
+                            name: frontmatter.name,
+                            description: frontmatter.description,
+                            path,
+                        });
+                    }
+                    None => {
+                        // If the file has frontmatter delimiters, parsing was attempted but failed
+                        let trimmed = content.strip_prefix("\u{FEFF}").unwrap_or(&content).trim_start();
+                        if trimmed.starts_with("---") {
+                            invalid_frontmatter.push(path);
+                        }
+                        // Otherwise it's a markdown file without frontmatter — ignore silently
+                    }
                 }
+            } else {
+                unreadable.push(path);
+            }
+            // Do not recurse into subdirectories of a skill directory
+            return ScanResult { skills, invalid_frontmatter, unreadable };
+        }
+
+        // Otherwise recurse into subdirectories
+        for entry in entries {
+            let path = entry.path();
+            if path.is_dir() {
+                let sub = scan_skill_directory(&path);
+                skills.extend(sub.skills);
+                invalid_frontmatter.extend(sub.invalid_frontmatter);
+                unreadable.extend(sub.unreadable);
             }
         }
     }
 
-    skills
+    ScanResult { skills, invalid_frontmatter, unreadable }
 }
 
 fn parse_skill_frontmatter(content: &str) -> Option<SkillFrontmatter> {
     // Find frontmatter between --- delimiters
-    let content = content.trim_start();
+    // Strip UTF-8 BOM if present
+    let content = content.strip_prefix("\u{FEFF}").unwrap_or(content).trim_start();
     if !content.starts_with("---") {
         return None;
     }
 
     let rest = &content[3..];
-    if let Some(end) = rest.find("\n---") {
-        let yaml_content = &rest[..end];
-        serde_yaml::from_str(yaml_content).ok()
-    } else {
-        None
+    let mut search_start = 0;
+    let end = loop {
+        match rest[search_start..].find("\n---") {
+            Some(pos) => {
+                let after = search_start + pos + 4; // after the full "\n---" delimiter
+                if after == rest.len() || rest[after..].starts_with('\n') {
+                    break search_start + pos;
+                }
+                search_start += pos + 1;
+            }
+            None => return None,
+        }
+    };
+    let yaml_content = &rest[..end];
+    let frontmatter: SkillFrontmatter = serde_yaml::from_str(yaml_content).ok()?;
+    if frontmatter.name.trim().is_empty() || frontmatter.description.trim().is_empty() {
+        return None;
+    }
+    Some(frontmatter)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_skill_frontmatter_valid() {
+        let content = indoc! {"---
+            name: foo
+            description: bar
+            ---
+            # Body
+            "};
+        let result = parse_skill_frontmatter(content).unwrap();
+        assert_eq!(result.name, "foo");
+        assert_eq!(result.description, "bar");
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_missing_delimiters() {
+        let content = indoc! {"# No frontmatter
+            Just body
+            "};
+        assert!(parse_skill_frontmatter(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_bad_yaml() {
+        let content = indoc! {"---
+            name: foo
+            description: [unclosed
+            ---
+            # Body
+            "};
+        assert!(parse_skill_frontmatter(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_with_utf8_bom() {
+        let content = "\u{FEFF}".to_string() + indoc! {"---
+            name: foo
+            description: bar
+            ---
+            # Body
+            "};
+        let result = parse_skill_frontmatter(&content).unwrap();
+        assert_eq!(result.name, "foo");
+        assert_eq!(result.description, "bar");
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_missing_name() {
+        let content = indoc! {"---
+            description: bar
+            ---
+            # Body
+            "};
+        assert!(parse_skill_frontmatter(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_missing_description() {
+        let content = indoc! {"---
+            name: foo
+            ---
+            # Body
+            "};
+        assert!(parse_skill_frontmatter(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_empty_name() {
+        let content = indoc! {"---
+            name: \"\"
+            description: bar
+            ---
+            # Body
+            "};
+        assert!(parse_skill_frontmatter(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_empty_description() {
+        let content = indoc! {"---
+            name: foo
+            description: \"\"
+            ---
+            # Body
+            "};
+        assert!(parse_skill_frontmatter(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_whitespace_only() {
+        let content = "---\nname: \"   \"\ndescription: \"\t\"\n---\n# Body\n";
+        assert!(parse_skill_frontmatter(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_frontmatter_with_end_delimiter_in_value() {
+        let content = indoc! {"---
+            name: foo
+            description: |
+              multi-line
+              ---
+              value
+            ---
+            # Body
+            "};
+        let result = parse_skill_frontmatter(content).unwrap();
+        assert_eq!(result.name, "foo");
+        assert_eq!(result.description, "multi-line\n---\nvalue");
     }
 }
