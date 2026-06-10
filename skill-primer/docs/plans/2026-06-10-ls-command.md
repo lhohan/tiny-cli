@@ -70,49 +70,50 @@ Added `Ls` to `Command` enum, `LsOutput` / `generate_ls_output` stub in `lib.rs`
 - [x] `help` output lists `ls` alongside `prime` and `show-config`.
 - [x] No subcommand + `--include <dir>` → stderr error message, help to stdout, non-zero exit.
 
-### Phase 1: `format_skill_name` (unit)
+### Phase 1: `format_skill_name` (unit) ✅
 
-Pure function: takes a skill name, returns a 24-character string (padded or truncated with `...`).
+Pure function: takes a skill name, returns a 24-character string (padded or truncated with `...`). Added `cwd` parameter to `generate_ls_output` and `handle_ls` for forward compatibility.
 
 **Tests (unit, in `lib.rs`):**
-- Short name padded to 24 chars with spaces.
-- Exact 24-char name preserved.
-- Name > 24 chars: first 21 chars + `...`.
-- Multi-byte unicode handled char-by-char, not byte-by-byte.
+- [x] Short name padded to 24 chars with spaces.
+- [x] Exact 24-char name preserved.
+- [x] Name > 24 chars: first 21 chars + `...`.
+- [x] Multi-byte unicode handled char-by-char, not byte-by-byte.
+- [x] Empty include path returns error (added as unit test; cannot express via CLI).
 
-### Phase 2: `ls` with explicit `--include` (integration)
+### Phase 2: `ls` with explicit `--include` (integration) ✅
 
-Wire `generate_ls_output` with explicit `--include`. Reuses existing `scan_skill_directory`. Formats with `format_skill_name`.
-
-**Tests (integration):**
-- Single skill discovered and listed with correct format.
-- Empty include dir → `"No skills found."`.
-- Multiple includes preserve discovery order.
-- Short names padded to align paths.
-- Names > 24 chars truncated with `...`.
-- Exact 24-char name not truncated.
-- Duplicate skill names: first kept, stderr warning emitted.
-- Nested `SKILL.md` inside skill subdirectory ignored.
-- Bad frontmatter → stderr warning, skill excluded.
-- Invalid skill name → stderr warning, skill still listed.
-- Unreadable subdirectory → stderr warning, sibling skills still found.
-- Include path is a file → error, non-zero exit.
-- Include path is empty → error, non-zero exit.
-
-### Phase 3: `detect_repo_root` (integration)
-
-Simple function calling `jj root` then `git rev-parse --show-toplevel`. Tested via CLI integration tests in real temp repositories.
+Wired `generate_ls_output` with explicit `--include`. Reuses existing `scan_skill_directory`. Formats with `format_skill_name`. Output format: `[{name-column}] /path/to/SKILL.md` with 24-char name column.
 
 **Tests (integration):**
-- Real Git repo detected from subdirectory.
-- Outside any repo → `None`.
-- JJ preferred over Git: creates a repo with `jj git init`, verifies the resolved root matches `jj root` output (skip test if no `jj` on PATH).
-- JJ fails, Git fallback: `jj root` unavailable or fails, falls back to `git rev-parse --show-toplevel` (skip if no `git`).
-- Trailing whitespace in command output handled.
+- [x] Single skill discovered and listed with correct format.
+- [x] Empty include dir → `"No skills found."`.
+- [x] Multiple includes preserve discovery order.
+- [x] Short names padded to align paths.
+- [x] Names > 24 chars truncated with `...`.
+- [x] Exact 24-char name not truncated.
+- [x] Duplicate skill names: first kept, stderr warning emitted.
+- [x] Nested `SKILL.md` inside skill subdirectory ignored.
+- [x] Bad frontmatter → stderr warning, skill excluded.
+- [x] Invalid skill name → stderr warning, skill still listed.
+- [x] Unreadable subdirectory → stderr warning, sibling skills still found.
+- [x] Include path is a file → error, non-zero exit.
+- N/A Include path is empty → error, non-zero exit (moved to Phase 1 unit test; cannot express via CLI).
+
+### Phase 3: `detect_repo_root` (unit) ✅
+
+Simple function calling `jj root` then `git rev-parse --show-toplevel`. Tests live in `lib.rs` `#[cfg(test)]` as unit tests.
+
+**Tests (unit):**
+- [x] Real Git repo detected from subdirectory.
+- [x] Outside any repo → `None`.
+- [x] JJ preferred over Git: creates a repo with `jj git init`, verifies the resolved root matches `jj root` output (skip test if no `jj` on PATH).
+- [x] JJ fails, Git fallback: `jj root` unavailable or fails, falls back to `git rev-parse --show-toplevel` (skip if no `git`).
+- [x] Trailing whitespace in command output handled.
 
 ### Phase 4: `ls` with default paths (integration)
 
-Implement `resolve_skill_paths` and drive it through `ls` integration tests against real temp directories.
+Implement `resolve_skill_paths` and drive it through `ls` integration tests against real temp directories. CLI tests must exercise both `git init` and `jj git init` repos to cover the repo-detection path end-to-end — at that point the Phase 3 unit tests can be deleted if proven redundant.
 
 **Tests (integration):**
 - Walks upward from CWD to repo root, collecting `.agents/skills`, `.claude/skills`, `.codex/skills` at each level.
@@ -250,9 +251,11 @@ skills-primer show-config --include /tmp/foo  # lists include path + override no
 | Phase | Count | Type |
 |-------|-------|------|
 | 0 | 3 | integration |
-| 1 | 4 | unit |
-| 2 | 13 | integration |
-| 3 | 5 | integration |
+| 1 | 5 | unit |
+| 2 | 11 | integration |
+| 3 | 5 | unit |
 | 4 | 7 | integration |
 | 5 | 6 | integration |
-| **Total** | **38** | |
+| **Total** | **37** | |
+
+**Completed:** Phases 0–3 (29 tests: 10 unit + 19 integration).

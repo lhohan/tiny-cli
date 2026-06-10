@@ -440,6 +440,42 @@ fn parse_skill_frontmatter(content: &str) -> Option<SkillFrontmatter> {
     Some(frontmatter)
 }
 
+/// Detect the repository root directory from a starting path.
+///
+/// Tries `jj root` first, then falls back to `git rev-parse --show-toplevel`.
+/// Returns `None` if no repository is found or if neither command is available.
+pub fn detect_repo_root(cwd: &Path) -> Option<PathBuf> {
+    // Try jj root first
+    if let Ok(output) = std::process::Command::new("jj")
+        .arg("root")
+        .current_dir(cwd)
+        .output()
+        && output.status.success()
+    {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let trimmed = stdout.trim();
+        if !trimmed.is_empty() {
+            return Some(PathBuf::from(trimmed));
+        }
+    }
+
+    // Fall back to git
+    if let Ok(output) = std::process::Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(cwd)
+        .output()
+        && output.status.success()
+    {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let trimmed = stdout.trim();
+        if !trimmed.is_empty() {
+            return Some(PathBuf::from(trimmed));
+        }
+    }
+
+    None
+}
+
 /// Format a skill name for the `ls` output name column.
 ///
 /// Returns a 24-character string: short names are right-padded with spaces,
@@ -645,5 +681,138 @@ mod tests {
         let errors = result.unwrap_err();
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0], "error: include path cannot be empty");
+    }
+
+    // ── detect_repo_root ──────────────────────────────────
+
+    fn has_command(cmd: &str) -> bool {
+        std::process::Command::new(cmd)
+            .arg("--version")
+            .output()
+            .is_ok()
+    }
+
+    #[test]
+    fn detects_git_repo_from_subdirectory() {
+        if !has_command("git") {
+            return;
+        }
+
+        let tmp = assert_fs::TempDir::new().unwrap();
+        std::process::Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+
+        let subdir = tmp.path().join("a").join("b").join("c");
+        std::fs::create_dir_all(&subdir).unwrap();
+
+        let root = detect_repo_root(&subdir).expect("should detect repo from subdirectory");
+        assert_eq!(
+            root,
+            tmp.path().canonicalize().unwrap(),
+            "detected root should match canonicalized temp dir"
+        );
+    }
+
+    #[test]
+    fn outside_any_repo_returns_none() {
+        let tmp = assert_fs::TempDir::new().unwrap();
+        let result = detect_repo_root(tmp.path());
+        assert!(
+            result.is_none(),
+            "should return None outside any repo, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn jj_preferred_over_git() {
+        if !has_command("jj") {
+            eprintln!("SKIP: jj not found on PATH");
+            return;
+        }
+
+        let tmp = assert_fs::TempDir::new().unwrap();
+        let init = std::process::Command::new("jj")
+            .args(["git", "init", "--git-repo=."])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+
+        if !init.status.success() {
+            eprintln!(
+                "SKIP: jj git init failed: {}",
+                String::from_utf8_lossy(&init.stderr)
+            );
+            return;
+        }
+
+        let root = detect_repo_root(tmp.path()).expect("should detect jj repo root");
+
+        // Verify the result matches jj root output directly
+        let jj_root = std::process::Command::new("jj")
+            .arg("root")
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+        let expected = String::from_utf8_lossy(&jj_root.stdout).trim().to_string();
+        assert_eq!(root, PathBuf::from(&expected));
+        assert_eq!(root, tmp.path().canonicalize().unwrap());
+    }
+
+    #[test]
+    fn jj_fails_git_fallback() {
+        if !has_command("git") {
+            eprintln!("SKIP: git not found on PATH");
+            return;
+        }
+
+        let tmp = assert_fs::TempDir::new().unwrap();
+        std::process::Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+
+        // In a pure git repo (not a jj repo), jj root will fail.
+        // detect_repo_root should fall back to git.
+        let root = detect_repo_root(tmp.path()).expect("should fall back to git when jj fails");
+        assert_eq!(root, tmp.path().canonicalize().unwrap());
+    }
+
+    #[test]
+    fn trailing_whitespace_stripped() {
+        if !has_command("git") {
+            eprintln!("SKIP: git not found on PATH");
+            return;
+        }
+
+        let tmp = assert_fs::TempDir::new().unwrap();
+        std::process::Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+
+        let root = detect_repo_root(tmp.path()).unwrap();
+        let root_str = root.to_str().unwrap();
+
+        assert!(
+            !root_str.ends_with('\n'),
+            "returned path should not end with newline: {:?}",
+            root_str
+        );
+        assert!(
+            !root_str.ends_with(' '),
+            "returned path should not end with space: {:?}",
+            root_str
+        );
+        assert!(
+            !root_str.ends_with('\t'),
+            "returned path should not end with tab: {:?}",
+            root_str
+        );
     }
 }
