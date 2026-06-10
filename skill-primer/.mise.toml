@@ -28,4 +28,4 @@ run = "cargo clean"
 
 [tasks.install]
 description = "Build and install the binary to ~/.cargo/bin with optimizations"
-run = "RUSTFLAGS='-C target-cpu=native -C lto' cargo install --path . --force --release"
+run = "RUSTFLAGS='-C target-cpu=native' CARGO_PROFILE_RELEASE_LTO=fat cargo install --path . --force"
