@@ -13,6 +13,10 @@ pub struct CmdSetup {
     _include_dirs: Vec<(String, assert_fs::TempDir)>,
     _file_fixtures: Vec<(String, String, assert_fs::TempDir)>,
     _path_names: HashMap<String, String>,
+    cwd: Option<std::path::PathBuf>,
+    _repo_dirs: Vec<assert_fs::TempDir>,
+    _home_dirs: Vec<assert_fs::TempDir>,
+    _env_vars: Vec<(String, String)>,
 }
 
 /// Assert phase — wraps assert_cmd result and keeps fixtures alive.
@@ -21,6 +25,8 @@ pub struct CmdResult {
     _include_dirs: Vec<(String, assert_fs::TempDir)>,
     _file_fixtures: Vec<(String, String, assert_fs::TempDir)>,
     _path_names: HashMap<String, String>,
+    _repo_dirs: Vec<assert_fs::TempDir>,
+    _home_dirs: Vec<assert_fs::TempDir>,
 }
 
 impl Cmd {
@@ -30,6 +36,10 @@ impl Cmd {
             _include_dirs: vec![],
             _file_fixtures: vec![],
             _path_names: HashMap::new(),
+            cwd: None,
+            _repo_dirs: vec![],
+            _home_dirs: vec![],
+            _env_vars: vec![],
         }
     }
 }
@@ -127,6 +137,89 @@ impl CmdSetup {
         self
     }
 
+    /// Set the working directory for the command.
+    pub fn with_cwd_dir(mut self, path: &std::path::Path) -> Self {
+        self.cwd = Some(path.to_path_buf());
+        self
+    }
+
+    /// Set an environment variable for the command.
+    pub fn with_env(mut self, key: &str, val: &str) -> Self {
+        self._env_vars.push((key.to_string(), val.to_string()));
+        self
+    }
+
+    /// Create a temporary directory as a simulated HOME directory.
+    /// Creates `{dir}/work` as the default CWD and sets `HOME` to the dir
+    /// via `with_env`. Skills can be added with `with_repo_skill`.
+    /// No `--include` flags are emitted.
+    pub fn with_home(mut self) -> Self {
+        let tmp = assert_fs::TempDir::new().unwrap();
+        let root = tmp.path().to_path_buf();
+        let home_str = root.to_string_lossy().to_string();
+        self._env_vars.push(("HOME".to_string(), home_str));
+        if self.cwd.is_none() {
+            let work = root.join("work");
+            std::fs::create_dir_all(&work).unwrap();
+            self.cwd = Some(work);
+        }
+        self._home_dirs.push(tmp);
+        self
+    }
+
+    /// Create a temporary directory initialised as a git repository.
+    /// The repo root becomes the default CWD. Skills can be added with
+    /// `with_repo_skill`. No `--include` flags are emitted.
+    /// Create a temporary directory initialised as a git repository.
+    /// The repo root becomes the CWD. Skills can be added with
+    /// `with_repo_skill`. No `--include` flags are emitted.
+    /// Use `with_repo_subdir` after this to run from a subdirectory.
+    pub fn with_git_repo(mut self) -> Self {
+        let tmp = assert_fs::TempDir::new().unwrap();
+        std::process::Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+        let root = tmp.path().to_path_buf();
+        self.cwd = Some(root);
+        self._repo_dirs.push(tmp);
+        self
+    }
+
+    /// Add a skill under the most recently created root dir's
+    /// `.agents/skills/{name}/`. Does NOT add `--include`. The root dir must
+    /// have been created by `with_git_repo`, `with_home`, or similar.
+    pub fn with_repo_skill(self, name: &str, description: &str, body: &str) -> Self {
+        let root = self
+            ._repo_dirs
+            .last()
+            .or_else(|| self._home_dirs.last())
+            .unwrap()
+            .path()
+            .to_path_buf();
+        let skill_dir = root.join(".agents/skills").join(name);
+        std::fs::create_dir_all(&skill_dir).unwrap();
+        let content = format!("---\nname: {name}\ndescription: {description}\n---\n{body}");
+        std::fs::write(skill_dir.join("SKILL.md"), &content).unwrap();
+        self
+    }
+
+    /// Create a subdirectory inside the most recent root dir and set CWD to it.
+    pub fn with_repo_subdir(mut self, relative: &str) -> Self {
+        let root = self
+            ._repo_dirs
+            .last()
+            .or_else(|| self._home_dirs.last())
+            .unwrap()
+            .path()
+            .to_path_buf();
+        let subdir = root.join(relative);
+        std::fs::create_dir_all(&subdir).unwrap();
+        self.cwd = Some(subdir);
+        self
+    }
+
     /// Add `--include <path>` using the literal path string (no temp dir created).
     pub fn with_include(mut self, path: &str) -> Self {
         self.args.push("--include".to_string());
@@ -170,11 +263,19 @@ impl CmdSetup {
     pub fn when_run(self) -> CmdResult {
         let mut cmd = assert_cmd::Command::cargo_bin("skills-primer").unwrap();
         cmd.args(&self.args);
+        if let Some(ref cwd) = self.cwd {
+            cmd.current_dir(cwd);
+        }
+        for (key, val) in &self._env_vars {
+            cmd.env(key, val);
+        }
         CmdResult {
             result: cmd.assert(),
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
+            _repo_dirs: self._repo_dirs,
+            _home_dirs: self._home_dirs,
         }
     }
 }
@@ -187,6 +288,8 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
+            _repo_dirs: self._repo_dirs,
+            _home_dirs: self._home_dirs,
         }
     }
 
@@ -197,6 +300,8 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
+            _repo_dirs: self._repo_dirs,
+            _home_dirs: self._home_dirs,
         }
     }
 
@@ -207,6 +312,8 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
+            _repo_dirs: self._repo_dirs,
+            _home_dirs: self._home_dirs,
         }
     }
 
@@ -240,7 +347,34 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
+            _repo_dirs: self._repo_dirs,
+            _home_dirs: self._home_dirs,
         }
+    }
+
+    /// Assert `first` appears before `second` in stdout.
+    pub fn expect_output_order(self, first: &str, second: &str) -> Self {
+        let stdout = String::from_utf8_lossy(&self.result.get_output().stdout);
+        let first_pos = stdout.find(first);
+        let second_pos = stdout.find(second);
+        assert!(
+            first_pos.is_some(),
+            "expected stdout to contain {:?}",
+            first
+        );
+        assert!(
+            second_pos.is_some(),
+            "expected stdout to contain {:?}",
+            second
+        );
+        assert!(
+            first_pos.unwrap() < second_pos.unwrap(),
+            "expected {:?} to appear before {:?} in stdout, but found the reverse\nstdout: {}",
+            first,
+            second,
+            stdout
+        );
+        self
     }
 
     /// Assert stdout contains the given text exactly `count` times.
@@ -262,6 +396,8 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
+            _repo_dirs: self._repo_dirs,
+            _home_dirs: self._home_dirs,
         }
     }
 
@@ -280,6 +416,8 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
+            _repo_dirs: self._repo_dirs,
+            _home_dirs: self._home_dirs,
         }
     }
 

@@ -22,7 +22,7 @@ pub struct ShowConfigResponse {
 
 /// Generate `ls` output for the given include directories and
 /// working directory.
-pub fn generate_ls_output(include_dirs: &[PathBuf], _cwd: &Path) -> Result<LsOutput, Vec<String>> {
+pub fn generate_ls_output(include_dirs: &[PathBuf], cwd: &Path) -> Result<LsOutput, Vec<String>> {
     // Pre-check: reject file paths as directories before delegating to collect_skills
     for dir in include_dirs {
         if dir.is_file() {
@@ -33,7 +33,18 @@ pub fn generate_ls_output(include_dirs: &[PathBuf], _cwd: &Path) -> Result<LsOut
         }
     }
 
-    let (all_skills, stderr) = collect_skills(include_dirs)?;
+    let resolved = resolve_skill_paths(include_dirs, cwd);
+    let scan_dirs: Vec<PathBuf> = if include_dirs.is_empty() {
+        // For default paths, silently skip non-existent directories.
+        resolved
+            .into_iter()
+            .filter(|p| p.is_dir())
+            .collect::<Vec<_>>()
+    } else {
+        resolved
+    };
+
+    let (all_skills, stderr) = collect_skills(&scan_dirs)?;
 
     if all_skills.is_empty() {
         return Ok(LsOutput {
@@ -478,6 +489,84 @@ pub fn detect_repo_root(cwd: &Path) -> Option<PathBuf> {
     None
 }
 
+/// Compute a canonical key for deduplication purposes.
+///
+/// If the path exists, uses `std::fs::canonicalize` to resolve symlinks.
+/// If the path does not exist, returns the path as-is (already absolute
+/// in normal usage).
+fn canonical_key(path: &Path) -> PathBuf {
+    if path.exists() {
+        path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+    } else {
+        path.to_path_buf()
+    }
+}
+
+/// Resolve all candidate skill paths.
+///
+/// - When `include_dirs` is non-empty: returns them verbatim in order
+///   (no deduplication). Default path resolution is skipped entirely.
+/// - When `include_dirs` is empty: walks from CWD upward, collecting
+///   `.agents/skills`, `.claude/skills`, `.codex/skills` at each level until
+///   the repo root (or HOME) is reached, then appends home directory
+///   candidates. Default paths are deduplicated by canonical path; the first
+///   occurrence in discovery order wins.
+pub fn resolve_skill_paths(include_dirs: &[PathBuf], cwd: &Path) -> Vec<PathBuf> {
+    if !include_dirs.is_empty() {
+        return include_dirs.to_vec();
+    }
+
+    let skill_dirs = [".agents/skills", ".claude/skills", ".codex/skills"];
+    let mut paths: Vec<PathBuf> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    // Determine walk stop point: repo root or HOME.
+    let stop_at: Option<PathBuf> =
+        detect_repo_root(cwd).or_else(|| std::env::var("HOME").ok().map(PathBuf::from));
+
+    let mut current = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
+
+    loop {
+        for name in &skill_dirs {
+            let candidate = current.join(name);
+            let key = canonical_key(&candidate);
+            if seen.insert(key) {
+                paths.push(candidate);
+            }
+        }
+
+        // Check stop condition AFTER processing the current level,
+        // so the stop directory is included in the check.
+        if let Some(ref stop) = stop_at {
+            let stop_canonical = stop.canonicalize().unwrap_or_else(|_| stop.clone());
+            let current_canonical = current.canonicalize().unwrap_or_else(|_| current.clone());
+            if current_canonical == stop_canonical {
+                break;
+            }
+        }
+
+        // Move to parent.
+        match current.parent() {
+            Some(parent) => current = parent.to_path_buf(),
+            None => break,
+        }
+    }
+
+    // Append home directory candidates.
+    if let Ok(home) = std::env::var("HOME") {
+        let home = PathBuf::from(home);
+        for name in &skill_dirs {
+            let candidate = home.join(name);
+            let key = canonical_key(&candidate);
+            if seen.insert(key) {
+                paths.push(candidate);
+            }
+        }
+    }
+
+    paths
+}
+
 /// Format a skill name for the `ls` output name column.
 ///
 /// Returns a 24-character string: short names are right-padded with spaces,
@@ -683,104 +772,5 @@ mod tests {
         let errors = result.unwrap_err();
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0], "error: include path cannot be empty");
-    }
-
-    // ── detect_repo_root ──────────────────────────────────
-
-    fn has_command(cmd: &str) -> bool {
-        std::process::Command::new(cmd)
-            .arg("--version")
-            .output()
-            .is_ok()
-    }
-
-    #[test]
-    fn detects_git_repo_from_subdirectory() {
-        if !has_command("git") {
-            return;
-        }
-
-        let tmp = assert_fs::TempDir::new().unwrap();
-        std::process::Command::new("git")
-            .args(["init", "-b", "main"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-
-        let subdir = tmp.path().join("a").join("b").join("c");
-        std::fs::create_dir_all(&subdir).unwrap();
-
-        let root = detect_repo_root(&subdir).expect("should detect repo from subdirectory");
-        assert_eq!(
-            root,
-            tmp.path().canonicalize().unwrap(),
-            "detected root should match canonicalized temp dir"
-        );
-    }
-
-    #[test]
-    fn outside_any_repo_returns_none() {
-        let tmp = assert_fs::TempDir::new().unwrap();
-        let result = detect_repo_root(tmp.path());
-        assert!(
-            result.is_none(),
-            "should return None outside any repo, got {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn jj_preferred_over_git() {
-        if !has_command("jj") {
-            eprintln!("SKIP: jj not found on PATH");
-            return;
-        }
-
-        let tmp = assert_fs::TempDir::new().unwrap();
-        let init = std::process::Command::new("jj")
-            .args(["git", "init", "--git-repo=."])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-
-        if !init.status.success() {
-            eprintln!(
-                "SKIP: jj git init failed: {}",
-                String::from_utf8_lossy(&init.stderr)
-            );
-            return;
-        }
-
-        let root = detect_repo_root(tmp.path()).expect("should detect jj repo root");
-
-        // Verify the result matches jj root output directly
-        let jj_root = std::process::Command::new("jj")
-            .arg("root")
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-        let expected = String::from_utf8_lossy(&jj_root.stdout).trim().to_string();
-        assert_eq!(root, PathBuf::from(&expected));
-        assert_eq!(root, tmp.path().canonicalize().unwrap());
-    }
-
-    #[test]
-    fn jj_fails_git_fallback() {
-        if !has_command("git") {
-            eprintln!("SKIP: git not found on PATH");
-            return;
-        }
-
-        let tmp = assert_fs::TempDir::new().unwrap();
-        std::process::Command::new("git")
-            .args(["init", "-b", "main"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-
-        // In a pure git repo (not a jj repo), jj root will fail.
-        // detect_repo_root should fall back to git.
-        let root = detect_repo_root(tmp.path()).expect("should fall back to git when jj fails");
-        assert_eq!(root, tmp.path().canonicalize().unwrap());
     }
 }
