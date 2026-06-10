@@ -35,9 +35,9 @@ fn agent_without_skills_should_not_find_skills_when_primed() {
             .instructions;
 
     AgentWithoutSkills::with_system_prompt(skills_system_prompt)
-        .when_run_with("Do you have any skills available? Answer with SKILLS_AVAILABLE")
+        .when_run_with("Load test-skill")
         .should_succeed()
-        .expect_output("SKILLS_AVAILABLE");
+        .expect_output("Loaded primed skill: [test-skill]");
 }
 
 /// Setup phase - entry point for end-to-end Pi tests
