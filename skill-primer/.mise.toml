@@ -27,5 +27,5 @@ description = "Clean build artifacts"
 run = "cargo clean"
 
 [tasks.install]
-description = "Build and install the binary to ~/.cargo/bin"
-run = "cargo install --path . --force"
+description = "Build and install the binary to ~/.cargo/bin with optimizations"
+run = "RUSTFLAGS='-C target-cpu=native -C lto' cargo install --path . --force --release"
