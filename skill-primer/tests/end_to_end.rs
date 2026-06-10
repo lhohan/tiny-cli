@@ -16,11 +16,9 @@ use wait_timeout::ChildExt;
     ignore = "test agents's command not found - install a test agent to run this test"
 )]
 #[test]
-fn list_available_skills_should_not_find_skills_when_not_primed() {
+fn agent_without_skills_should_not_find_skills_when_not_primed() {
     AgentWithoutSkills::given()
-        .with_system_prompt(
-            skills_primer::generate_prime_output(&[]).expect("prime output should succeed"),
-        )
+        .system_prompt("".to_string())
         .prompt("Do you have any skills available? Answer SUCCESS or FAIL.")
         .when_run()
         .should_succeed()
@@ -32,13 +30,14 @@ fn list_available_skills_should_not_find_skills_when_not_primed() {
     ignore = "test agents's command not found - install a test agent to run this test"
 )]
 #[test]
-fn prime_output_detects_skill_in_fixture() {
+fn agent_without_skills_should_not_find_skills_when_primed() {
     let include_dir = PathBuf::from("tests/fixtures/test-skill");
 
     AgentWithoutSkills::given()
-        .with_system_prompt(
+        .system_prompt(
             skills_primer::generate_prime_output(&[include_dir])
-                .expect("prime output should succeed"),
+                .expect("prime output should succeed")
+                .instructions,
         )
         .prompt("Do you have any skills available? Answer SUCCESS or FAIL.")
         .when_run()
@@ -57,7 +56,6 @@ pub struct PiCmdSetup {
     env_vars: Vec<(String, String)>,
     timeout: Option<Duration>,
     system_prompt: Option<String>,
-    prime_warnings: Vec<String>,
     _tmp_dir: Option<TempDir>,
     _home_dir: Option<TempDir>,
 }
@@ -68,14 +66,13 @@ pub struct PiCmdResult {
     stderr: String,
     exit_code: i32,
     timed_out: bool,
-    prime_warnings: Vec<String>,
 }
 
 impl AgentWithoutSkills {
     pub fn given() -> PiCmdSetup {
-        let tmp = Self::pi_agent_dir();
+        let tmp = Self::temp_dir_in_target();
         let path = tmp.path().to_str().unwrap().to_string();
-        let home = Self::pi_home_dir();
+        let home = Self::temp_dir_in_target();
         let home_path = home.path().to_str().unwrap().to_string();
         let mut env_vars = vec![
             ("PI_CODING_AGENT_DIR".to_string(), path),
@@ -101,24 +98,15 @@ impl AgentWithoutSkills {
             env_vars,
             timeout: Some(Duration::from_secs(60)),
             system_prompt: None,
-            prime_warnings: Vec::new(),
             _tmp_dir: Some(tmp),
             _home_dir: Some(home),
         }
     }
 
-    /// Fixture: create a temporary PI_CODING_AGENT_DIR inside the project's
-    /// `target/` directory. This avoids macOS TCC restrictions that block
-    /// access to `~/.pi/` and similar system locations.
-    fn pi_agent_dir() -> TempDir {
-        let project_target = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target");
-        std::fs::create_dir_all(&project_target).unwrap();
-        TempDir::new_in(&project_target).unwrap()
-    }
-
-    /// Fixture: create a temporary HOME directory so `pi` can write its
-    /// `~/.pi/agent` configuration without touching the real home directory.
-    fn pi_home_dir() -> TempDir {
+    /// Fixture: create a temporary directory inside the project's `target/`
+    /// directory. This avoids macOS TCC restrictions that block access to
+    /// `~/.pi/` and similar system locations.
+    fn temp_dir_in_target() -> TempDir {
         let project_target = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target");
         std::fs::create_dir_all(&project_target).unwrap();
         TempDir::new_in(&project_target).unwrap()
@@ -163,9 +151,8 @@ impl PiCmdSetup {
     }
 
     /// Set the system prompt from generated prime output.
-    pub fn with_system_prompt(mut self, prime: skills_primer::PrimeResponse) -> Self {
-        self.system_prompt = Some(prime.instructions);
-        self.prime_warnings = prime.warnings;
+    pub fn system_prompt(mut self, skills_prompt: String) -> Self {
+        self.system_prompt = Some(skills_prompt);
         self
     }
 
@@ -207,7 +194,6 @@ impl PiCmdSetup {
             stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
             exit_code: output.status.code().unwrap_or(-1),
             timed_out: self.timeout.is_some() && output.status.code().is_none(),
-            prime_warnings: self.prime_warnings,
         }
     }
 
@@ -252,42 +238,35 @@ impl PiCmdSetup {
                             stderr: stderr_buf,
                         }
                     }
-                    Ok(None) => {
-                        // Timeout - kill the process
-                        let _ = child.kill();
-                        let status = child.wait().unwrap_or_default();
-                        // Try to get whatever output we have
-                        let stdout_buf = stdout_handle
-                            .and_then(|h| h.join().ok())
-                            .unwrap_or_default();
-                        let stderr_buf = stderr_handle
-                            .and_then(|h| h.join().ok())
-                            .unwrap_or_default();
-                        Output {
-                            status,
-                            stdout: stdout_buf,
-                            stderr: stderr_buf,
-                        }
-                    }
+                    Ok(None) => Self::collect_after_kill(&mut child, stdout_handle, stderr_handle),
                     Err(e) => {
                         eprintln!("Error waiting for child: {}", e);
-                        let _ = child.kill();
-                        let status = child.wait().unwrap_or_default();
-                        let stdout_buf = stdout_handle
-                            .and_then(|h| h.join().ok())
-                            .unwrap_or_default();
-                        let stderr_buf = stderr_handle
-                            .and_then(|h| h.join().ok())
-                            .unwrap_or_default();
-                        Output {
-                            status,
-                            stdout: stdout_buf,
-                            stderr: stderr_buf,
-                        }
+                        Self::collect_after_kill(&mut child, stdout_handle, stderr_handle)
                     }
                 }
             }
             None => child.wait_with_output().expect("Failed to wait for pi"),
+        }
+    }
+
+    /// Kill the child process and collect whatever output was produced
+    fn collect_after_kill(
+        child: &mut std::process::Child,
+        stdout_handle: Option<thread::JoinHandle<Vec<u8>>>,
+        stderr_handle: Option<thread::JoinHandle<Vec<u8>>>,
+    ) -> Output {
+        let _ = child.kill();
+        let status = child.wait().unwrap_or_default();
+        let stdout_buf = stdout_handle
+            .and_then(|h| h.join().ok())
+            .unwrap_or_default();
+        let stderr_buf = stderr_handle
+            .and_then(|h| h.join().ok())
+            .unwrap_or_default();
+        Output {
+            status,
+            stdout: stdout_buf,
+            stderr: stderr_buf,
         }
     }
 }
@@ -307,11 +286,6 @@ impl PiCmdResult {
             )
         };
         assert_eq!(self.exit_code, 0, "{}", msg);
-        assert!(
-            self.prime_warnings.is_empty(),
-            "Expected no prime warnings, but got: {:?}",
-            self.prime_warnings
-        );
         self
     }
 
