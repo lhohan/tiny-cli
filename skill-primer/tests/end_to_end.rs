@@ -6,21 +6,60 @@
 use assert_fs::TempDir;
 use std::io::Read;
 use std::path::PathBuf;
-use std::process::{Command, ExitStatus, Output, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::thread;
 use std::time::Duration;
 use wait_timeout::ChildExt;
 
+#[cfg_attr(
+    not(has_test_agent),
+    ignore = "test agents's command not found - install a test agent to run this test"
+)]
+#[test]
+fn list_available_skills_should_not_find_skills_when_not_primed() {
+    AgentWithoutSkills::given()
+        .with_system_prompt(
+            skills_primer::generate_prime_output(&[]).expect("prime output should succeed"),
+        )
+        .prompt("Do you have any skills available? Answer SUCCESS or FAIL.")
+        .when_run()
+        .should_succeed()
+        .expect_output("FAIL");
+}
+
+#[cfg_attr(
+    not(has_test_agent),
+    ignore = "test agents's command not found - install a test agent to run this test"
+)]
+#[test]
+fn prime_output_detects_skill_in_fixture() {
+    let include_dir = PathBuf::from("tests/fixtures/test-skill");
+
+    AgentWithoutSkills::given()
+        .with_system_prompt(
+            skills_primer::generate_prime_output(&[include_dir])
+                .expect("prime output should succeed"),
+        )
+        .prompt("Do you have any skills available? Answer SUCCESS or FAIL.")
+        .when_run()
+        .should_succeed()
+        .expect_output("SUCCESS");
+}
+
 /// Setup phase - entry point for end-to-end Pi tests
 pub struct AgentWithoutSkills;
 
-/// Action phase - holds the command configuration
+/// Action phase - holds the command configuration for running pi
 pub struct PiCmdSetup {
     args: Vec<String>,
     stdin_input: Option<String>,
     cwd: Option<PathBuf>,
     env_vars: Vec<(String, String)>,
     timeout: Option<Duration>,
+    system_prompt: Option<String>,
+    prime_warnings: Vec<String>,
+    _tmp_dir: Option<TempDir>,
+    _home_dir: Option<TempDir>,
 }
 
 /// Result phase - wraps the command output
@@ -29,10 +68,26 @@ pub struct PiCmdResult {
     stderr: String,
     exit_code: i32,
     timed_out: bool,
+    prime_warnings: Vec<String>,
 }
 
 impl AgentWithoutSkills {
     pub fn given() -> PiCmdSetup {
+        let tmp = Self::pi_agent_dir();
+        let path = tmp.path().to_str().unwrap().to_string();
+        let home = Self::pi_home_dir();
+        let home_path = home.path().to_str().unwrap().to_string();
+        let mut env_vars = vec![
+            ("PI_CODING_AGENT_DIR".to_string(), path),
+            ("HOME".to_string(), home_path),
+        ];
+        if let Ok(key) = std::env::var("MISTRAL_API_KEY") {
+            env_vars.push(("MISTRAL_API_KEY".to_string(), key));
+        }
+        if let Ok(key) = std::env::var("OPENCODE_ZEROSTACK_API_KEY") {
+            env_vars.push(("OPENCODE_ZEROSTACK_API_KEY".to_string(), key));
+        }
+
         PiCmdSetup {
             args: vec![
                 "--print".to_string(),
@@ -43,9 +98,30 @@ impl AgentWithoutSkills {
             ],
             stdin_input: None,
             cwd: None,
-            env_vars: vec![],
-            timeout: None,
+            env_vars,
+            timeout: Some(Duration::from_secs(60)),
+            system_prompt: None,
+            prime_warnings: Vec::new(),
+            _tmp_dir: Some(tmp),
+            _home_dir: Some(home),
         }
+    }
+
+    /// Fixture: create a temporary PI_CODING_AGENT_DIR inside the project's
+    /// `target/` directory. This avoids macOS TCC restrictions that block
+    /// access to `~/.pi/` and similar system locations.
+    fn pi_agent_dir() -> TempDir {
+        let project_target = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target");
+        std::fs::create_dir_all(&project_target).unwrap();
+        TempDir::new_in(&project_target).unwrap()
+    }
+
+    /// Fixture: create a temporary HOME directory so `pi` can write its
+    /// `~/.pi/agent` configuration without touching the real home directory.
+    fn pi_home_dir() -> TempDir {
+        let project_target = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target");
+        std::fs::create_dir_all(&project_target).unwrap();
+        TempDir::new_in(&project_target).unwrap()
     }
 }
 
@@ -86,9 +162,19 @@ impl PiCmdSetup {
         self
     }
 
+    /// Set the system prompt from generated prime output.
+    pub fn with_system_prompt(mut self, prime: skills_primer::PrimeResponse) -> Self {
+        self.system_prompt = Some(prime.instructions);
+        self.prime_warnings = prime.warnings;
+        self
+    }
+
     /// Execute the pi command
     pub fn when_run(self) -> PiCmdResult {
         let mut cmd = Command::new("pi");
+        if let Some(system_prompt) = &self.system_prompt {
+            cmd.arg("--system-prompt").arg(system_prompt);
+        }
         cmd.args(&self.args);
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
@@ -121,6 +207,7 @@ impl PiCmdSetup {
             stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
             exit_code: output.status.code().unwrap_or(-1),
             timed_out: self.timeout.is_some() && output.status.code().is_none(),
+            prime_warnings: self.prime_warnings,
         }
     }
 
@@ -168,7 +255,7 @@ impl PiCmdSetup {
                     Ok(None) => {
                         // Timeout - kill the process
                         let _ = child.kill();
-                        let status = child.wait().unwrap_or(ExitStatus::default());
+                        let status = child.wait().unwrap_or_default();
                         // Try to get whatever output we have
                         let stdout_buf = stdout_handle
                             .and_then(|h| h.join().ok())
@@ -185,7 +272,7 @@ impl PiCmdSetup {
                     Err(e) => {
                         eprintln!("Error waiting for child: {}", e);
                         let _ = child.kill();
-                        let status = child.wait().unwrap_or(ExitStatus::default());
+                        let status = child.wait().unwrap_or_default();
                         let stdout_buf = stdout_handle
                             .and_then(|h| h.join().ok())
                             .unwrap_or_default();
@@ -206,7 +293,7 @@ impl PiCmdSetup {
 }
 
 impl PiCmdResult {
-    /// Assert the command exited successfully (exit code 0)
+    /// Assert the command exited successfully (exit code 0) and no prime warnings
     pub fn should_succeed(self) -> Self {
         let msg = if self.timed_out {
             format!(
@@ -220,6 +307,11 @@ impl PiCmdResult {
             )
         };
         assert_eq!(self.exit_code, 0, "{}", msg);
+        assert!(
+            self.prime_warnings.is_empty(),
+            "Expected no prime warnings, but got: {:?}",
+            self.prime_warnings
+        );
         self
     }
 
@@ -261,34 +353,4 @@ impl PiCmdResult {
     pub fn and(self) -> Self {
         self
     }
-}
-
-// ============================================================================
-// Tests
-// ============================================================================
-
-/// Fixture: create a temporary PI_CODING_AGENT_DIR inside the project's
-/// `target/` directory. This avoids macOS TCC restrictions that block
-/// access to `~/.pi/` and similar system locations.
-fn pi_agent_dir() -> TempDir {
-    let project_target = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target");
-    std::fs::create_dir_all(&project_target).unwrap();
-    TempDir::new_in(&project_target).unwrap()
-}
-
-#[cfg_attr(
-    not(has_test_agent),
-    ignore = "test agents's command not found - install a test agent to run this test"
-)]
-#[test]
-fn pi_has_skills_available_from_user_directory() {
-    let agent_dir = pi_agent_dir();
-
-    AgentWithoutSkills::given()
-        .env("PI_CODING_AGENT_DIR", agent_dir.path().to_str().unwrap())
-        .with_timeout(Duration::from_secs(20))
-        .prompt("Do you have any skills available? Answer yes or no.")
-        .when_run()
-        .should_succeed()
-        .expect_output("no");
 }
