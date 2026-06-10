@@ -1,6 +1,7 @@
 //! End-to-end tests for Pi integration via subprocess
 //!
 //! These tests verify that Pi can be invoked as a subprocess with simple prompts.
+//! They are skipped at build time if the `pi` binary is not on `$PATH`.
 
 use std::process::{Command, Stdio};
 
@@ -127,10 +128,12 @@ impl PiCmdResult {
 // Tests
 // ============================================================================
 
+#[cfg_attr(
+    not(has_test_agent),
+    ignore = "test agents's command not found - install a test agent to run this test"
+)]
 #[test]
 fn pi_responds_to_simple_subprocess_prompt() {
-    // This test demonstrates the simplest way to use Pi as a library:
-    // spawn it as a subprocess with a prompt argument in print mode
     PiCmd::given()
         .prompt("List all Rust files in the current directory")
         .when_run()
