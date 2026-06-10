@@ -12,6 +12,7 @@ use rstest::rstest;
 #[case::exceeds_64_chars("a".repeat(65), "exceeds 64 characters")]
 fn prime_should_emit_warning_when_skill_name(#[case] name: String, #[case] expected_warning: &str) {
     Cmd::given()
+        .command_prime()
         .with_skill_raw(
             "my-skill",
             &format!(
@@ -38,6 +39,7 @@ fn prime_should_emit_warning_when_skill_name(#[case] name: String, #[case] expec
 #[case::name_contains_exactly_64_chars("a".repeat(64))]
 fn skill_should_be_valid_when(#[case] name: String) {
     Cmd::given()
+        .command_prime()
         .with_skill_raw(
             "my-skill",
             &format!(

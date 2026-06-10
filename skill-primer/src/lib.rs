@@ -2,6 +2,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub struct LsOutput {
+    pub skill_paths: Vec<String>,
+    pub stderr: Vec<String>,
+}
+
 pub struct PrimeResponse {
     /// The full stdout content (instructions block + XML catalog).
     pub instructions: String,
@@ -12,6 +17,14 @@ pub struct PrimeResponse {
 pub struct ShowConfigResponse {
     pub search_paths: Vec<String>,
     pub stderr: Vec<String>,
+}
+
+/// Generate `ls` output for the given include directories.
+pub fn generate_ls_output(_include_dirs: &[PathBuf]) -> Result<LsOutput, Vec<String>> {
+    Ok(LsOutput {
+        skill_paths: vec!["No skills found.".to_string()],
+        stderr: vec![],
+    })
 }
 
 /// Generate the complete `prime` output for the given include directories and

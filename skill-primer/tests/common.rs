@@ -109,9 +109,21 @@ impl CmdSetup {
         self
     }
 
+    /// Set the subcommand to `prime`.
+    pub fn command_prime(mut self) -> Self {
+        self.args.push("prime".to_string());
+        self
+    }
+
     /// Set the subcommand to `show-config`.
     pub fn command_show_config(mut self) -> Self {
         self.args.push("show-config".to_string());
+        self
+    }
+
+    /// Set the subcommand to `ls`.
+    pub fn command_ls(mut self) -> Self {
+        self.args.push("ls".to_string());
         self
     }
 
@@ -259,6 +271,7 @@ impl CmdResult {
         self.expect_output("Usage:")
             .expect_output("Commands:")
             .expect_output("prime")
+            .expect_output("ls")
             .expect_output("show-config")
     }
 

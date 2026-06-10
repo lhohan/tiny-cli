@@ -6,6 +6,7 @@ use indoc::indoc;
 #[test]
 fn prime_should_discover_skills_when_include_provided() {
     Cmd::given()
+        .command_prime()
         .with_include_dir("skills-dir")
         .with_skill(
             "example-skill",
@@ -22,6 +23,7 @@ fn prime_should_discover_skills_when_include_provided() {
 #[test]
 fn prime_should_not_discover_skills_when_include_empty() {
     Cmd::given()
+        .command_prime()
         .with_empty_include_dir()
         .when_run()
         .should_succeed()
@@ -33,6 +35,7 @@ fn prime_should_not_discover_skills_when_include_empty() {
 #[test]
 fn prime_should_merge_skills_from_multiple_includes() {
     Cmd::given()
+        .command_prime()
         .with_include_dir("first")
         .with_skill("skill-a", "First skill.", "# Skill A")
         .with_include_dir("second")
@@ -48,6 +51,7 @@ fn prime_should_merge_skills_from_multiple_includes() {
 #[test]
 fn prime_should_skip_skill_with_bad_frontmatter() {
     Cmd::given()
+        .command_prime()
         .with_skill_raw(
             "skill_dir",
             "---\nname: broken\ndescription: [unclosed\n---\n# Nope\n",
@@ -62,6 +66,7 @@ fn prime_should_skip_skill_with_bad_frontmatter() {
 #[test]
 fn prime_should_deduplicate_skills_by_name_from_multiple_includes() {
     Cmd::given()
+        .command_prime()
         .with_include_dir("first")
         .with_skill("shared-skill", "Shared description", "# Shared")
         .with_include_dir("second")
@@ -102,6 +107,7 @@ fn unreadable_subdirectory_should_warn() {
 
     // Run the tool against the parent directory — expect a warning
     Cmd::given()
+        .command_prime()
         .with_include(tmp.to_str().unwrap())
         .when_run()
         .should_succeed()
