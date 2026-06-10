@@ -2,6 +2,7 @@
 
 use assert_fs::fixture::{FileWriteStr, PathChild};
 use predicates::prelude::PredicateBooleanExt;
+use std::collections::HashMap;
 
 /// Setup phase — entry point. Zero-sized marker.
 pub struct Cmd;
@@ -10,12 +11,16 @@ pub struct Cmd;
 pub struct CmdSetup {
     args: Vec<String>,
     _include_dirs: Vec<(String, assert_fs::TempDir)>,
+    _file_fixtures: Vec<(String, String, assert_fs::TempDir)>,
+    _path_names: HashMap<String, String>,
 }
 
 /// Assert phase — wraps assert_cmd result and keeps fixtures alive.
 pub struct CmdResult {
     result: assert_cmd::assert::Assert,
     _include_dirs: Vec<(String, assert_fs::TempDir)>,
+    _file_fixtures: Vec<(String, String, assert_fs::TempDir)>,
+    _path_names: HashMap<String, String>,
 }
 
 impl Cmd {
@@ -23,6 +28,8 @@ impl Cmd {
         CmdSetup {
             args: vec![],
             _include_dirs: vec![],
+            _file_fixtures: vec![],
+            _path_names: HashMap::new(),
         }
     }
 }
@@ -41,12 +48,12 @@ impl CmdSetup {
     }
 
     /// Create a named temporary include directory and add `--include <path>`.
-    /// The name is cosmetic (for test readability); skills are added to the
-    /// most recently pushed directory.
+    /// The name maps to the temp dir path for later config assertions.
     pub fn with_include_dir(mut self, name: &str) -> Self {
         let tmp = assert_fs::TempDir::new().unwrap();
         let path = tmp.to_str().unwrap().to_string();
         self._include_dirs.push((name.to_string(), tmp));
+        self._path_names.insert(name.to_string(), path.clone());
         self.args.push("--include".to_string());
         self.args.push(path);
         self
@@ -65,7 +72,18 @@ impl CmdSetup {
             let path = tmp.to_str().unwrap().to_string();
             self._include_dirs.push(("auto".to_string(), tmp));
             self.args.push("--include".to_string());
-            self.args.push(path);
+            self.args.push(path.clone());
+            self._path_names.insert(name.to_string(), path);
+        } else {
+            let path = self
+                ._include_dirs
+                .last()
+                .unwrap()
+                .1
+                .to_str()
+                .unwrap()
+                .to_string();
+            self._path_names.insert(name.to_string(), path);
         }
         let dir = &self._include_dirs.last().unwrap().1;
         let skill_file = dir.child(format!("{name}/SKILL.md"));
@@ -90,6 +108,35 @@ impl CmdSetup {
         skill_file.write_str(content).unwrap();
         self
     }
+
+    /// Set the subcommand to `show-config`.
+    pub fn command_show_config(mut self) -> Self {
+        self.args.push("show-config".to_string());
+        self
+    }
+
+    /// Add `--include <path>` using the literal path string (no temp dir created).
+    pub fn with_include(mut self, path: &str) -> Self {
+        self.args.push("--include".to_string());
+        self.args.push(path.to_string());
+        self
+    }
+
+    /// Create a temporary file and add `--include <path-to-file>`.
+    /// The file is treated as a non-directory path, used to test error handling.
+    pub fn with_file_include(mut self, name: &str) -> Self {
+        let tmp = assert_fs::TempDir::new().unwrap();
+        let file_path = tmp.path().join(name);
+        std::fs::write(&file_path, "this is a file, not a directory").unwrap();
+        let path_str = file_path.to_str().unwrap().to_string();
+        self.args.push("--include".to_string());
+        self.args.push(path_str.clone());
+        self._file_fixtures.push((name.to_string(), path_str, tmp));
+        self._path_names
+            .insert(name.to_string(), file_path.to_str().unwrap().to_string());
+        self
+    }
+
     /// Execute against the binary.
     pub fn when_run(self) -> CmdResult {
         let mut cmd = assert_cmd::Command::cargo_bin("skills-primer").unwrap();
@@ -97,6 +144,8 @@ impl CmdSetup {
         CmdResult {
             result: cmd.assert(),
             _include_dirs: self._include_dirs,
+            _file_fixtures: self._file_fixtures,
+            _path_names: self._path_names,
         }
     }
 }
@@ -107,6 +156,8 @@ impl CmdResult {
         CmdResult {
             result: self.result.success(),
             _include_dirs: self._include_dirs,
+            _file_fixtures: self._file_fixtures,
+            _path_names: self._path_names,
         }
     }
 
@@ -115,6 +166,8 @@ impl CmdResult {
         CmdResult {
             result: self.result.failure(),
             _include_dirs: self._include_dirs,
+            _file_fixtures: self._file_fixtures,
+            _path_names: self._path_names,
         }
     }
 
@@ -123,6 +176,8 @@ impl CmdResult {
         CmdResult {
             result: self.result.stdout(predicates::str::contains(text)),
             _include_dirs: self._include_dirs,
+            _file_fixtures: self._file_fixtures,
+            _path_names: self._path_names,
         }
     }
 
@@ -154,6 +209,8 @@ impl CmdResult {
         CmdResult {
             result: self.result.stdout(predicates::str::contains(text).not()),
             _include_dirs: self._include_dirs,
+            _file_fixtures: self._file_fixtures,
+            _path_names: self._path_names,
         }
     }
 
@@ -174,6 +231,8 @@ impl CmdResult {
         CmdResult {
             result: self.result.stderr(predicates::str::contains(text)),
             _include_dirs: self._include_dirs,
+            _file_fixtures: self._file_fixtures,
+            _path_names: self._path_names,
         }
     }
 
@@ -190,6 +249,8 @@ impl CmdResult {
         CmdResult {
             result: self.result.stderr(predicates::str::contains(path)),
             _include_dirs: self._include_dirs,
+            _file_fixtures: self._file_fixtures,
+            _path_names: self._path_names,
         }
     }
 
@@ -198,6 +259,7 @@ impl CmdResult {
         self.expect_output("Usage:")
             .expect_output("Commands:")
             .expect_output("prime")
+            .expect_output("show-config")
     }
 
     /// Composite assertion for the full `prime` subcommand output.
@@ -205,5 +267,55 @@ impl CmdResult {
         self.expect_skills_header()
             .expect_instructions()
             .expect_available_skills()
+    }
+
+    // ── Config-related assertions ───────────────────────────
+
+    /// Resolve a fixture name to its absolute path via `_path_names`,
+    /// falling back to the raw string if not found.
+    fn resolve_path(&self, name_or_path: &str) -> String {
+        self._path_names
+            .get(name_or_path)
+            .cloned()
+            .unwrap_or_else(|| name_or_path.to_string())
+    }
+
+    /// Assert a path appears with `exists` status in stdout.
+    pub fn expect_exists_in_config(self, name: &str) -> Self {
+        let path = self.resolve_path(name);
+        self.expect_output("exists").expect_output(&path)
+    }
+
+    /// Assert a path appears with `missing` status in stdout.
+    pub fn expect_missing_in_config(self, path: &str) -> Self {
+        self.expect_output("missing").expect_output(path)
+    }
+
+    /// Assert a path appears with `error` status in stdout.
+    pub fn expect_error_in_config(self, name: &str) -> Self {
+        let path = self.resolve_path(name);
+        self.expect_output("error").expect_output(&path)
+    }
+
+    /// Assert stdout is completely empty.
+    pub fn expect_no_output(self) -> Self {
+        let stdout = &self.result.get_output().stdout;
+        assert!(
+            stdout.is_empty(),
+            "expected empty stdout, got: {:?}",
+            String::from_utf8_lossy(stdout),
+        );
+        self
+    }
+
+    /// Assert stderr is completely empty.
+    pub fn expect_stderr_empty(self) -> Self {
+        let stderr = &self.result.get_output().stderr;
+        assert!(
+            stderr.is_empty(),
+            "expected empty stderr, got: {:?}",
+            String::from_utf8_lossy(stderr),
+        );
+        self
     }
 }

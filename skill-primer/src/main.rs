@@ -18,16 +18,36 @@ struct Cli {
 enum Command {
     /// Print skill loading instructions and skill catalog. Use to 'prime' a coding agent.
     Prime,
+    /// Show the CLI configuration
+    ShowConfig,
 }
 
 fn main() {
     let cli = Cli::parse();
     match (&cli.command, cli.include_dirs.is_empty()) {
         (Some(Command::Prime), _) | (None, false) => handle_prime(&cli.include_dirs),
+        (Some(Command::ShowConfig), _) => handle_show_config(&cli.include_dirs),
         _ => {
             let mut cmd = Cli::command();
             cmd.print_help().unwrap();
             println!();
+        }
+    }
+}
+
+fn handle_show_config(include_dirs: &[PathBuf]) {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    match generate_show_config_response(include_dirs, &cwd) {
+        Ok(output) => {
+            for line in &output.search_paths {
+                println!("{}", line);
+            }
+        }
+        Err(errors) => {
+            for line in errors {
+                eprintln!("{}", line);
+            }
+            std::process::exit(1);
         }
     }
 }

@@ -9,6 +9,11 @@ pub struct PrimeResponse {
     pub warnings: Vec<String>,
 }
 
+pub struct ShowConfigResponse {
+    pub search_paths: Vec<String>,
+    pub stderr: Vec<String>,
+}
+
 /// Generate the complete `prime` output for the given include directories and
 /// working directory.
 pub fn generate_prime_output(
@@ -116,6 +121,34 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
     Ok(PrimeResponse {
         instructions,
         warnings: stderr,
+    })
+}
+
+pub fn generate_show_config_response(
+    include_dirs: &[PathBuf],
+    _cwd: &Path,
+) -> Result<ShowConfigResponse, Vec<String>> {
+    let mut search_paths = Vec::new();
+    let stderr = Vec::new();
+
+    for dir in include_dirs {
+        if dir.as_os_str().is_empty() {
+            return Err(vec!["error: include path cannot be empty".to_string()]);
+        }
+        if dir.is_symlink() && !dir.exists() {
+            search_paths.push(format!("error   {}", dir.display()));
+        } else if dir.exists() && !dir.is_dir() {
+            search_paths.push(format!("error   {}", dir.display()));
+        } else if dir.is_dir() {
+            search_paths.push(format!("exists  {}", dir.display()));
+        } else {
+            search_paths.push(format!("missing {}", dir.display()));
+        }
+    }
+
+    Ok(ShowConfigResponse {
+        search_paths,
+        stderr,
     })
 }
 

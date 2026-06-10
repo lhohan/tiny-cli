@@ -85,7 +85,7 @@ pub struct PrimeResponse {
     pub warnings: Vec<String>,
 }
 
-pub struct ShowConfigOutput {
+pub struct ShowConfigResponse {
     pub search_paths: Vec<String>,
     pub stderr: Vec<String>,
 }
@@ -100,10 +100,10 @@ pub fn generate_prime_output(
     cwd: &Path,
 ) -> Result<PrimeResponse, Vec<String>>;
 
-pub fn generate_show_config_output(
+pub fn generate_show_config_response(
     include_dirs: &[PathBuf],
     cwd: &Path,
-) -> Result<ShowConfigOutput, Vec<String>>;
+) -> Result<ShowConfigResponse, Vec<String>>;
 
 pub fn generate_list_skills_output(
     include_dirs: &[PathBuf],
@@ -227,12 +227,12 @@ Goal: move discovery logic out of `main.rs` and establish a library-owned output
 Goal: add the first human-facing inspection command with include-only behavior first.
 
 - Add `show-config` to the clap subcommand enum.
-- Implement `generate_show_config_output(include_dirs, cwd) -> Result<ShowConfigOutput, Vec<String>>` for explicit include paths only.
+- Implement `generate_show_config_response(include_dirs, cwd) -> Result<ShowConfigResponse, Vec<String>>` for explicit include paths only.
 - Fill `search_paths` with rendered status lines using `exists`, `missing`, and `error`.
 - Keep `stderr` empty for path-state rows in `show-config`.
 - Extend the CLI test DSL with:
   - working-directory control
-  - line-based stdout assertions
+  - domain-oriented path-status assertions (`expect_exists`, `expect_missing`, `expect_error`)
   - precise stderr assertions
 
 ### Phase 3: Add default path resolution
@@ -240,7 +240,7 @@ Goal: add the first human-facing inspection command with include-only behavior f
 Goal: teach `show-config` the full default search model.
 
 - Implement repo-root detection with `jj` then `git` inside the library.
-- Implement upward walk from CWD to repo root or home directory inside `generate_show_config_output`.
+- Implement upward walk from CWD to repo root or home directory inside `generate_show_config_response`.
 - Add static home-directory candidates.
 - Add path deduplication with first occurrence preserved.
 - Add deterministic directory ordering for later discovery work.
