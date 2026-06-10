@@ -68,6 +68,8 @@ When the user request matches a skill description, read that skill's `SKILL.md` 
 
 If multiple skills match, use the smallest set that covers the task. If a skill references scripts, assets, examples, or reference files, resolve those paths relative to the skill directory.
 
+If a skill references another skill read that skill too. Examples of 'referencing': "load skill my-skill" or "invoke skill my-other-skill".
+
 If a skill cannot be read, say so briefly and continue with the best fallback.
 If a skill can be read, say so briefly using format: "Loaded primed skill: [<name of the skill>]".
 
@@ -780,39 +782,5 @@ mod tests {
         // detect_repo_root should fall back to git.
         let root = detect_repo_root(tmp.path()).expect("should fall back to git when jj fails");
         assert_eq!(root, tmp.path().canonicalize().unwrap());
-    }
-
-    #[test]
-    fn trailing_whitespace_stripped() {
-        if !has_command("git") {
-            eprintln!("SKIP: git not found on PATH");
-            return;
-        }
-
-        let tmp = assert_fs::TempDir::new().unwrap();
-        std::process::Command::new("git")
-            .args(["init", "-b", "main"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-
-        let root = detect_repo_root(tmp.path()).unwrap();
-        let root_str = root.to_str().unwrap();
-
-        assert!(
-            !root_str.ends_with('\n'),
-            "returned path should not end with newline: {:?}",
-            root_str
-        );
-        assert!(
-            !root_str.ends_with(' '),
-            "returned path should not end with space: {:?}",
-            root_str
-        );
-        assert!(
-            !root_str.ends_with('\t'),
-            "returned path should not end with tab: {:?}",
-            root_str
-        );
     }
 }

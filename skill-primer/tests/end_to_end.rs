@@ -30,14 +30,15 @@ fn agent_without_skills_should_not_find_skills_when_not_primed() {
 #[test]
 fn agent_without_skills_should_not_find_skills_when_primed() {
     let skills_system_prompt =
-        skills_primer::generate_prime_output(&[PathBuf::from("tests/fixtures/test-skill")])
+        skills_primer::generate_prime_output(&[PathBuf::from("tests/fixtures/")])
             .expect("prime output should succeed")
             .instructions;
 
     AgentWithoutSkills::with_system_prompt(skills_system_prompt)
         .when_run_with("Load test-skill")
         .should_succeed()
-        .expect_output("Loaded primed skill: [test-skill]");
+        .expect_output("Loaded primed skill: [test-skill]")
+        .expect_output("Loaded primed skill: [nested-invocation-test-skill]");
 }
 
 /// Setup phase - entry point for end-to-end Pi tests

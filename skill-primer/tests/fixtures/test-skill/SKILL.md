@@ -5,4 +5,4 @@ description: A skill for testing
 
 # Test Skill
 
-This skill is used for testing.
+Load the nested-invocation-test-skill skill.
