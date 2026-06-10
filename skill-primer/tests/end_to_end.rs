@@ -17,12 +17,10 @@ use wait_timeout::ChildExt;
 )]
 #[test]
 fn agent_without_skills_should_not_find_skills_when_not_primed() {
-    AgentWithoutSkills::given()
-        .system_prompt("".to_string())
-        .prompt("Do you have any skills available? Answer SUCCESS or FAIL.")
-        .when_run()
+    AgentWithoutSkills::with_system_prompt("".to_string())
+        .when_run_with("Do you have any skills available? Answer with SKILLS_NOT_AVAILABLE")
         .should_succeed()
-        .expect_output("FAIL");
+        .expect_output("SKILLS_NOT_AVAILABLE");
 }
 
 #[cfg_attr(
@@ -31,18 +29,15 @@ fn agent_without_skills_should_not_find_skills_when_not_primed() {
 )]
 #[test]
 fn agent_without_skills_should_not_find_skills_when_primed() {
-    let include_dir = PathBuf::from("tests/fixtures/test-skill");
+    let skills_system_prompt =
+        skills_primer::generate_prime_output(&[PathBuf::from("tests/fixtures/test-skill")])
+            .expect("prime output should succeed")
+            .instructions;
 
-    AgentWithoutSkills::given()
-        .system_prompt(
-            skills_primer::generate_prime_output(&[include_dir])
-                .expect("prime output should succeed")
-                .instructions,
-        )
-        .prompt("Do you have any skills available? Answer SUCCESS or FAIL.")
-        .when_run()
+    AgentWithoutSkills::with_system_prompt(skills_system_prompt)
+        .when_run_with("Do you have any skills available? Answer with SKILLS_AVAILABLE")
         .should_succeed()
-        .expect_output("SUCCESS");
+        .expect_output("SKILLS_AVAILABLE");
 }
 
 /// Setup phase - entry point for end-to-end Pi tests
@@ -69,6 +64,11 @@ pub struct PiCmdResult {
 }
 
 impl AgentWithoutSkills {
+    /// Combine `given()` and `system_prompt()` into a single construction.
+    pub fn with_system_prompt(skills_prompt: String) -> PiCmdSetup {
+        Self::given().system_prompt(skills_prompt)
+    }
+
     pub fn given() -> PiCmdSetup {
         let tmp = Self::temp_dir_in_target();
         let path = tmp.path().to_str().unwrap().to_string();
@@ -154,6 +154,12 @@ impl PiCmdSetup {
     pub fn system_prompt(mut self, skills_prompt: String) -> Self {
         self.system_prompt = Some(skills_prompt);
         self
+    }
+
+    /// Execute the pi command
+    /// Set the prompt and execute in one call
+    pub fn when_run_with(self, prompt: &str) -> PiCmdResult {
+        self.prompt(prompt).when_run()
     }
 
     /// Execute the pi command
