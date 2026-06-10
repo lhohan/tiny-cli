@@ -53,8 +53,7 @@ fn handle_show_config(include_dirs: &[PathBuf]) {
 }
 
 fn handle_prime(include_dirs: &[PathBuf]) {
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    match generate_prime_output(include_dirs, &cwd) {
+    match generate_prime_output(include_dirs) {
         Ok(output) => {
             print!("{}", output.instructions);
             if !output.warnings.is_empty() {

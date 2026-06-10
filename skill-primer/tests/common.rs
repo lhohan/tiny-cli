@@ -264,9 +264,13 @@ impl CmdResult {
 
     /// Composite assertion for the full `prime` subcommand output.
     pub fn expect_prime_instructions(self) -> Self {
-        self.expect_skills_header()
-            .expect_instructions()
-            .expect_available_skills()
+        self.expect_skills_header().expect_instructions()
+    }
+
+    /// Assert no skills were detected (empty include dirs).
+    pub fn expect_no_skills_detected(self) -> Self {
+        self.expect_output("No skills detected")
+            .expect_out_does_not_contain("<available_skills>")
     }
 
     // ── Config-related assertions ───────────────────────────
