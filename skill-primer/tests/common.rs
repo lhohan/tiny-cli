@@ -134,6 +134,23 @@ impl CmdSetup {
         self
     }
 
+    /// Create a file at a relative path within the most recently created
+    /// include directory. Useful for creating nested skill directories or
+    /// other test fixtures. Auto-provisions an include directory if none exists.
+    pub fn with_file_at(mut self, relative_path: &str, content: &str) -> Self {
+        if self._include_dirs.is_empty() {
+            let tmp = assert_fs::TempDir::new().unwrap();
+            let path = tmp.to_str().unwrap().to_string();
+            self._include_dirs.push(("auto".to_string(), tmp));
+            self.args.push("--include".to_string());
+            self.args.push(path);
+        }
+        let dir = &self._include_dirs.last().unwrap().1;
+        let file = dir.child(relative_path);
+        file.write_str(content).unwrap();
+        self
+    }
+
     /// Create a temporary file and add `--include <path-to-file>`.
     /// The file is treated as a non-directory path, used to test error handling.
     pub fn with_file_include(mut self, name: &str) -> Self {

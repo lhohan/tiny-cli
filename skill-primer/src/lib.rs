@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug)]
 pub struct LsOutput {
     pub skill_paths: Vec<String>,
     pub stderr: Vec<String>,
@@ -19,11 +20,37 @@ pub struct ShowConfigResponse {
     pub stderr: Vec<String>,
 }
 
-/// Generate `ls` output for the given include directories.
-pub fn generate_ls_output(_include_dirs: &[PathBuf]) -> Result<LsOutput, Vec<String>> {
+/// Generate `ls` output for the given include directories and
+/// working directory.
+pub fn generate_ls_output(include_dirs: &[PathBuf], _cwd: &Path) -> Result<LsOutput, Vec<String>> {
+    // Pre-check: reject file paths as directories before delegating to collect_skills
+    for dir in include_dirs {
+        if dir.is_file() {
+            return Err(vec![format!(
+                "error: include path '{}' is a file, not a directory",
+                dir.display()
+            )]);
+        }
+    }
+
+    let (all_skills, stderr) = collect_skills(include_dirs)?;
+
+    if all_skills.is_empty() {
+        return Ok(LsOutput {
+            skill_paths: vec!["No skills found.".to_string()],
+            stderr,
+        });
+    }
+
+    let mut skill_paths = Vec::with_capacity(all_skills.len());
+    for skill in &all_skills {
+        let formatted_name = format_skill_name(&skill.name);
+        skill_paths.push(format!("[{formatted_name}] {}", skill.path.display()));
+    }
+
     Ok(LsOutput {
-        skill_paths: vec!["No skills found.".to_string()],
-        stderr: vec![],
+        skill_paths,
+        stderr,
     })
 }
 
@@ -50,79 +77,10 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
 
 "#};
 
-    let mut all_skills = Vec::new();
-    let mut seen_names: HashMap<String, PathBuf> = HashMap::new();
-    let mut stderr: Vec<String> = Vec::new();
     let mut instructions = String::with_capacity(2048);
     instructions.push_str(header);
 
-    for dir in include_dirs {
-        if dir.as_os_str().is_empty() {
-            return Err(vec!["error: include path cannot be empty".to_string()]);
-        }
-        let result = scan_skill_directory(dir);
-        for warning in &result.warnings {
-            match warning {
-                ScanWarning::DoesNotExist(path) => {
-                    stderr.push(format!(
-                        "warning: include directory not found: {}",
-                        path.display()
-                    ));
-                }
-                ScanWarning::IsFile(path) => {
-                    return Err(vec![format!(
-                        "error: include path '{}' is a file, not a directory",
-                        path.display()
-                    )]);
-                }
-                ScanWarning::InvalidFrontmatter(path) => {
-                    stderr.push(format!(
-                        "warning: SKILL.md has invalid or missing frontmatter: {}",
-                        path.display()
-                    ));
-                }
-                ScanWarning::Unreadable(path) => {
-                    stderr.push(format!(
-                        "warning: unable to read SKILL.md: {}",
-                        path.display()
-                    ));
-                }
-                ScanWarning::UnreadableDirectory(path) => {
-                    stderr.push(format!(
-                        "warning: unable to read directory: {}",
-                        path.display()
-                    ));
-                }
-                ScanWarning::DirectoryReadError { path, error } => {
-                    stderr.push(format!(
-                        "warning: unable to read directory {}: {}",
-                        path.display(),
-                        error
-                    ));
-                }
-                ScanWarning::InvalidName { name, path, reason } => {
-                    stderr.push(format!(
-                        "warning: skill '{}' has invalid name: {} ({})",
-                        name,
-                        reason,
-                        path.display()
-                    ));
-                }
-            }
-        }
-        for skill in result.skills {
-            if seen_names.contains_key(&skill.name) {
-                stderr.push(format!(
-                    "warning: duplicate skill '{}' at {}, keeping first",
-                    skill.name,
-                    skill.path.display()
-                ));
-            } else {
-                seen_names.insert(skill.name.clone(), dir.clone());
-                all_skills.push(skill);
-            }
-        }
-    }
+    let (all_skills, stderr) = collect_skills(include_dirs)?;
 
     if all_skills.is_empty() {
         instructions.push_str("No skills detected.\n");
@@ -176,6 +134,48 @@ pub fn generate_show_config_response(
     })
 }
 
+/// Collect all skills from the given include directories, handling validation,
+/// deduplication, and warning-to-string conversion.
+///
+/// Returns `Err` for empty paths or file-as-directory errors.
+fn collect_skills(include_dirs: &[PathBuf]) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
+    let mut all_skills: Vec<Skill> = Vec::new();
+    let mut seen_names: HashMap<String, PathBuf> = HashMap::new();
+    let mut stderr: Vec<String> = Vec::new();
+
+    for dir in include_dirs {
+        if dir.as_os_str().is_empty() {
+            return Err(vec!["error: include path cannot be empty".to_string()]);
+        }
+        let result = scan_skill_directory(dir);
+        for warning in &result.warnings {
+            match warning {
+                ScanWarning::IsFile(path) => {
+                    return Err(vec![format!(
+                        "error: include path '{}' is a file, not a directory",
+                        path.display()
+                    )]);
+                }
+                _ => stderr.push(warning.to_stderr()),
+            }
+        }
+        for skill in result.skills {
+            if seen_names.contains_key(&skill.name) {
+                stderr.push(format!(
+                    "warning: duplicate skill '{}' at {}, keeping first",
+                    skill.name,
+                    skill.path.display()
+                ));
+            } else {
+                seen_names.insert(skill.name.clone(), skill.path.clone());
+                all_skills.push(skill);
+            }
+        }
+    }
+
+    Ok((all_skills, stderr))
+}
+
 /// Parsed YAML frontmatter from a SKILL.md file.
 #[derive(Debug, serde::Deserialize)]
 struct SkillFrontmatter {
@@ -211,6 +211,49 @@ enum ScanWarning {
         path: PathBuf,
         reason: String,
     },
+}
+
+impl ScanWarning {
+    fn to_stderr(&self) -> String {
+        match self {
+            ScanWarning::DoesNotExist(path) => {
+                format!("warning: include directory not found: {}", path.display())
+            }
+            ScanWarning::IsFile(path) => {
+                format!(
+                    "error: include path '{}' is a file, not a directory",
+                    path.display()
+                )
+            }
+            ScanWarning::InvalidFrontmatter(path) => {
+                format!(
+                    "warning: SKILL.md has invalid or missing frontmatter: {}",
+                    path.display()
+                )
+            }
+            ScanWarning::Unreadable(path) => {
+                format!("warning: unable to read SKILL.md: {}", path.display())
+            }
+            ScanWarning::UnreadableDirectory(path) => {
+                format!("warning: unable to read directory: {}", path.display())
+            }
+            ScanWarning::DirectoryReadError { path, error } => {
+                format!(
+                    "warning: unable to read directory {}: {}",
+                    path.display(),
+                    error
+                )
+            }
+            ScanWarning::InvalidName { name, path, reason } => {
+                format!(
+                    "warning: skill '{}' has invalid name: {} ({})",
+                    name,
+                    reason,
+                    path.display()
+                )
+            }
+        }
+    }
 }
 
 /// The result of scanning one or more skill directories.
@@ -397,6 +440,27 @@ fn parse_skill_frontmatter(content: &str) -> Option<SkillFrontmatter> {
     Some(frontmatter)
 }
 
+/// Format a skill name for the `ls` output name column.
+///
+/// Returns a 24-character string: short names are right-padded with spaces,
+/// names longer than 24 characters are truncated to the first 21 characters
+/// followed by `...`. Truncation is character-based, not byte-based.
+fn format_skill_name(name: &str) -> String {
+    let chars: Vec<char> = name.chars().collect();
+    if chars.len() > 24 {
+        let truncated: String = chars[..21].iter().collect();
+        format!("{truncated}...")
+    } else {
+        let mut result = String::with_capacity(24);
+        result.push_str(name);
+        let padding = 24 - chars.len();
+        for _ in 0..padding {
+            result.push(' ');
+        }
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -535,5 +599,51 @@ mod tests {
         let result = parse_skill_frontmatter(content).unwrap();
         assert_eq!(result.name, "crlf-skill");
         assert_eq!(result.description, "A skill with CRLF endings");
+    }
+
+    // ── format_skill_name ────────────────────────────────────
+
+    #[test]
+    fn format_short_name_padded_to_24_chars() {
+        let result = format_skill_name("hello");
+        assert_eq!(result.len(), 24);
+        assert_eq!(result, "hello                   ");
+    }
+
+    #[test]
+    fn format_exact_24_char_name_preserved() {
+        let name = "abcdefghijklmnopqrstuvwx"; // exactly 24
+        let result = format_skill_name(name);
+        assert_eq!(result.len(), 24);
+        assert_eq!(result, name);
+    }
+
+    #[test]
+    fn format_long_name_truncated_with_ellipsis() {
+        let result = format_skill_name("this-is-a-very-long-skill-name");
+        assert_eq!(result.len(), 24);
+        assert_eq!(result, "this-is-a-very-long-s...");
+    }
+
+    #[test]
+    fn format_truncation_is_char_based_not_byte_based() {
+        // "café" has 4 chars but 5 bytes (é is 2 bytes in UTF-8).
+        // If truncation were byte-based, the é would be split.
+        // With char-based truncation, each unicode char counts as 1.
+        // Note: String::len() returns bytes, so we use chars().count().
+        let result = format_skill_name("café");
+        assert_eq!(result.chars().count(), 24, "result must be 24 chars");
+        assert_eq!(result, "café                    ");
+    }
+
+    // ── generate_ls_output error cases ─────────────────────
+
+    #[test]
+    fn ls_empty_include_path_returns_error() {
+        let result = generate_ls_output(&[PathBuf::from("")], Path::new("."));
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0], "error: include path cannot be empty");
     }
 }

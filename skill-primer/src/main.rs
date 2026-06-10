@@ -30,7 +30,7 @@ fn main() {
     match (&cli.command, cli.include_dirs.is_empty()) {
         (Some(Command::Prime), _) => handle_prime(&cli.include_dirs),
         (Some(Command::ShowConfig), _) => handle_show_config(&cli.include_dirs, &cwd),
-        (Some(Command::Ls), _) => handle_ls(&cli.include_dirs),
+        (Some(Command::Ls), _) => handle_ls(&cli.include_dirs, &cwd),
         (None, false) => {
             eprintln!("error: a subcommand is required when using --include");
             let mut cmd = Cli::command();
@@ -62,8 +62,8 @@ fn handle_show_config(include_dirs: &[PathBuf], cwd: &Path) {
     }
 }
 
-fn handle_ls(include_dirs: &[PathBuf]) {
-    match generate_ls_output(include_dirs) {
+fn handle_ls(include_dirs: &[PathBuf], cwd: &Path) {
+    match generate_ls_output(include_dirs, cwd) {
         Ok(output) => {
             for line in &output.skill_paths {
                 println!("{}", line);
