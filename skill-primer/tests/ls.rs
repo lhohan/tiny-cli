@@ -138,6 +138,21 @@ mod edge_cases {
     }
 
     #[test]
+    fn ls_should_suppress_warnings_when_disabled() {
+        Cmd::given()
+            .without_warnings()
+            .with_skill_raw(
+                "bad-skill",
+                "---\nname: bad-skill\ndescription: [unclosed\n---\n# body",
+            )
+            .command_ls()
+            .when_run()
+            .should_succeed()
+            .expect_output("No skills found.")
+            .expect_stderr_does_not_contain("warning:");
+    }
+
+    #[test]
     fn ls_should_list_skill_with_invalid_name() {
         Cmd::given()
             .with_skill_raw(

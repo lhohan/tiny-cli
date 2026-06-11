@@ -11,6 +11,16 @@ skills-primer ls
 skills-primer config
 ```
 
+`prime` suppresses non-fatal warnings by default because its output is meant
+to be embedded into agent instructions. `ls` and `config` show warnings by
+default. Use `--warnings` or `--no-warnings` to override the default for any
+subcommand:
+
+```sh
+skills-primer prime --warnings
+skills-primer ls --no-warnings
+```
+
 By default, `skills-primer` walks from the current directory up to `HOME` and
 looks for one relative skill path at each level:
 

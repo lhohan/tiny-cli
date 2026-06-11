@@ -71,6 +71,22 @@ mod discovery {
             .should_succeed()
             .expect_prime_instructions()
             .expect_no_skills_detected()
+            .expect_stderr_does_not_contain("warning:");
+    }
+
+    #[test]
+    fn prime_should_show_warnings_when_enabled() {
+        Cmd::given()
+            .command_prime()
+            .with_warnings()
+            .with_skill_raw(
+                "skill_dir",
+                "---\nname: broken\ndescription: [unclosed\n---\n# Nope\n",
+            )
+            .when_run()
+            .should_succeed()
+            .expect_prime_instructions()
+            .expect_no_skills_detected()
             .expect_stderr_contains("warning: SKILL.md has invalid or missing frontmatter");
     }
 
@@ -78,6 +94,7 @@ mod discovery {
     fn prime_should_deduplicate_skills_by_name_from_walked_paths() {
         Cmd::given()
             .command_prime()
+            .with_warnings()
             .with_subdir_skill(
                 "project",
                 "shared-skill",
@@ -146,6 +163,7 @@ mod discovery {
         // Run the tool against the parent directory — expect a warning
         Cmd::given()
             .command_prime()
+            .with_warnings()
             .with_path(".")
             .with_cwd_dir(tmp.path())
             .with_env("HOME", tmp.to_str().unwrap())
@@ -205,6 +223,7 @@ mod name {
     ) {
         Cmd::given()
             .command_prime()
+            .with_warnings()
             .with_skill_raw(
                 "my-skill",
                 &format!(

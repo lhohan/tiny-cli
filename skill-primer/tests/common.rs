@@ -57,6 +57,18 @@ impl CmdSetup {
         self
     }
 
+    /// Enable warnings for commands that suppress them by default.
+    pub fn with_warnings(mut self) -> Self {
+        self.args.push("--warnings".to_string());
+        self
+    }
+
+    /// Disable warnings for commands that show them by default.
+    pub fn without_warnings(mut self) -> Self {
+        self.args.push("--no-warnings".to_string());
+        self
+    }
+
     /// Set the relative skill path passed via `--path`.
     pub fn with_path(mut self, path: &str) -> Self {
         self.args.push("--path".to_string());
@@ -314,6 +326,17 @@ impl CmdResult {
         }
     }
 
+    /// Assert stderr does NOT contain the given text.
+    pub fn expect_stderr_does_not_contain(self, text: &str) -> Self {
+        CmdResult {
+            result: self.result.stderr(predicates::str::contains(text).not()),
+            _temp_dirs: self._temp_dirs,
+            _file_fixtures: self._file_fixtures,
+            _path_names: self._path_names,
+            _home_dirs: self._home_dirs,
+        }
+    }
+
     /// Assert stderr contains the path of the named temporary directory.
     pub fn expect_stderr_dir(self, name: &str) -> Self {
         let path = self
@@ -340,6 +363,8 @@ impl CmdResult {
             .expect_output("prime ")
             .expect_output("ls ")
             .expect_output("config ")
+            .expect_output("--warnings")
+            .expect_output("--no-warnings")
     }
 
     /// Composite assertion for the full `prime` subcommand output.

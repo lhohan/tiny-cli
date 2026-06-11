@@ -26,3 +26,12 @@ fn no_subcommand_with_path_should_error_and_show_help() {
         .should_fail()
         .expect_stderr_contains("subcommand is required");
 }
+
+#[test]
+fn warnings_flags_should_be_mutually_exclusive() {
+    Cmd::given()
+        .args(&["--warnings", "--no-warnings", "prime"])
+        .when_run()
+        .should_fail()
+        .expect_stderr_contains("cannot be used with");
+}
