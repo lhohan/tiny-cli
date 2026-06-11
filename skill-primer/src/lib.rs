@@ -13,9 +13,8 @@ pub struct PrimeResponse {
     pub warnings: Vec<String>,
 }
 
-pub struct ConfigResponse {
-    pub search_paths: Vec<String>,
-    pub stderr: Vec<String>,
+pub struct ConfigOutput {
+    pub lines: Vec<String>,
 }
 
 /// Generate `ls` output for the given include directories and
@@ -65,7 +64,10 @@ pub fn generate_ls_output(include_dirs: &[PathBuf], cwd: &Path) -> Result<LsOutp
 
 /// Generate the complete `prime` output for the given include directories and
 /// working directory.
-pub fn generate_prime_output(include_dirs: &[PathBuf]) -> Result<PrimeResponse, Vec<String>> {
+pub fn generate_prime_output(
+    include_dirs: &[PathBuf],
+    cwd: &Path,
+) -> Result<PrimeResponse, Vec<String>> {
     let header = indoc::indoc! {r#"
 ## Skills
 
@@ -91,7 +93,8 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
     let mut instructions = String::with_capacity(2048);
     instructions.push_str(header);
 
-    let (all_skills, stderr) = collect_skills(include_dirs)?;
+    let resolved = resolve_skill_paths(include_dirs, cwd);
+    let (all_skills, stderr) = collect_skills(&resolved)?;
 
     if all_skills.is_empty() {
         instructions.push_str("No skills detected.\n");
@@ -119,30 +122,76 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
     })
 }
 
-pub fn generate_config_response(
-    include_dirs: &[PathBuf],
-    _cwd: &Path,
-) -> Result<ConfigResponse, Vec<String>> {
-    let mut search_paths = Vec::new();
-    let stderr = Vec::new();
+pub fn generate_config_output(include_dirs: &[PathBuf], cwd: &Path) -> ConfigOutput {
+    let mut lines = Vec::new();
 
-    for dir in include_dirs {
-        if dir.as_os_str().is_empty() {
-            return Err(vec!["error: include path cannot be empty".to_string()]);
+    if !include_dirs.is_empty() {
+        lines.push("Include paths:".to_string());
+        for dir in include_dirs {
+            let status = if dir.is_dir() {
+                "(found)"
+            } else {
+                "(not found)"
+            };
+            lines.push(format!("  {} {}", dir.display(), status));
         }
-        if (dir.is_symlink() && !dir.exists()) || (dir.exists() && !dir.is_dir()) {
-            search_paths.push(format!("error   {}", dir.display()));
-        } else if dir.is_dir() {
-            search_paths.push(format!("exists  {}", dir.display()));
-        } else {
-            search_paths.push(format!("missing {}", dir.display()));
+        lines.push(String::new());
+        lines.push("Default paths are overridden by --include.".to_string());
+        return ConfigOutput { lines };
+    }
+
+    // Default paths — show configured dirs and project walk
+    let home = std::env::var("HOME")
+        .ok()
+        .map(PathBuf::from)
+        .filter(|h| !h.as_os_str().is_empty());
+
+    // Configured directories section
+    lines.push("Configured directories:".to_string());
+    let home_patterns = ["~/.agents/skills", "~/.claude/skills", "~/.codex/skills"];
+    for pattern in &home_patterns {
+        let status = match &home {
+            Some(h) => {
+                let resolved = h.join(pattern.strip_prefix("~/").unwrap());
+                if resolved.is_dir() {
+                    "(found)"
+                } else {
+                    "(not found)"
+                }
+            }
+            None => "(skipped - HOME not set)",
+        };
+        lines.push(format!("  {} {}", pattern, status));
+    }
+    lines.push(String::new());
+
+    // Project directories section — walk paths excluding HOME candidates
+    let resolved = resolve_skill_paths(include_dirs, cwd);
+
+    let walk_paths: Vec<&PathBuf> = resolved
+        .iter()
+        .filter(|p| {
+            // Exclude paths whose grandparent is HOME (those are home candidates H/.X/skills)
+            match &home {
+                Some(h) => p.parent().and_then(|pp| pp.parent()) != Some(h.as_path()),
+                None => true,
+            }
+        })
+        .collect();
+
+    if !walk_paths.is_empty() {
+        lines.push("Project directories:".to_string());
+        for path in &walk_paths {
+            let status = if path.is_dir() {
+                "(found)"
+            } else {
+                "(not found)"
+            };
+            lines.push(format!("  {} {}", path.display(), status));
         }
     }
 
-    Ok(ConfigResponse {
-        search_paths,
-        stderr,
-    })
+    ConfigOutput { lines }
 }
 
 /// Collect all skills from the given include directories, handling validation,

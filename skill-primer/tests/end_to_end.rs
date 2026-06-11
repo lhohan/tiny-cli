@@ -5,7 +5,7 @@
 
 use assert_fs::TempDir;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::thread;
 use std::time::Duration;
@@ -30,7 +30,7 @@ fn agent_without_skills_should_not_find_skills_when_not_primed() {
 #[test]
 fn agent_without_skills_should_not_find_skills_when_primed() {
     let skills_system_prompt =
-        skills_primer::generate_prime_output(&[PathBuf::from("tests/fixtures/")])
+        skills_primer::generate_prime_output(&[PathBuf::from("tests/fixtures/")], Path::new("."))
             .expect("prime output should succeed")
             .instructions;
 

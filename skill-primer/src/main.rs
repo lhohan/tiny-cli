@@ -28,7 +28,7 @@ fn main() {
     let cli = Cli::parse();
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     match (&cli.command, cli.include_dirs.is_empty()) {
-        (Some(Command::Prime), _) => handle_prime(&cli.include_dirs),
+        (Some(Command::Prime), _) => handle_prime(&cli.include_dirs, &cwd),
         (Some(Command::Config), _) => handle_config(&cli.include_dirs, &cwd),
         (Some(Command::Ls), _) => handle_ls(&cli.include_dirs, &cwd),
         (None, false) => {
@@ -47,18 +47,9 @@ fn main() {
 }
 
 fn handle_config(include_dirs: &[PathBuf], cwd: &Path) {
-    match generate_config_response(include_dirs, cwd) {
-        Ok(output) => {
-            for line in &output.search_paths {
-                println!("{}", line);
-            }
-        }
-        Err(errors) => {
-            for line in errors {
-                eprintln!("{}", line);
-            }
-            std::process::exit(1);
-        }
+    let output = generate_config_output(include_dirs, cwd);
+    for line in &output.lines {
+        println!("{}", line);
     }
 }
 
@@ -81,8 +72,8 @@ fn handle_ls(include_dirs: &[PathBuf], cwd: &Path) {
     }
 }
 
-fn handle_prime(include_dirs: &[PathBuf]) {
-    match generate_prime_output(include_dirs) {
+fn handle_prime(include_dirs: &[PathBuf], cwd: &Path) {
+    match generate_prime_output(include_dirs, cwd) {
         Ok(output) => {
             print!("{}", output.instructions);
             if !output.warnings.is_empty() {

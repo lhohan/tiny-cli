@@ -320,3 +320,39 @@ mod output {
             .expect_output("A &amp; B &lt;test&gt;");
     }
 }
+
+mod default_walk {
+    use super::*;
+
+    #[test]
+    fn prime_should_discover_skill_in_home_without_include() {
+        Cmd::given()
+            .command_prime()
+            .with_home_skill("home-skill", "A skill found via walk", "# Body")
+            .with_cwd("work")
+            .when_run()
+            .should_succeed()
+            .expect_skill("home-skill", "A skill found via walk");
+    }
+
+    #[test]
+    fn prime_should_detect_no_skills_in_empty_default_paths() {
+        Cmd::given()
+            .command_prime()
+            .with_cwd("work")
+            .when_run()
+            .should_succeed()
+            .expect_no_skills_detected();
+    }
+
+    #[test]
+    fn prime_should_discover_skill_in_subdirectory_via_walk() {
+        Cmd::given()
+            .command_prime()
+            .with_subdir_skill("project", "deep-skill", "Found via walk", "# Body")
+            .with_cwd("project/a/b/c")
+            .when_run()
+            .should_succeed()
+            .expect_skill("deep-skill", "Found via walk");
+    }
+}

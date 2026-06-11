@@ -400,10 +400,10 @@ impl CmdResult {
             .expect_out_does_not_contain("<available_skills>")
     }
 
-    // ── Config-related assertions ───────────────────────────
+    // ── Config assertions ──────────────────────────────────
 
-    /// Resolve a fixture name to its absolute path via `_path_names`,
-    /// falling back to the raw string if not found.
+    /// Resolve a fixture name to its absolute path, falling back to the raw
+    /// string if the name is not a known fixture.
     fn resolve_path(&self, name_or_path: &str) -> String {
         self._path_names
             .get(name_or_path)
@@ -411,42 +411,11 @@ impl CmdResult {
             .unwrap_or_else(|| name_or_path.to_string())
     }
 
-    /// Assert a path appears with `exists` status in stdout.
-    pub fn expect_exists_in_config(self, name: &str) -> Self {
-        let path = self.resolve_path(name);
-        self.expect_output("exists").expect_output(&path)
-    }
-
-    /// Assert a path appears with `missing` status in stdout.
-    pub fn expect_missing_in_config(self, path: &str) -> Self {
-        self.expect_output("missing").expect_output(path)
-    }
-
-    /// Assert a path appears with `error` status in stdout.
-    pub fn expect_error_in_config(self, name: &str) -> Self {
-        let path = self.resolve_path(name);
-        self.expect_output("error").expect_output(&path)
-    }
-
-    /// Assert stdout is completely empty.
-    pub fn expect_no_output(self) -> Self {
-        let stdout = &self.result.get_output().stdout;
-        assert!(
-            stdout.is_empty(),
-            "expected empty stdout, got: {:?}",
-            String::from_utf8_lossy(stdout),
-        );
-        self
-    }
-
-    /// Assert stderr is completely empty.
-    pub fn expect_stderr_empty(self) -> Self {
-        let stderr = &self.result.get_output().stderr;
-        assert!(
-            stderr.is_empty(),
-            "expected empty stderr, got: {:?}",
-            String::from_utf8_lossy(stderr),
-        );
-        self
+    /// Assert a path appears annotated with `(found)` or `(not found)`.
+    /// The `name_or_path` is resolved against known fixture names first,
+    /// then used as a literal path string.
+    pub fn expect_annotated(self, name_or_path: &str, annotation: &str) -> Self {
+        let path = self.resolve_path(name_or_path);
+        self.expect_output(&format!("{} ({})", path, annotation))
     }
 }
