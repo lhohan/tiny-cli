@@ -57,10 +57,9 @@ If a command seems to be missing run `mise tasks` to try and discover it.
 <!-- skills-primer BEGIN-->
 ## Agent skills integration
 
-Run `skills-primer --include ~/.agents/skills prime` for to integrate agent skills in this project. Follow those instructions before proceeding with any task. 
+Run `skills-primer prime` to integrate agent skills in this project. Follow these instructions before proceeding with any task. 
 
 IMPORTANT: report available skills NOW in format:
-
 ```
 *Available skills:* skill-a, skill-b, etc.
 ```
