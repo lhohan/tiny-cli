@@ -14,7 +14,6 @@ pub struct CmdSetup {
     _file_fixtures: Vec<(String, String, assert_fs::TempDir)>,
     _path_names: HashMap<String, String>,
     cwd: Option<std::path::PathBuf>,
-    _repo_dirs: Vec<assert_fs::TempDir>,
     _home_dirs: Vec<assert_fs::TempDir>,
     _env_vars: Vec<(String, String)>,
 }
@@ -25,21 +24,21 @@ pub struct CmdResult {
     _include_dirs: Vec<(String, assert_fs::TempDir)>,
     _file_fixtures: Vec<(String, String, assert_fs::TempDir)>,
     _path_names: HashMap<String, String>,
-    _repo_dirs: Vec<assert_fs::TempDir>,
     _home_dirs: Vec<assert_fs::TempDir>,
 }
 
 impl Cmd {
     pub fn given() -> CmdSetup {
+        let home = assert_fs::TempDir::new().unwrap();
+        let home_str = home.path().to_string_lossy().to_string();
         CmdSetup {
             args: vec![],
             _include_dirs: vec![],
             _file_fixtures: vec![],
             _path_names: HashMap::new(),
-            cwd: None,
-            _repo_dirs: vec![],
-            _home_dirs: vec![],
-            _env_vars: vec![],
+            cwd: Some(home.path().to_path_buf()),
+            _home_dirs: vec![home],
+            _env_vars: vec![("HOME".to_string(), home_str)],
         }
     }
 }
@@ -149,55 +148,10 @@ impl CmdSetup {
         self
     }
 
-    /// Create a temporary directory as a simulated HOME directory.
-    /// Creates `{dir}/work` as the default CWD and sets `HOME` to the dir
-    /// via `with_env`. Skills can be added with `with_repo_skill`.
+    /// Create a skill under the implicit home directory's `.agents/skills/{name}/`.
     /// No `--include` flags are emitted.
-    pub fn with_home(mut self) -> Self {
-        let tmp = assert_fs::TempDir::new().unwrap();
-        let root = tmp.path().to_path_buf();
-        let home_str = root.to_string_lossy().to_string();
-        self._env_vars.push(("HOME".to_string(), home_str));
-        if self.cwd.is_none() {
-            let work = root.join("work");
-            std::fs::create_dir_all(&work).unwrap();
-            self.cwd = Some(work);
-        }
-        self._home_dirs.push(tmp);
-        self
-    }
-
-    /// Create a temporary directory initialised as a git repository.
-    /// The repo root becomes the default CWD. Skills can be added with
-    /// `with_repo_skill`. No `--include` flags are emitted.
-    /// Create a temporary directory initialised as a git repository.
-    /// The repo root becomes the CWD. Skills can be added with
-    /// `with_repo_skill`. No `--include` flags are emitted.
-    /// Use `with_repo_subdir` after this to run from a subdirectory.
-    pub fn with_git_repo(mut self) -> Self {
-        let tmp = assert_fs::TempDir::new().unwrap();
-        std::process::Command::new("git")
-            .args(["init", "-b", "main"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-        let root = tmp.path().to_path_buf();
-        self.cwd = Some(root);
-        self._repo_dirs.push(tmp);
-        self
-    }
-
-    /// Add a skill under the most recently created root dir's
-    /// `.agents/skills/{name}/`. Does NOT add `--include`. The root dir must
-    /// have been created by `with_git_repo`, `with_home`, or similar.
-    pub fn with_repo_skill(self, name: &str, description: &str, body: &str) -> Self {
-        let root = self
-            ._repo_dirs
-            .last()
-            .or_else(|| self._home_dirs.last())
-            .unwrap()
-            .path()
-            .to_path_buf();
+    pub fn with_home_skill(self, name: &str, description: &str, body: &str) -> Self {
+        let root = self._home_dirs.last().unwrap().path().to_path_buf();
         let skill_dir = root.join(".agents/skills").join(name);
         std::fs::create_dir_all(&skill_dir).unwrap();
         let content = format!("---\nname: {name}\ndescription: {description}\n---\n{body}");
@@ -205,15 +159,27 @@ impl CmdSetup {
         self
     }
 
-    /// Create a subdirectory inside the most recent root dir and set CWD to it.
-    pub fn with_repo_subdir(mut self, relative: &str) -> Self {
-        let root = self
-            ._repo_dirs
-            .last()
-            .or_else(|| self._home_dirs.last())
-            .unwrap()
-            .path()
-            .to_path_buf();
+    /// Create a skill under `{home}/{relative}/.agents/skills/{name}/`.
+    /// No `--include` flags are emitted.
+    pub fn with_subdir_skill(
+        self,
+        relative: &str,
+        name: &str,
+        description: &str,
+        body: &str,
+    ) -> Self {
+        let root = self._home_dirs.last().unwrap().path().to_path_buf();
+        let skill_dir = root.join(relative).join(".agents/skills").join(name);
+        std::fs::create_dir_all(&skill_dir).unwrap();
+        let content = format!("---\nname: {name}\ndescription: {description}\n---\n{body}");
+        std::fs::write(skill_dir.join("SKILL.md"), &content).unwrap();
+        self
+    }
+
+    /// Set CWD to a subdirectory of the implicit home directory.
+    /// The subdirectory is created if it does not exist.
+    pub fn with_cwd(mut self, relative: &str) -> Self {
+        let root = self._home_dirs.last().unwrap().path().to_path_buf();
         let subdir = root.join(relative);
         std::fs::create_dir_all(&subdir).unwrap();
         self.cwd = Some(subdir);
@@ -274,7 +240,6 @@ impl CmdSetup {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
-            _repo_dirs: self._repo_dirs,
             _home_dirs: self._home_dirs,
         }
     }
@@ -288,7 +253,6 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
-            _repo_dirs: self._repo_dirs,
             _home_dirs: self._home_dirs,
         }
     }
@@ -300,7 +264,6 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
-            _repo_dirs: self._repo_dirs,
             _home_dirs: self._home_dirs,
         }
     }
@@ -312,7 +275,6 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
-            _repo_dirs: self._repo_dirs,
             _home_dirs: self._home_dirs,
         }
     }
@@ -347,7 +309,6 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
-            _repo_dirs: self._repo_dirs,
             _home_dirs: self._home_dirs,
         }
     }
@@ -396,7 +357,6 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
-            _repo_dirs: self._repo_dirs,
             _home_dirs: self._home_dirs,
         }
     }
@@ -416,7 +376,6 @@ impl CmdResult {
             _include_dirs: self._include_dirs,
             _file_fixtures: self._file_fixtures,
             _path_names: self._path_names,
-            _repo_dirs: self._repo_dirs,
             _home_dirs: self._home_dirs,
         }
     }

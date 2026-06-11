@@ -453,42 +453,6 @@ fn parse_skill_frontmatter(content: &str) -> Option<SkillFrontmatter> {
     Some(frontmatter)
 }
 
-/// Detect the repository root directory from a starting path.
-///
-/// Tries `jj root` first, then falls back to `git rev-parse --show-toplevel`.
-/// Returns `None` if no repository is found or if neither command is available.
-pub fn detect_repo_root(cwd: &Path) -> Option<PathBuf> {
-    // Try jj root first
-    if let Ok(output) = std::process::Command::new("jj")
-        .arg("root")
-        .current_dir(cwd)
-        .output()
-        && output.status.success()
-    {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let trimmed = stdout.trim();
-        if !trimmed.is_empty() {
-            return Some(PathBuf::from(trimmed));
-        }
-    }
-
-    // Fall back to git
-    if let Ok(output) = std::process::Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(cwd)
-        .output()
-        && output.status.success()
-    {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let trimmed = stdout.trim();
-        if !trimmed.is_empty() {
-            return Some(PathBuf::from(trimmed));
-        }
-    }
-
-    None
-}
-
 /// Compute a canonical key for deduplication purposes.
 ///
 /// If the path exists, uses `std::fs::canonicalize` to resolve symlinks.
@@ -502,67 +466,55 @@ fn canonical_key(path: &Path) -> PathBuf {
     }
 }
 
+/// The skill subdirectory names scanned during the CWD-to-HOME walk.
+const SKILL_DIR_NAMES: &[&str] = &[".agents/skills", ".claude/skills", ".codex/skills"];
+
 /// Resolve all candidate skill paths.
 ///
 /// - When `include_dirs` is non-empty: returns them verbatim in order
 ///   (no deduplication). Default path resolution is skipped entirely.
 /// - When `include_dirs` is empty: walks from CWD upward, collecting
-///   `.agents/skills`, `.claude/skills`, `.codex/skills` at each level until
-///   the repo root (or HOME) is reached, then appends home directory
-///   candidates. Default paths are deduplicated by canonical path; the first
-///   occurrence in discovery order wins.
+///   the directories listed in [`SKILL_DIR_NAMES`] at each level until
+///   HOME is reached. Default paths are deduplicated by canonical path;
+///   the first occurrence in discovery order wins.
 pub fn resolve_skill_paths(include_dirs: &[PathBuf], cwd: &Path) -> Vec<PathBuf> {
     if !include_dirs.is_empty() {
         return include_dirs.to_vec();
     }
 
-    let skill_dirs = [".agents/skills", ".claude/skills", ".codex/skills"];
-    let mut paths: Vec<PathBuf> = Vec::new();
-    let mut seen = std::collections::HashSet::new();
+    let home = std::env::var("HOME").ok().map(PathBuf::from);
+    let cwd = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
 
-    // Determine walk stop point: repo root or HOME.
-    let stop_at: Option<PathBuf> =
-        detect_repo_root(cwd).or_else(|| std::env::var("HOME").ok().map(PathBuf::from));
+    // Canonicalize HOME once for comparison (keep as-is if it doesn't exist).
+    let home_canonical = home.as_ref().map(|h| canonical_key(h));
 
-    let mut current = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
+    // Build the directory chain: CWD → parent → ... → stop at HOME, then append HOME.
+    let dirs: Vec<PathBuf> = match home_canonical {
+        Some(_) => std::iter::successors(Some(cwd), |current| {
+            current.parent().map(|p| p.to_path_buf())
+        })
+        .take_while(|current| Some(current) != home_canonical.as_ref())
+        .chain(std::iter::once(home.clone().unwrap()))
+        .collect(),
+        None => std::iter::successors(Some(cwd), |current| {
+            current.parent().map(|p| p.to_path_buf())
+        })
+        .collect(),
+    };
 
-    loop {
-        for name in &skill_dirs {
-            let candidate = current.join(name);
-            let key = canonical_key(&candidate);
-            if seen.insert(key) {
-                paths.push(candidate);
-            }
-        }
-
-        // Check stop condition AFTER processing the current level,
-        // so the stop directory is included in the check.
-        if let Some(ref stop) = stop_at {
-            let stop_canonical = stop.canonicalize().unwrap_or_else(|_| stop.clone());
-            let current_canonical = current.canonicalize().unwrap_or_else(|_| current.clone());
-            if current_canonical == stop_canonical {
-                break;
-            }
-        }
-
-        // Move to parent.
-        match current.parent() {
-            Some(parent) => current = parent.to_path_buf(),
-            None => break,
-        }
-    }
-
-    // Append home directory candidates.
-    if let Ok(home) = std::env::var("HOME") {
-        let home = PathBuf::from(home);
-        for name in &skill_dirs {
-            let candidate = home.join(name);
-            let key = canonical_key(&candidate);
-            if seen.insert(key) {
-                paths.push(candidate);
-            }
-        }
-    }
+    // Flatten each directory into its skill-dir candidates, deduplicating.
+    let (paths, _seen): (Vec<PathBuf>, std::collections::HashSet<PathBuf>) = dirs
+        .iter()
+        .flat_map(|dir| SKILL_DIR_NAMES.iter().map(|name| dir.join(name)))
+        .fold(
+            (Vec::new(), std::collections::HashSet::new()),
+            |(mut paths, mut seen), candidate| {
+                if seen.insert(canonical_key(&candidate)) {
+                    paths.push(candidate);
+                }
+                (paths, seen)
+            },
+        );
 
     paths
 }

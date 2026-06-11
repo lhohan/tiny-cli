@@ -32,9 +32,21 @@ Across all resolved paths (both `--include` and default), duplicate skill names 
 
 ### Repo Detection
 
-No `RepoDetector` trait. A simple function `detect_repo_root(cwd: &Path) -> Option<PathBuf>` calls `jj root` first, then falls back to `git rev-parse --show-toplevel`. All repo-detection tests are integration tests that create real temporary Git/JJ repositories.
+~~A simple function `detect_repo_root(cwd: &Path) -> Option<PathBuf>` calls `jj root` first, then falls back to `git rev-parse --show-toplevel`. All repo-detection tests are integration tests that create real temporary Git/JJ repositories.~~
 
-## Deviations from Original PLAN
+Removed in Phase 4. The walk now uses HOME-only resolution: CWD → parent → … → HOME, with HOME always appended at the end to cover cases where CWD is outside the HOME tree.
+
+## Deviations from PLAN
+
+| Deviation | Detail |
+|---|---|
+| VCS detection removed | Phase 3 `detect_repo_root` (jj/git) was deleted in Phase 4. Walk is HOME-only. |
+| HOME always appended | HOME candidates are always included via `chain`, even when CWD is outside HOME tree. |
+| Functional implementation | Walk uses `successors` → `take_while` → `chain` → `fold` instead of imperative loop. |
+| `SKILL_DIR_NAMES` const | Module-level constant instead of local array. |
+| Test DSL CWD default | `Cmd::given()` sets default CWD to home dir (fixes `with_home_skill` footgun). |
+
+## Original Deviations from Original PLAN
 
 | Decision | Original plan | This plan |
 |----------|--------------|-----------|
@@ -51,7 +63,7 @@ No `RepoDetector` trait. A simple function `detect_repo_root(cwd: &Path) -> Opti
 - Tilde (`~`) is expanded in the CLI layer before path values reach the library.
 - Home directory candidates: `~/.agents/skills`, `~/.claude/skills`, `~/.codex/skills`.
 - Project walk directories: `.agents/skills`, `.claude/skills`, `.codex/skills` at each level from CWD upward.
-- Walk stops at repo root (detected via `jj root` or `git rev-parse --show-toplevel`). If outside any repo, walks up to `HOME`.
+- Walk stops at HOME. HOME candidates are always appended (even when CWD is outside HOME). If `HOME` is unset, the walk reaches the filesystem root.
 - Skill name dedup: first wins by discovery order.
 - `HOME` env var unset: home directory candidates are skipped silently.
 - `ls` no-skills output: `"No skills found."` to stdout, exit 0.
@@ -100,29 +112,44 @@ Wired `generate_ls_output` with explicit `--include`. Reuses existing `scan_skil
 - [x] Include path is a file → error, non-zero exit.
 - N/A Include path is empty → error, non-zero exit (moved to Phase 1 unit test; cannot express via CLI).
 
-### Phase 3: `detect_repo_root` (unit) ✅
+### Phase 3: `detect_repo_root` (unit) ✅ → Removed in Phase 4
 
-Simple function calling `jj root` then `git rev-parse --show-toplevel`. Tests live in `lib.rs` `#[cfg(test)]` as unit tests.
+~~Simple function calling `jj root` then `git rev-parse --show-toplevel`. Tests live in `lib.rs` `#[cfg(test)]` as unit tests.~~
 
-**Tests (unit):**
+All Phase 3 code and unit tests were deleted in Phase 4 when VCS detection was removed in favor of HOME-only path resolution.
+
+**Tests (unit) — all deleted:**
 - [x] Real Git repo detected from subdirectory.
 - [x] Outside any repo → `None`.
 - [x] JJ preferred over Git: creates a repo with `jj git init`, verifies the resolved root matches `jj root` output (skip test if no `jj` on PATH).
 - [x] JJ fails, Git fallback: `jj root` unavailable or fails, falls back to `git rev-parse --show-toplevel` (skip if no `git`).
 - [x] Trailing whitespace in command output handled.
 
-### Phase 4: `ls` with default paths (integration)
+### Phase 4: `ls` with default paths (integration) ✅
 
-Implement `resolve_skill_paths` and drive it through `ls` integration tests against real temp directories. CLI tests must exercise both `git init` and `jj git init` repos to cover the repo-detection path end-to-end — at that point the Phase 3 unit tests can be deleted if proven redundant.
+Implement `resolve_skill_paths` using functional iterators (no imperative loop): `std::iter::successors` generates the parent chain from CWD upward, `take_while` stops when HOME is reached, `chain` appends HOME as the final candidate (ensuring HOME is always searched even when CWD is outside the HOME tree), and `fold` with a `HashSet` handles canonical-path deduplication. The three skill directory names are declared as a module-level `const SKILL_DIR_NAMES`.
 
-**Tests (integration):**
-- Walks upward from CWD to repo root, collecting `.agents/skills`, `.claude/skills`, `.codex/skills` at each level.
-- Stops at repo root, does not walk above it.
-- Outside any repo, walks to `HOME`.
-- Home dir candidates appended after project paths.
-- `--include` override suppresses default paths entirely.
-- Canonically identical paths deduplicated (uses `canonicalize` for existing paths, falls back to string comparison for non-existent paths).
-- Duplicate skill names across project walk and home dirs: first wins.
+`detect_repo_root` was deleted. Home directory candidates are appended after the walk termination point using the `chain` method — the walk termination and HOME append are now expressed as a single functional pipeline with no double-handling.
+
+Redesigned test DSL around an implicit home temp dir:
+- `Cmd::given()` creates an implicit home temp dir, sets default CWD to it, and populates `HOME`.
+- New methods: `with_home_skill`, `with_subdir_skill`, `with_cwd`.
+- Deleted methods: `with_home`, `with_git_repo`, `with_repo_skill`, `with_cwd_at_repo_subdir`, `with_cwd_at_home_workdir`.
+- Deleted fields: `_repo_dirs` from `CmdSetup` and `CmdResult`.
+
+**Tests (integration) — 14 kept, 7 new:**
+- [x] 11 Phase 0–2 tests pass unmodified (all use `--include` which overrides default paths).
+- [x] ~~Walks upward from CWD to repo root, collecting `.agents/skills`, `.claude/skills`, `.codex/skills` at each level.~~ → Replaced: walks CWD → parent → … → HOME.
+- [x] ~~Stops at repo root, does not walk above it.~~ → Replaced: walks up to HOME. No VCS boundary.
+- [x] ~~Outside any repo, walks to `HOME`.~~ → Replaced: HOME appended via `chain`, discovered even when CWD is outside HOME.
+- [x] Skill discovery at project level (`ls_should_find_skill_at_project_level`).
+- [x] Skill discovery at home level (`ls_should_find_skill_at_home_level`).
+- [x] Project skills discovered before home skills (`ls_should_discover_home_skills_after_project_skills`).
+- [x] Skills found at every level from deep CWD up to HOME (`ls_should_find_skills_at_every_level_up_to_home`).
+- [x] Canonically identical paths deduplicated (symlink `.claude/skills` → `.agents/skills`).
+- [x] Duplicate skill names across walk and HOME: first found wins, stderr warns.
+- [x] HOME skills found even when CWD is outside the HOME tree (`ls_should_find_home_skills_when_cwd_outside_home`).
+- [x] ~~`--include` override suppresses default paths entirely.~~ Already covered by Phase 0–2 tests.
 
 ### Phase 5: Rewire `prime` and `show-config`
 
@@ -253,9 +280,9 @@ skills-primer show-config --include /tmp/foo  # lists include path + override no
 | 0 | 3 | integration |
 | 1 | 5 | unit |
 | 2 | 11 | integration |
-| 3 | 5 | unit |
-| 4 | 7 | integration |
+| 3 | - | deleted in Phase 4 |
+| 4 | 14 kept + 7 new | integration |
 | 5 | 6 | integration |
-| **Total** | **37** | |
+| **Total** | **46** | |
 
-**Completed:** Phases 0–3 (29 tests: 10 unit + 19 integration).
+**Completed:** Phases 0–4 (46 tests: 5 unit + 41 integration).

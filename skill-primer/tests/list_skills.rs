@@ -193,131 +193,88 @@ fn unreadable_subdirectory_stderr_warning_sibling_skills_found() {
 }
 
 #[test]
-fn walks_upward_to_repo_root_git() {
+fn ls_should_find_skill_at_project_level() {
     Cmd::given()
         .command_ls()
-        .with_git_repo()
-        .with_repo_skill("found-it", "A skill", "body")
-        .with_repo_subdir("a/b/c")
+        .with_subdir_skill("project", "found-it", "A skill", "body")
+        .with_cwd("project/a/b/c")
         .when_run()
         .should_succeed()
         .expect_output("[found-it");
 }
 
 #[test]
-fn outside_repo_walks_to_home() {
+fn ls_should_find_skill_at_home_level() {
     Cmd::given()
         .command_ls()
-        .with_home()
-        .with_repo_skill("home-skill", "From home", "body")
+        .with_home_skill("home-skill", "From home", "body")
+        .with_cwd("work")
         .when_run()
         .should_succeed()
         .expect_output("[home-skill");
 }
 
 #[test]
-fn home_dir_candidates_appended_after_project_paths() {
+fn ls_should_discover_home_skills_after_project_skills() {
     Cmd::given()
         .command_ls()
-        .with_home()
-        .with_repo_skill("home-skill", "From home", "body")
-        .with_git_repo()
-        .with_repo_skill("project-skill", "In project", "body")
-        .with_repo_subdir("a/b")
+        .with_subdir_skill("project", "project-skill", "In project", "body")
+        .with_home_skill("home-skill", "From home", "body")
+        .with_cwd("project/a/b")
         .when_run()
         .should_succeed()
         .expect_output_order("[project-skill", "[home-skill");
 }
 
 #[test]
-fn stops_at_repo_root_does_not_walk_above() {
-    let tmp = assert_fs::TempDir::new().unwrap();
-
-    // Skill above the repo root (should not be found).
-    std::fs::create_dir_all(tmp.path().join(".agents/skills/above")).unwrap();
-    std::fs::write(
-        tmp.path().join(".agents/skills/above/SKILL.md"),
-        "---\nname: above\ndescription: outside\n---\nbody",
-    )
-    .unwrap();
-
-    // Git repo inside tmp.
-    let repo = tmp.child("repo");
-    std::fs::create_dir(repo.path()).unwrap();
-    std::process::Command::new("git")
-        .args(["init", "-b", "main"])
-        .current_dir(repo.path())
-        .output()
-        .unwrap();
-
-    // Skill inside repo (should be found).
-    std::fs::create_dir_all(repo.path().join(".agents/skills/inside")).unwrap();
-    std::fs::write(
-        repo.path().join(".agents/skills/inside/SKILL.md"),
-        "---\nname: inside\ndescription: found\n---\nbody",
-    )
-    .unwrap();
-
-    // Run from a subdirectory of the repo.
-    let subdir = repo.child("x/y/z");
-    std::fs::create_dir_all(subdir.path()).unwrap();
-
-    let home_tmp = assert_fs::TempDir::new().unwrap();
-
+fn ls_should_find_skills_at_every_level_up_to_home() {
     Cmd::given()
         .command_ls()
-        .with_cwd_dir(subdir.path())
-        .with_env("HOME", home_tmp.path().to_str().unwrap())
+        .with_subdir_skill("project/a/b", "deep-skill", "Deep inside", "body")
+        .with_subdir_skill("project", "project-skill", "In project", "body")
+        .with_home_skill("home-skill", "From home", "body")
+        .with_cwd("project/a/b")
         .when_run()
         .should_succeed()
-        .expect_output("[inside")
-        .expect_out_does_not_contain("[above");
+        .expect_output("[deep-skill")
+        .expect_output("[project-skill")
+        .expect_output("[home-skill")
+        .expect_output_order("[deep-skill", "[project-skill")
+        .expect_output_order("[project-skill", "[home-skill");
 }
 
 #[test]
-fn deduplicates_canonically_identical_paths() {
-    let tmp = assert_fs::TempDir::new().unwrap();
-    std::process::Command::new("git")
-        .args(["init", "-b", "main"])
-        .current_dir(tmp.path())
-        .output()
-        .unwrap();
-
-    // Create a skill at .agents/skills/my-skill.
-    std::fs::create_dir_all(tmp.path().join(".agents/skills/my-skill")).unwrap();
+fn ls_should_deduplicate_symlinked_directories() {
+    let home = assert_fs::TempDir::new().unwrap();
+    std::fs::create_dir_all(home.path().join(".agents/skills/my-skill")).unwrap();
     std::fs::write(
-        tmp.path().join(".agents/skills/my-skill/SKILL.md"),
+        home.path().join(".agents/skills/my-skill/SKILL.md"),
         "---\nname: my-skill\ndescription: a skill\n---\nbody",
     )
     .unwrap();
-
-    // Symlink .claude/skills -> .agents/skills.
-    std::fs::create_dir(tmp.path().join(".claude")).unwrap();
+    std::fs::create_dir(home.path().join(".claude")).unwrap();
     std::os::unix::fs::symlink(
-        tmp.path().join(".agents/skills"),
-        tmp.path().join(".claude/skills"),
+        home.path().join(".agents/skills"),
+        home.path().join(".claude/skills"),
     )
     .unwrap();
 
-    let home_tmp = assert_fs::TempDir::new().unwrap();
-
     Cmd::given()
         .command_ls()
-        .with_cwd_dir(tmp.path())
-        .with_env("HOME", home_tmp.path().to_str().unwrap())
+        .with_cwd_dir(home.path())
+        .with_env("HOME", home.path().to_str().unwrap())
         .when_run()
         .should_succeed()
         .expect_output_count("[my-skill", 1);
 }
 
 #[test]
-fn duplicate_skill_names_across_walk_and_home_first_wins() {
+fn ls_should_keep_first_duplicate_across_directory_levels() {
     Cmd::given()
         .command_ls()
-        .with_home()
-        .with_repo_skill("conflict", "From home", "body")
-        .with_git_repo()
-        .with_repo_skill("conflict", "From project", "body")
+        .with_home_skill("conflict", "From home", "body")
+        .with_subdir_skill("project", "conflict", "From project", "body")
+        .with_cwd("project/a/b")
         .when_run()
         .should_succeed()
         .expect_output_count("[conflict", 1)
@@ -325,76 +282,23 @@ fn duplicate_skill_names_across_walk_and_home_first_wins() {
 }
 
 #[test]
-fn walks_upward_to_repo_root_jj() {
-    if !has_command("jj") {
-        return;
-    }
-
-    let tmp = assert_fs::TempDir::new().unwrap();
-    let init = std::process::Command::new("jj")
-        .args(["git", "init", "--git-repo=."])
-        .current_dir(tmp.path())
-        .output()
-        .unwrap();
-    if !init.status.success() {
-        eprintln!("SKIP: jj git init failed");
-        return;
-    }
-
-    std::fs::create_dir_all(tmp.path().join(".agents/skills/jj-skill")).unwrap();
+fn ls_should_find_home_skills_when_cwd_outside_home() {
+    let home = assert_fs::TempDir::new().unwrap();
+    std::fs::create_dir_all(home.path().join(".agents/skills/home-skill")).unwrap();
     std::fs::write(
-        tmp.path().join(".agents/skills/jj-skill/SKILL.md"),
-        "---\nname: jj-skill\ndescription: from jj repo\n---\nbody",
+        home.path().join(".agents/skills/home-skill/SKILL.md"),
+        "---\nname: home-skill\ndescription: From home\n---\nbody",
     )
     .unwrap();
 
-    let subdir = tmp.child("a/b");
-    std::fs::create_dir_all(subdir.path()).unwrap();
+    let outside = assert_fs::TempDir::new().unwrap();
+    std::fs::create_dir_all(outside.path().join("nested")).unwrap();
 
     Cmd::given()
         .command_ls()
-        .with_cwd_dir(subdir.path())
+        .with_cwd_dir(outside.path().join("nested").as_path())
+        .with_env("HOME", home.path().to_str().unwrap())
         .when_run()
         .should_succeed()
-        .expect_output("[jj-skill");
-}
-
-#[test]
-fn jj_fails_falls_back_to_git() {
-    if !has_command("jj") || !has_command("git") {
-        return;
-    }
-
-    let tmp = assert_fs::TempDir::new().unwrap();
-    // Pure git repo — NOT a jj workspace.
-    std::process::Command::new("git")
-        .args(["init", "-b", "main"])
-        .current_dir(tmp.path())
-        .output()
-        .unwrap();
-
-    // jj root should fail here — verify the fallback works.
-    std::fs::create_dir_all(tmp.path().join(".agents/skills/git-skill")).unwrap();
-    std::fs::write(
-        tmp.path().join(".agents/skills/git-skill/SKILL.md"),
-        "---\nname: git-skill\ndescription: via git fallback\n---\nbody",
-    )
-    .unwrap();
-
-    let subdir = tmp.child("x/y");
-    std::fs::create_dir_all(subdir.path()).unwrap();
-
-    Cmd::given()
-        .command_ls()
-        .with_cwd_dir(subdir.path())
-        .when_run()
-        .should_succeed()
-        .expect_output("[git-skill");
-}
-
-fn has_command(cmd: &str) -> bool {
-    std::process::Command::new(cmd)
-        .arg("--version")
-        .output()
-        .is_ok()
+        .expect_output("[home-skill");
 }
