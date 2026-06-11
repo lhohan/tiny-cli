@@ -30,7 +30,7 @@ fn agent_without_skills_should_not_find_skills_when_not_primed() {
 #[test]
 fn agent_without_skills_should_not_find_skills_when_primed() {
     let skills_system_prompt =
-        skills_primer::generate_prime_output(&[PathBuf::from("tests/fixtures/")], Path::new("."))
+        skills_primer::prime(&[PathBuf::from("tests/fixtures/")], Path::new("."))
             .expect("prime output should succeed")
             .instructions;
 

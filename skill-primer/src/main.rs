@@ -3,7 +3,7 @@ use skills_primer::*;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(name = "skill-primer")]
+#[command(name = "skills-primer")]
 #[command(about = "Print skill loading instructions and skill catalog")]
 struct Cli {
     #[command(subcommand)]
@@ -87,7 +87,7 @@ impl Cli {
 }
 
 fn handle_config(paths: &[PathBuf], cwd: &Path) {
-    match generate_config_output(paths, cwd) {
+    match config(paths, cwd) {
         Ok(output) => {
             for line in &output.lines {
                 println!("{}", line);
@@ -103,7 +103,7 @@ fn handle_config(paths: &[PathBuf], cwd: &Path) {
 }
 
 fn handle_ls(paths: &[PathBuf], cwd: &Path, warning_mode: WarningMode) {
-    match generate_ls_output(paths, cwd) {
+    match ls(paths, cwd) {
         Ok(output) => {
             for line in &output.skill_paths {
                 println!("{}", line);
@@ -120,7 +120,7 @@ fn handle_ls(paths: &[PathBuf], cwd: &Path, warning_mode: WarningMode) {
 }
 
 fn handle_prime(paths: &[PathBuf], cwd: &Path, warning_mode: WarningMode) {
-    match generate_prime_output(paths, cwd) {
+    match prime(paths, cwd) {
         Ok(output) => {
             print!("{}", output.instructions);
             emit_stderr_lines(&output.warnings, warning_mode);
