@@ -20,10 +20,9 @@ mod discovery {
     use indoc::indoc;
 
     #[test]
-    fn prime_should_discover_skills_when_include_provided() {
+    fn prime_should_discover_skills_from_default_path() {
         Cmd::given()
             .command_prime()
-            .with_include_dir("skills-dir")
             .with_skill(
                 "example-skill",
                 "Use when testing example scenarios.",
@@ -37,10 +36,9 @@ mod discovery {
     }
 
     #[test]
-    fn prime_should_not_discover_skills_when_include_empty() {
+    fn prime_should_not_discover_skills_when_default_path_empty() {
         Cmd::given()
             .command_prime()
-            .with_empty_include_dir()
             .when_run()
             .should_succeed()
             .expect_prime_instructions()
@@ -49,18 +47,15 @@ mod discovery {
     }
 
     #[test]
-    fn prime_should_merge_skills_from_multiple_includes() {
+    fn prime_should_discover_skills_from_custom_path() {
         Cmd::given()
             .command_prime()
-            .with_include_dir("first")
-            .with_skill("skill-a", "First skill.", "# Skill A")
-            .with_include_dir("second")
+            .with_path(".codex/skills")
             .with_skill("skill-b", "Second skill.", "# Skill B")
             .when_run()
             .should_succeed()
             .expect_prime_instructions()
             .expect_available_skills()
-            .expect_skill("skill-a", "First skill.")
             .expect_skill("skill-b", "Second skill.");
     }
 
@@ -80,21 +75,24 @@ mod discovery {
     }
 
     #[test]
-    fn prime_should_deduplicate_skills_by_name_from_multiple_includes() {
+    fn prime_should_deduplicate_skills_by_name_from_walked_paths() {
         Cmd::given()
             .command_prime()
-            .with_include_dir("first")
-            .with_skill("shared-skill", "Shared description", "# Shared")
-            .with_include_dir("second")
-            .with_skill("shared-skill", "Shared description", "# Shared")
+            .with_subdir_skill(
+                "project",
+                "shared-skill",
+                "Project description",
+                "# Project",
+            )
+            .with_home_skill("shared-skill", "Home description", "# Home")
+            .with_cwd("project/a")
             .when_run()
             .should_succeed()
             .expect_prime_instructions()
             .expect_available_skills()
-            .expect_skill("shared-skill", "Shared description")
+            .expect_skill("shared-skill", "Project description")
             .expect_output_count("<name>shared-skill</name>", 1)
             .expect_stderr_contains("warning: duplicate skill 'shared-skill' at ")
-            .expect_stderr_dir("second")
             .expect_stderr_contains("/SKILL.md, keeping first");
     }
 
@@ -111,8 +109,10 @@ mod discovery {
 
         Cmd::given()
             .arg("prime")
-            .arg("--include")
-            .arg(tmp.to_str().unwrap())
+            .arg("--path")
+            .arg(".")
+            .with_cwd_dir(tmp.path())
+            .with_env("HOME", tmp.to_str().unwrap())
             .when_run()
             .should_succeed()
             .expect_skill("foo", "Foo skill")
@@ -146,7 +146,9 @@ mod discovery {
         // Run the tool against the parent directory — expect a warning
         Cmd::given()
             .command_prime()
-            .with_include(tmp.to_str().unwrap())
+            .with_path(".")
+            .with_cwd_dir(tmp.path())
+            .with_env("HOME", tmp.to_str().unwrap())
             .when_run()
             .should_succeed()
             .expect_skill("good-skill", "Should be found")
@@ -250,30 +252,25 @@ mod name {
     }
 }
 
-mod include_validation {
+mod path_validation {
     use super::*;
     use rstest::rstest;
 
     #[test]
-    fn prime_should_fail_when_include_is_a_file() {
-        let tmp = assert_fs::TempDir::new().unwrap();
-        let file_path = tmp.path().join("not-a-dir.txt");
-        std::fs::write(&file_path, "this is a file, not a directory").unwrap();
-
+    fn prime_should_fail_when_path_is_a_file() {
         Cmd::given()
-            .arg("prime")
-            .arg("--include")
-            .arg(file_path.to_str().unwrap())
+            .with_file_path("not-a-dir.txt")
+            .command_prime()
             .when_run()
             .should_fail()
-            .expect_stderr_contains("is a file");
+            .expect_stderr_contains("resolves to a file");
     }
 
     #[test]
-    fn prime_should_fail_when_include_path_has_no_value() {
+    fn prime_should_fail_when_path_has_no_value() {
         Cmd::given()
             .arg("prime")
-            .arg("--include")
+            .arg("--path")
             .when_run()
             .should_fail()
             .expect_stderr_contains("a value is required");
@@ -281,21 +278,13 @@ mod include_validation {
 
     #[rstest]
     #[case::path_is_empty("", false, "a value is required")]
-    #[case::path_does_not_exist(
-        "/nonexistent/path/that/does/not/exist",
-        true,
-        "warning: include directory not found"
-    )]
-    fn include_path_validation(
+    #[case::path_is_absolute("/nonexistent/path/that/does/not/exist", false, "must be relative")]
+    fn path_validation(
         #[case] path: &str,
         #[case] expect_success: bool,
         #[case] expected_stderr: &str,
     ) {
-        let result = Cmd::given()
-            .arg("prime")
-            .arg("--include")
-            .arg(path)
-            .when_run();
+        let result = Cmd::given().arg("prime").arg("--path").arg(path).when_run();
 
         let result = if expect_success {
             result.should_succeed()
@@ -325,7 +314,7 @@ mod default_walk {
     use super::*;
 
     #[test]
-    fn prime_should_discover_skill_in_home_without_include() {
+    fn prime_should_discover_skill_in_home_without_path_flag() {
         Cmd::given()
             .command_prime()
             .with_home_skill("home-skill", "A skill found via walk", "# Body")

@@ -115,16 +115,15 @@ It should:
 7. Avoid injecting full skill bodies into `AGENTS.md`.
 8. Prefer injecting only a small `AGENTS.md` instruction that points agents to `skill-primer`.
 
-Likely scan locations:
+Default scan location:
 
 ```text
 .agents/skills/
-~/.agents/skills/
-~/.codex/skills/
-~/.claude/skills/
 ```
 
-Project-local locations should be treated as less trusted than user-level locations.
+The CLI walks upward from the current directory to `HOME`, checking that same
+relative path at each level. Users can replace the default relative path with a
+single `--path` value, for example `.codex/skills`.
 
 ## Minimal Static `AGENTS.md` Block
 
@@ -361,11 +360,7 @@ Example stdout:
 Repository initialization:
 
 ```sh
-skill-primer init \
-  --include ~/.agents/skills \
-  --include ~/.codex/skills \
-  --include .agents/skills \
-  --trust-project
+skill-primer init
 ```
 
 Possible generated output preview:
@@ -383,12 +378,13 @@ Updated AGENTS.md between skill-primer markers.
 
 The first version should be intentionally small:
 
-1. Scan explicit directories passed with `--include`.
+1. Scan `.agents/skills` while walking from the current directory to `HOME`.
 2. Parse `SKILL.md` frontmatter.
-3. Print the runtime markdown catalog from `skill-primer` and `skill-primer print`.
-4. Inject only the `AGENTS.md` runner instruction between stable markers from `skill-primer init`.
-5. Never execute anything.
-6. Warn on duplicates and invalid metadata.
+3. Allow one replacement relative skill path via `--path`.
+4. Print the runtime markdown catalog from `skill-primer prime`.
+5. Inject only the `AGENTS.md` runner instruction between stable markers from `skill-primer init`.
+6. Never execute anything.
+7. Warn on duplicates and invalid metadata.
 
 Avoid building registries, installers, runtime activation tools, or a skill package manager until repeated use shows a concrete need.
 

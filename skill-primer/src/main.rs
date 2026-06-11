@@ -9,9 +9,9 @@ struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
 
-    /// Include skills from directory (repeatable)
-    #[arg(long = "include", short = 'i', global = true)]
-    include_dirs: Vec<PathBuf>,
+    /// Relative skill directory path to scan while walking upward
+    #[arg(long = "path", value_name = "PATH", global = true)]
+    paths: Vec<PathBuf>,
 }
 
 #[derive(Subcommand, PartialEq)]
@@ -27,12 +27,12 @@ enum Command {
 fn main() {
     let cli = Cli::parse();
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    match (&cli.command, cli.include_dirs.is_empty()) {
-        (Some(Command::Prime), _) => handle_prime(&cli.include_dirs, &cwd),
-        (Some(Command::Config), _) => handle_config(&cli.include_dirs, &cwd),
-        (Some(Command::Ls), _) => handle_ls(&cli.include_dirs, &cwd),
+    match (&cli.command, cli.paths.is_empty()) {
+        (Some(Command::Prime), _) => handle_prime(&cli.paths, &cwd),
+        (Some(Command::Config), _) => handle_config(&cli.paths, &cwd),
+        (Some(Command::Ls), _) => handle_ls(&cli.paths, &cwd),
         (None, false) => {
-            eprintln!("error: a subcommand is required when using --include");
+            eprintln!("error: a subcommand is required when using --path");
             let mut cmd = Cli::command();
             cmd.print_help().unwrap();
             println!();
@@ -46,8 +46,8 @@ fn main() {
     }
 }
 
-fn handle_config(include_dirs: &[PathBuf], cwd: &Path) {
-    match generate_config_output(include_dirs, cwd) {
+fn handle_config(paths: &[PathBuf], cwd: &Path) {
+    match generate_config_output(paths, cwd) {
         Ok(output) => {
             for line in &output.lines {
                 println!("{}", line);
@@ -62,8 +62,8 @@ fn handle_config(include_dirs: &[PathBuf], cwd: &Path) {
     }
 }
 
-fn handle_ls(include_dirs: &[PathBuf], cwd: &Path) {
-    match generate_ls_output(include_dirs, cwd) {
+fn handle_ls(paths: &[PathBuf], cwd: &Path) {
+    match generate_ls_output(paths, cwd) {
         Ok(output) => {
             for line in &output.skill_paths {
                 println!("{}", line);
@@ -81,8 +81,8 @@ fn handle_ls(include_dirs: &[PathBuf], cwd: &Path) {
     }
 }
 
-fn handle_prime(include_dirs: &[PathBuf], cwd: &Path) {
-    match generate_prime_output(include_dirs, cwd) {
+fn handle_prime(paths: &[PathBuf], cwd: &Path) {
+    match generate_prime_output(paths, cwd) {
         Ok(output) => {
             print!("{}", output.instructions);
             if !output.warnings.is_empty() {

@@ -19,9 +19,9 @@ fn help_flag_should_print_help() {
 }
 
 #[test]
-fn no_subcommand_with_include_should_error_and_show_help() {
+fn no_subcommand_with_path_should_error_and_show_help() {
     Cmd::given()
-        .with_empty_include_dir()
+        .with_path(".codex/skills")
         .when_run()
         .should_fail()
         .expect_stderr_contains("subcommand is required");

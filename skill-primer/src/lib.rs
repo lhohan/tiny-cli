@@ -17,29 +17,10 @@ pub struct ConfigOutput {
     pub lines: Vec<String>,
 }
 
-/// Generate `ls` output for the given include directories and
-/// working directory.
-pub fn generate_ls_output(include_dirs: &[PathBuf], cwd: &Path) -> Result<LsOutput, Vec<String>> {
-    // Pre-check: reject file paths as directories before delegating to collect_skills
-    for dir in include_dirs {
-        if dir.is_file() {
-            return Err(vec![format!(
-                "error: include path '{}' is a file, not a directory",
-                dir.display()
-            )]);
-        }
-    }
-
-    let resolved = resolve_skill_paths(include_dirs, cwd);
-    let scan_dirs: Vec<PathBuf> = if include_dirs.is_empty() {
-        // For default paths, silently skip non-existent directories.
-        resolved
-            .into_iter()
-            .filter(|p| p.is_dir())
-            .collect::<Vec<_>>()
-    } else {
-        resolved
-    };
+/// Generate `ls` output for the configured skill path and working directory.
+pub fn generate_ls_output(path_args: &[PathBuf], cwd: &Path) -> Result<LsOutput, Vec<String>> {
+    let resolved = resolve_skill_paths(path_args, cwd)?;
+    let scan_dirs = existing_skill_dirs(resolved)?;
 
     let (all_skills, stderr) = collect_skills(&scan_dirs)?;
 
@@ -62,10 +43,10 @@ pub fn generate_ls_output(include_dirs: &[PathBuf], cwd: &Path) -> Result<LsOutp
     })
 }
 
-/// Generate the complete `prime` output for the given include directories and
+/// Generate the complete `prime` output for the configured skill path and
 /// working directory.
 pub fn generate_prime_output(
-    include_dirs: &[PathBuf],
+    path_args: &[PathBuf],
     cwd: &Path,
 ) -> Result<PrimeResponse, Vec<String>> {
     let header = indoc::indoc! {r#"
@@ -93,8 +74,9 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
     let mut instructions = String::with_capacity(2048);
     instructions.push_str(header);
 
-    let resolved = resolve_skill_paths(include_dirs, cwd);
-    let (all_skills, stderr) = collect_skills(&resolved)?;
+    let resolved = resolve_skill_paths(path_args, cwd)?;
+    let scan_dirs = existing_skill_dirs(resolved)?;
+    let (all_skills, warnings) = collect_skills(&scan_dirs)?;
 
     if all_skills.is_empty() {
         instructions.push_str("No skills detected.\n");
@@ -118,78 +100,26 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
 
     Ok(PrimeResponse {
         instructions,
-        warnings: stderr,
+        warnings,
     })
 }
 
 pub fn generate_config_output(
-    include_dirs: &[PathBuf],
+    path_args: &[PathBuf],
     cwd: &Path,
 ) -> Result<ConfigOutput, Vec<String>> {
     let mut lines = Vec::new();
+    let skill_path = selected_skill_path(path_args, cwd)?;
 
-    if !include_dirs.is_empty() {
-        for dir in include_dirs {
-            if dir.is_file() {
-                return Err(vec![format!(
-                    "error: include path '{}' is a file, not a directory",
-                    dir.display()
-                )]);
-            }
-        }
-        lines.push("Include paths:".to_string());
-        for dir in include_dirs {
-            let status = if dir.is_dir() {
-                "(found)"
-            } else {
-                "(not found)"
-            };
-            lines.push(format!("  {} {}", dir.display(), status));
-        }
-        lines.push(String::new());
-        lines.push("Default paths are overridden by --include.".to_string());
-        return Ok(ConfigOutput { lines });
-    }
-
-    // Default paths — show configured dirs and project walk
-    let home = std::env::var("HOME").ok().map(PathBuf::from);
-
-    // Configured directories section
-    lines.push("Configured directories:".to_string());
-    let home_patterns = ["~/.agents/skills", "~/.claude/skills", "~/.codex/skills"];
-    for pattern in &home_patterns {
-        let status = match &home {
-            Some(h) => {
-                let resolved = h.join(pattern.strip_prefix("~/").unwrap());
-                if resolved.is_dir() {
-                    "(found)"
-                } else {
-                    "(not found)"
-                }
-            }
-            None => "(not found)",
-        };
-        lines.push(format!("  {} {}", pattern, status));
-    }
+    lines.push("Skill path:".to_string());
+    lines.push(format!("  {}", skill_path.display()));
     lines.push(String::new());
 
-    // Project directories section — walk paths excluding HOME candidates
-    let resolved = resolve_skill_paths(include_dirs, cwd);
+    let resolved = resolve_skill_paths(path_args, cwd)?;
 
-    let walk_paths: Vec<&PathBuf> = resolved
-        .iter()
-        .filter(|p| {
-            // Exclude paths whose grandparent is HOME (those are home candidates H/.X/skills)
-            match &home {
-                Some(h) => p.parent().and_then(|pp| pp.parent()) != Some(h.as_path()),
-                None => true,
-            }
-        })
-        .collect();
-
-    if !walk_paths.is_empty() {
-        lines.push("Project directories:".to_string());
-        for path in &walk_paths {
+    if !resolved.is_empty() {
+        lines.push("Resolved directories:".to_string());
+        for path in &resolved {
             let status = if path.is_dir() {
                 "(found)"
             } else {
@@ -202,25 +132,25 @@ pub fn generate_config_output(
     Ok(ConfigOutput { lines })
 }
 
-/// Collect all skills from the given include directories, handling validation,
+/// Collect all skills from the given skill directories, handling validation,
 /// deduplication, and warning-to-string conversion.
 ///
 /// Returns `Err` for empty paths or file-as-directory errors.
-fn collect_skills(include_dirs: &[PathBuf]) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
+fn collect_skills(skill_dirs: &[PathBuf]) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
     let mut all_skills: Vec<Skill> = Vec::new();
     let mut seen_names: HashMap<String, PathBuf> = HashMap::new();
     let mut stderr: Vec<String> = Vec::new();
 
-    for dir in include_dirs {
+    for dir in skill_dirs {
         if dir.as_os_str().is_empty() {
-            return Err(vec!["error: include path cannot be empty".to_string()]);
+            return Err(vec!["error: skill path cannot be empty".to_string()]);
         }
         let result = scan_skill_directory(dir);
         for warning in &result.warnings {
             match warning {
                 ScanWarning::IsFile(path) => {
                     return Err(vec![format!(
-                        "error: include path '{}' is a file, not a directory",
+                        "error: skill path '{}' is a file, not a directory",
                         path.display()
                     )]);
                 }
@@ -267,9 +197,9 @@ enum ScanWarning {
     Unreadable(PathBuf),
     /// A directory could not be read/listed (permission denied).
     UnreadableDirectory(PathBuf),
-    /// Include path does not exist.
+    /// Skill path does not exist.
     DoesNotExist(PathBuf),
-    /// Include path is a file, not a directory.
+    /// Skill path is a file, not a directory.
     IsFile(PathBuf),
     /// An unexpected I/O error occurred while reading a directory.
     DirectoryReadError { path: PathBuf, error: String },
@@ -285,11 +215,11 @@ impl ScanWarning {
     fn to_stderr(&self) -> String {
         match self {
             ScanWarning::DoesNotExist(path) => {
-                format!("warning: include directory not found: {}", path.display())
+                format!("warning: skill directory not found: {}", path.display())
             }
             ScanWarning::IsFile(path) => {
                 format!(
-                    "error: include path '{}' is a file, not a directory",
+                    "error: skill path '{}' is a file, not a directory",
                     path.display()
                 )
             }
@@ -521,22 +451,16 @@ fn canonical_key(path: &Path) -> PathBuf {
     }
 }
 
-/// The skill subdirectory names scanned during the CWD-to-HOME walk.
-const SKILL_DIR_NAMES: &[&str] = &[".agents/skills", ".claude/skills", ".codex/skills"];
+/// The default relative skill path scanned during the CWD-to-HOME walk.
+const DEFAULT_SKILL_PATH: &str = ".agents/skills";
 
 /// Resolve all candidate skill paths.
 ///
-/// - When `include_dirs` is non-empty: returns them verbatim in order
-///   (no deduplication). Default path resolution is skipped entirely.
-/// - When `include_dirs` is empty: walks from CWD upward, collecting
-///   the directories listed in [`SKILL_DIR_NAMES`] at each level until
-///   HOME is reached. Default paths are deduplicated by canonical path;
-///   the first occurrence in discovery order wins.
-pub fn resolve_skill_paths(include_dirs: &[PathBuf], cwd: &Path) -> Vec<PathBuf> {
-    if !include_dirs.is_empty() {
-        return include_dirs.to_vec();
-    }
-
+/// Walks from CWD upward, collecting the selected relative skill path at each
+/// level until HOME is reached. Paths are deduplicated by canonical path; the
+/// first occurrence in discovery order wins.
+pub fn resolve_skill_paths(path_args: &[PathBuf], cwd: &Path) -> Result<Vec<PathBuf>, Vec<String>> {
+    let skill_path = selected_skill_path(path_args, cwd)?;
     let home = std::env::var("HOME").ok().map(PathBuf::from);
     let cwd = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
 
@@ -557,11 +481,9 @@ pub fn resolve_skill_paths(include_dirs: &[PathBuf], cwd: &Path) -> Vec<PathBuf>
         .collect(),
     };
 
-    // Flatten each directory into its skill-dir candidates, deduplicating.
-    let (paths, _seen): (Vec<PathBuf>, std::collections::HashSet<PathBuf>) = dirs
-        .iter()
-        .flat_map(|dir| SKILL_DIR_NAMES.iter().map(|name| dir.join(name)))
-        .fold(
+    // Flatten each directory into its skill-dir candidate, deduplicating.
+    let (paths, _seen): (Vec<PathBuf>, std::collections::HashSet<PathBuf>) =
+        dirs.iter().map(|dir| dir.join(&skill_path)).fold(
             (Vec::new(), std::collections::HashSet::new()),
             |(mut paths, mut seen), candidate| {
                 if seen.insert(canonical_key(&candidate)) {
@@ -571,7 +493,51 @@ pub fn resolve_skill_paths(include_dirs: &[PathBuf], cwd: &Path) -> Vec<PathBuf>
             },
         );
 
-    paths
+    Ok(paths)
+}
+
+fn selected_skill_path(path_args: &[PathBuf], cwd: &Path) -> Result<PathBuf, Vec<String>> {
+    match path_args {
+        [] => Ok(PathBuf::from(DEFAULT_SKILL_PATH)),
+        [path] => validate_skill_path(path, cwd).map(|_| path.clone()),
+        _ => Err(vec!["error: --path can only be specified once".to_string()]),
+    }
+}
+
+fn validate_skill_path(path: &Path, cwd: &Path) -> Result<(), Vec<String>> {
+    if path.as_os_str().is_empty() {
+        return Err(vec!["error: --path cannot be empty".to_string()]);
+    }
+    if path.is_absolute() {
+        return Err(vec![format!(
+            "error: --path '{}' must be relative",
+            path.display()
+        )]);
+    }
+    let candidate = cwd.join(path);
+    if candidate.is_file() {
+        return Err(vec![format!(
+            "error: --path '{}' resolves to a file, not a directory",
+            path.display()
+        )]);
+    }
+    Ok(())
+}
+
+fn existing_skill_dirs(paths: Vec<PathBuf>) -> Result<Vec<PathBuf>, Vec<String>> {
+    paths.into_iter().try_fold(Vec::new(), |mut dirs, path| {
+        if path.is_file() {
+            Err(vec![format!(
+                "error: skill path '{}' is a file, not a directory",
+                path.display()
+            )])
+        } else {
+            if path.is_dir() {
+                dirs.push(path);
+            }
+            Ok(dirs)
+        }
+    })
 }
 
 /// Format a skill name for the `ls` output name column.
@@ -773,11 +739,11 @@ mod tests {
     // ── generate_ls_output error cases ─────────────────────
 
     #[test]
-    fn ls_empty_include_path_returns_error() {
+    fn ls_empty_path_returns_error() {
         let result = generate_ls_output(&[PathBuf::from("")], Path::new("."));
         assert!(result.is_err());
         let errors = result.unwrap_err();
         assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0], "error: include path cannot be empty");
+        assert_eq!(errors[0], "error: --path cannot be empty");
     }
 }

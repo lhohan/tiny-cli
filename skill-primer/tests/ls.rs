@@ -19,7 +19,6 @@ mod basic_discovery {
     #[test]
     fn ls_should_report_no_skills_found() {
         Cmd::given()
-            .with_empty_include_dir()
             .command_ls()
             .when_run()
             .should_succeed()
@@ -27,16 +26,14 @@ mod basic_discovery {
     }
 
     #[test]
-    fn ls_should_preserve_discovery_order_across_includes() {
+    fn ls_should_use_custom_relative_path() {
         Cmd::given()
-            .with_skill("alpha", "First", "body")
-            .with_include_dir("second")
-            .with_skill("beta", "Second", "body")
+            .with_path(".codex/skills")
+            .with_skill("codex-skill", "Custom path", "body")
             .command_ls()
             .when_run()
             .should_succeed()
-            .expect_output("alpha")
-            .expect_output("beta");
+            .expect_output("codex-skill");
     }
 }
 
@@ -70,18 +67,42 @@ mod error_conditions {
     use super::*;
 
     #[test]
-    fn ls_should_fail_when_include_path_is_file() {
+    fn ls_should_fail_when_path_is_file() {
         Cmd::given()
-            .with_file_include("not-a-dir")
+            .with_file_path("not-a-dir")
             .command_ls()
             .when_run()
             .should_fail()
-            .expect_stderr_contains("error: include path")
-            .expect_stderr_contains("is a file, not a directory");
+            .expect_stderr_contains("error: --path")
+            .expect_stderr_contains("resolves to a file");
     }
 
-    // Empty-path test lives in lib.rs as a unit test — clap intercepts
-    // `--include ""` as a missing required value before it reaches our code.
+    #[test]
+    fn ls_should_fail_when_path_is_absolute() {
+        Cmd::given()
+            .arg("--path")
+            .arg("/tmp/skills")
+            .command_ls()
+            .when_run()
+            .should_fail()
+            .expect_stderr_contains("must be relative");
+    }
+
+    #[test]
+    fn ls_should_fail_when_path_is_repeated() {
+        Cmd::given()
+            .arg("--path")
+            .arg(".agents/skills")
+            .arg("--path")
+            .arg(".codex/skills")
+            .command_ls()
+            .when_run()
+            .should_fail()
+            .expect_stderr_contains("--path can only be specified once");
+    }
+
+    // Empty-path test lives in lib.rs as a unit test because clap intercepts
+    // `--path ""` as a missing required value before it reaches our code.
 }
 
 mod edge_cases {
@@ -157,7 +178,9 @@ mod edge_cases {
         std::fs::set_permissions(&locked, perms).unwrap();
 
         let mut cmd = assert_cmd::Command::cargo_bin("skills-primer").unwrap();
-        cmd.args(["--include", tmp.to_str().unwrap(), "ls"]);
+        cmd.current_dir(tmp.path());
+        cmd.env("HOME", tmp.path());
+        cmd.args(["--path", ".", "ls"]);
 
         let output = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -186,11 +209,10 @@ mod duplicate_handling {
 
     #[test]
     fn ls_should_keep_first_duplicate_skill_name() {
-        // Use two separate include dirs so both contain a skill with the same name.
         Cmd::given()
-            .with_skill("dup-skill", "First occurrence", "body A")
-            .with_include_dir("second")
-            .with_skill("dup-skill", "Second occurrence", "body B")
+            .with_subdir_skill("project", "dup-skill", "First occurrence", "body A")
+            .with_home_skill("dup-skill", "Second occurrence", "body B")
+            .with_cwd("project/a")
             .command_ls()
             .when_run()
             .should_succeed()
@@ -263,16 +285,16 @@ mod default_walk {
             "---\nname: my-skill\ndescription: a skill\n---\nbody",
         )
         .unwrap();
-        std::fs::create_dir(home.path().join(".claude")).unwrap();
+        std::fs::create_dir_all(home.path().join("project/.agents")).unwrap();
         std::os::unix::fs::symlink(
             home.path().join(".agents/skills"),
-            home.path().join(".claude/skills"),
+            home.path().join("project/.agents/skills"),
         )
         .unwrap();
 
         Cmd::given()
             .command_ls()
-            .with_cwd_dir(home.path())
+            .with_cwd_dir(&home.path().join("project"))
             .with_env("HOME", home.path().to_str().unwrap())
             .when_run()
             .should_succeed()
