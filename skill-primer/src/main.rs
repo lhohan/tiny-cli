@@ -47,9 +47,18 @@ fn main() {
 }
 
 fn handle_config(include_dirs: &[PathBuf], cwd: &Path) {
-    let output = generate_config_output(include_dirs, cwd);
-    for line in &output.lines {
-        println!("{}", line);
+    match generate_config_output(include_dirs, cwd) {
+        Ok(output) => {
+            for line in &output.lines {
+                println!("{}", line);
+            }
+        }
+        Err(errors) => {
+            for line in errors {
+                eprintln!("{}", line);
+            }
+            std::process::exit(1);
+        }
     }
 }
 

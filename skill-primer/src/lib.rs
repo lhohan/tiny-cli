@@ -122,10 +122,21 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
     })
 }
 
-pub fn generate_config_output(include_dirs: &[PathBuf], cwd: &Path) -> ConfigOutput {
+pub fn generate_config_output(
+    include_dirs: &[PathBuf],
+    cwd: &Path,
+) -> Result<ConfigOutput, Vec<String>> {
     let mut lines = Vec::new();
 
     if !include_dirs.is_empty() {
+        for dir in include_dirs {
+            if dir.is_file() {
+                return Err(vec![format!(
+                    "error: include path '{}' is a file, not a directory",
+                    dir.display()
+                )]);
+            }
+        }
         lines.push("Include paths:".to_string());
         for dir in include_dirs {
             let status = if dir.is_dir() {
@@ -137,14 +148,11 @@ pub fn generate_config_output(include_dirs: &[PathBuf], cwd: &Path) -> ConfigOut
         }
         lines.push(String::new());
         lines.push("Default paths are overridden by --include.".to_string());
-        return ConfigOutput { lines };
+        return Ok(ConfigOutput { lines });
     }
 
     // Default paths — show configured dirs and project walk
-    let home = std::env::var("HOME")
-        .ok()
-        .map(PathBuf::from)
-        .filter(|h| !h.as_os_str().is_empty());
+    let home = std::env::var("HOME").ok().map(PathBuf::from);
 
     // Configured directories section
     lines.push("Configured directories:".to_string());
@@ -159,7 +167,7 @@ pub fn generate_config_output(include_dirs: &[PathBuf], cwd: &Path) -> ConfigOut
                     "(not found)"
                 }
             }
-            None => "(skipped - HOME not set)",
+            None => "(not found)",
         };
         lines.push(format!("  {} {}", pattern, status));
     }
@@ -191,7 +199,7 @@ pub fn generate_config_output(include_dirs: &[PathBuf], cwd: &Path) -> ConfigOut
         }
     }
 
-    ConfigOutput { lines }
+    Ok(ConfigOutput { lines })
 }
 
 /// Collect all skills from the given include directories, handling validation,

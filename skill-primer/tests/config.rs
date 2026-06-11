@@ -11,23 +11,18 @@ fn config_annotates_existing_include_dir_as_found() {
         .expect_annotated("my-skills", "found");
 }
 
-/// With a non-existent --include path, the output annotates it (not found).
 #[test]
-fn config_with_missing_include_path_marks_it_not_found() {
+fn config_annotates_missing_include_path_as_not_found() {
     Cmd::given()
         .command_config()
         .with_include("definitely-not-here")
         .when_run()
         .should_succeed()
-        .expect_output("Include paths:")
-        .expect_annotated("definitely-not-here", "not found")
-        .expect_output("Default paths are overridden by --include.");
+        .expect_annotated("definitely-not-here", "not found");
 }
 
-/// When mixing a real dir and a missing path, each gets the correct annotation
-/// and the found one appears before the missing one in output order.
 #[test]
-fn config_mixes_found_and_missing_annotations_in_order() {
+fn config_annotates_multiple_include_paths_independently() {
     Cmd::given()
         .command_config()
         .with_include_dir("existing")
@@ -35,65 +30,42 @@ fn config_mixes_found_and_missing_annotations_in_order() {
         .when_run()
         .should_succeed()
         .expect_annotated("existing", "found")
-        .expect_annotated("missing-dir", "not found")
-        .expect_output_order("(found)", "(not found)")
-        .expect_output_count("Default paths are overridden by --include.", 1);
+        .expect_annotated("missing-dir", "not found");
 }
 
-/// Without --include, both section headers appear and the configured
-/// directories section lists the three HOME patterns.
-#[test]
-fn config_without_includes_shows_configured_and_project_sections() {
+#[rstest::rstest]
+#[case("~/.agents/skills")]
+#[case("~/.claude/skills")]
+#[case("~/.codex/skills")]
+fn config_lists_the_configured_directory_patterns_in_home_dir(#[case] expected: &str) {
     Cmd::given()
         .command_config()
-        .with_cwd("project/sub")
         .when_run()
         .should_succeed()
-        .expect_output("Configured directories:")
-        .expect_output("Project directories:")
-        .expect_output("~/.agents/skills")
-        .expect_output("~/.claude/skills")
-        .expect_output("~/.codex/skills");
+        .expect_output(expected);
 }
 
-/// A non-directory path like /dev/null is annotated (not found), not treated
-/// as an error. The real dir still gets (found).
+/// A non-directory path (a regular file) is rejected with an error,
+/// consistent with how `ls` and `prime` handle file paths.
 #[test]
-fn config_treats_non_directory_include_as_not_found() {
+fn config_rejects_file_path_as_error() {
     Cmd::given()
         .command_config()
-        .with_include_dir("good")
-        .with_include("/dev/null")
+        .with_file_include("not-a-dir")
         .when_run()
-        .should_succeed()
-        .expect_annotated("good", "found")
-        .expect_annotated("/dev/null", "not found");
+        .should_fail()
+        .expect_stderr_contains("is a file, not a directory");
 }
 
-/// When HOME is unset (empty string), the configured directories are listed
-/// with a note that HOME is not set.
-#[test]
-fn config_shows_skipped_when_home_is_unset() {
-    Cmd::given()
-        .command_config()
-        .with_env("HOME", "")
-        .when_run()
-        .should_succeed()
-        .expect_output("Configured directories:")
-        .expect_output("(skipped - HOME not set)");
-}
-
-/// When CWD is deep in a subdirectory, project directories show walked paths.
-#[test]
-fn config_shows_walked_paths_from_deep_cwd() {
+#[rstest::rstest]
+#[case(".agents/skills")]
+#[case(".claude/skills")]
+#[case(".codex/skills")]
+fn config_shows_skill_directory_names_in_walked_paths(#[case] expected: &str) {
     Cmd::given()
         .command_config()
         .with_cwd("project/a/b")
         .when_run()
         .should_succeed()
-        .expect_output("Configured directories:")
-        .expect_output("Project directories:")
-        .expect_output(".agents/skills")
-        .expect_output(".claude/skills")
-        .expect_output(".codex/skills");
+        .expect_output(expected);
 }

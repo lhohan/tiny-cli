@@ -151,19 +151,23 @@ Redesigned test DSL around an implicit home temp dir:
 - [x] HOME skills found even when CWD is outside the HOME tree (`ls_should_find_home_skills_when_cwd_outside_home`).
 - [x] ~~`--include` override suppresses default paths entirely.~~ Already covered by Phase 0–2 tests.
 
-### Phase 5: Rewire `prime` and `show-config`
+### Phase 5: Rewire `prime` and `config` ✅
 
-All three commands share `resolve_skill_paths`. `prime` and `ls` scan resolved paths for skills. `show-config` displays the resolved paths without scanning for skill content.
+All three commands share `resolve_skill_paths`. `prime` and `ls` scan resolved paths for skills. `config` displays the resolved paths without scanning for skill content.
 
-Refactor `generate_prime_output` to call `resolve_skill_paths` and scan the resolved paths, replacing its current direct `include_dirs` scanning loop. `generate_show_config_output` likewise uses `resolve_skill_paths` to determine which paths to display.
+Refactored `generate_prime_output` to call `resolve_skill_paths` and scan the resolved paths, replacing its previous direct `include_dirs` scanning loop. Rewrote `generate_config_response` → `generate_config_output` (returns `Result<ConfigOutput, …>` — rejects file paths as errors, consistent with `prime`/`ls`). Two-section output for default paths: "Configured directories" (3 HOME patterns with tilde, annotated `(found)`/`(not found)`) and "Project directories" (walk paths excluding HOME candidates). With `--include`, shows include paths annotated and an override note. Subcommand renamed `show-config` → `config`.
 
 **Tests (integration):**
-- `prime` without `--include` in non-repo dir → `"No skills found."` or `<available_skills>`.
-- `prime` with `--include` unchanged (existing tests pass).
-- `prime` without `--include` in a Git repo containing `.agents/skills/foo/SKILL.md` → discovers `foo` via the upward walk (verify `<available_skills>` contains it). Run from a repo subdirectory (not the root) to prove the walk works.
-- `show-config` without `--include` in non-repo dir → shows home directory patterns with `(not found)`.
-- `show-config` with `--include` → shows include paths only, with `(found)`/`(not found)`, plus override note.
-- `show-config` in Git repo with default paths → shows home dirs + resolved project walk dirs.
+- [x] `prime` without `--include` in empty default paths → `"No skills detected."`
+- [x] `prime` without `--include` with skill in HOME → discovers via walk
+- [x] `prime` without `--include` with skill in subdirectory, CWD in sub-subdir → discovers via walk
+- [x] `prime` with `--include` unchanged (22 existing tests pass)
+- [x] `config` annotates existing include dir as `(found)`
+- [x] `config` annotates missing include path as `(not found)`
+- [x] `config` annotates multiple include paths independently
+- [x] `config` lists the 3 HOME patterns (parametrized)
+- [x] `config` rejects file path as error
+- [x] `config` shows skill directory names in walked paths (parametrized)
 
 ## Output Format (`ls`)
 
@@ -177,7 +181,7 @@ Refactor `generate_prime_output` to call `resolve_skill_paths` and scan the reso
 - Character-based truncation, not byte-based.
 - No skills found: single line `No skills found.` to stdout.
 
-## Output Format (`show-config`)
+## Output Format (`config`)
 
 **Without `--include`:**
 ```
@@ -200,6 +204,12 @@ Include paths:
 Default paths are overridden by --include.
 ```
 
+- File paths passed to `--include` are rejected with an error (consistent with `prime` and `ls`).
+- Default paths section is omitted when `--include` is used.
+
+Default paths are overridden by --include.
+```
+
 ## Library Contract
 
 ```rust
@@ -218,27 +228,19 @@ pub fn generate_prime_output(
     cwd: &Path,
 ) -> Result<PrimeResponse, Vec<String>>;
 
-pub fn generate_show_config_output(
+pub fn generate_config_output(
     include_dirs: &[PathBuf],
     cwd: &Path,
-) -> ShowConfigOutput;
+) -> Result<ConfigOutput, Vec<String>>;
 
-pub struct ShowConfigOutput {
+pub struct ConfigOutput {
     pub lines: Vec<String>,
 }
-
-/// Resolve the effective working directory.
-/// Expands `~` to the home directory.
-fn resolve_cwd(cwd: &Path) -> PathBuf;
-
-/// Detect repository root from a starting directory.
-/// Tries `jj root`, then `git rev-parse --show-toplevel`.
-fn detect_repo_root(cwd: &Path) -> Option<PathBuf>;
 
 /// Resolve all candidate skill paths.
 /// - When `include_dirs` is non-empty: returns them verbatim in order
 ///   (no deduplication). Default path resolution is skipped entirely.
-/// - When `include_dirs` is empty: walks from CWD to repo root (or HOME),
+/// - When `include_dirs` is empty: walks from CWD to HOME,
 ///   collecting `.agents/skills`, `.claude/skills`, `.codex/skills` at each
 ///   level, then appends home directory candidates. Default paths are
 ///   deduplicated by canonical path (with string-comparison fallback for
@@ -255,10 +257,10 @@ pub fn resolve_skill_paths(
 |------|--------|
 | `src/lib.rs` | Add `format_skill_name`, `detect_repo_root`, `resolve_skill_paths`, `generate_ls_output`, `generate_show_config_output`; refactor `generate_prime_output` to call `resolve_skill_paths` instead of scanning `include_dirs` directly; update `generate_prime_output` to take `cwd` |
 | `src/main.rs` | Add `Ls` variant to `Command` enum; add global `--cwd` flag; update dispatch logic (no subcommand + `--include` → error); add `handle_ls`, `handle_prime`, `handle_show_config` |
-| `tests/common.rs` | Add `command_ls()`, `command_prime()`, `with_cwd_dir()`, `expect_skills_output_detected()` |
-| `tests/list_skills.rs` | New: `ls` integration tests |
-| `tests/cli_basics.rs` | Add `ls` help test; update `prime` test to use `expect_skills_output_detected`; add no-subcommand + `--include` error test |
-| `tests/show_config.rs` | Rewrite all: default paths, include paths, in-repo project paths, override note |
+| `tests/common.rs` | Add `command_ls()`, `command_prime()`, `command_config()`, `expect_annotated()`, CWD/home skill DSL |
+| `tests/ls.rs` | New: `ls` integration tests |
+| `tests/prime.rs` | Prime tests: discovery, validation, formatting, default walk |
+| `tests/config.rs` | Config tests: include annotations, HOME patterns, walked paths, file-path errors |
 | `README.md` | Replace `list-skills` with `ls` in examples |
 
 ## Validation
@@ -268,9 +270,9 @@ mise verify        # clippy -D warnings, cargo fmt --check, nextest tests
 skills-primer ls --include ~/.agents/skills   # manual smoke test
 skills-primer ls --cwd /tmp/foo               # manual smoke test with cwd
 skills-primer ls                              # in a repo: discovers project + home skills
-skills-primer help                            # lists ls, prime, show-config
-skills-primer show-config                     # lists configured paths
-skills-primer show-config --include /tmp/foo  # lists include path + override note
+skills-primer help                            # lists ls, prime, config
+skills-primer config                     # lists configured paths
+skills-primer config --include /tmp/foo  # lists include path + override note
 ```
 
 ## Total Tests
@@ -282,7 +284,7 @@ skills-primer show-config --include /tmp/foo  # lists include path + override no
 | 2 | 11 | integration |
 | 3 | - | deleted in Phase 4 |
 | 4 | 14 kept + 7 new | integration |
-| 5 | 6 | integration |
-| **Total** | **46** | |
+| 5 | 10 new + 5 rewritten | integration |
+| **Total** | **56** (including rewrites) | |
 
-**Completed:** Phases 0–4 (46 tests: 5 unit + 41 integration).
+**Completed:** All phases ✅ (56 tests: 5 unit + 51 integration).
