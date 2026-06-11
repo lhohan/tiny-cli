@@ -144,7 +144,7 @@ Redesigned test DSL around an implicit home temp dir:
 - [x] ~~Outside any repo, walks to `HOME`.~~ → Replaced: HOME appended via `chain`, discovered even when CWD is outside HOME.
 - [x] Skill discovery at project level (`ls_should_find_skill_at_project_level`).
 - [x] Skill discovery at home level (`ls_should_find_skill_at_home_level`).
-- [x] Project skills discovered before home skills (`ls_should_discover_home_skills_after_project_skills`).
+- [x] Project skills discovered before home skills (`ls_should_find_home_skills_after_project_skills`).
 - [x] Skills found at every level from deep CWD up to HOME (`ls_should_find_skills_at_every_level_up_to_home`).
 - [x] Canonically identical paths deduplicated (symlink `.claude/skills` → `.agents/skills`).
 - [x] Duplicate skill names across walk and HOME: first found wins, stderr warns.
