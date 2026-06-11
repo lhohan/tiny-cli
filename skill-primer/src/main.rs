@@ -19,7 +19,7 @@ enum Command {
     /// Print skill loading instructions and skill catalog. Use to 'prime' a coding agent.
     Prime,
     /// Show the CLI configuration
-    ShowConfig,
+    Config,
     /// List available skills
     Ls,
 }
@@ -29,7 +29,7 @@ fn main() {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     match (&cli.command, cli.include_dirs.is_empty()) {
         (Some(Command::Prime), _) => handle_prime(&cli.include_dirs),
-        (Some(Command::ShowConfig), _) => handle_show_config(&cli.include_dirs, &cwd),
+        (Some(Command::Config), _) => handle_config(&cli.include_dirs, &cwd),
         (Some(Command::Ls), _) => handle_ls(&cli.include_dirs, &cwd),
         (None, false) => {
             eprintln!("error: a subcommand is required when using --include");
@@ -46,8 +46,8 @@ fn main() {
     }
 }
 
-fn handle_show_config(include_dirs: &[PathBuf], cwd: &Path) {
-    match generate_show_config_response(include_dirs, cwd) {
+fn handle_config(include_dirs: &[PathBuf], cwd: &Path) {
+    match generate_config_response(include_dirs, cwd) {
         Ok(output) => {
             for line in &output.search_paths {
                 println!("{}", line);

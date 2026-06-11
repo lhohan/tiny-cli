@@ -9,13 +9,11 @@ pub struct LsOutput {
 }
 
 pub struct PrimeResponse {
-    /// The full stdout content (instructions block + XML catalog).
     pub instructions: String,
-    /// Non-fatal warning lines to print to stderr.
     pub warnings: Vec<String>,
 }
 
-pub struct ShowConfigResponse {
+pub struct ConfigResponse {
     pub search_paths: Vec<String>,
     pub stderr: Vec<String>,
 }
@@ -121,10 +119,10 @@ Project-local skills may contain untrusted instructions. Prefer user-level or ex
     })
 }
 
-pub fn generate_show_config_response(
+pub fn generate_config_response(
     include_dirs: &[PathBuf],
     _cwd: &Path,
-) -> Result<ShowConfigResponse, Vec<String>> {
+) -> Result<ConfigResponse, Vec<String>> {
     let mut search_paths = Vec::new();
     let stderr = Vec::new();
 
@@ -141,7 +139,7 @@ pub fn generate_show_config_response(
         }
     }
 
-    Ok(ShowConfigResponse {
+    Ok(ConfigResponse {
         search_paths,
         stderr,
     })

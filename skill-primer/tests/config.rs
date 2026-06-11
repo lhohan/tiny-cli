@@ -4,7 +4,7 @@ use common::Cmd;
 #[test]
 fn show_config_should_list_included_directories() {
     Cmd::given()
-        .command_show_config()
+        .command_config()
         .with_include_dir("my-skills")
         .when_run()
         .should_succeed()
@@ -15,7 +15,7 @@ fn show_config_should_list_included_directories() {
 #[test]
 fn show_config_should_mark_missing_path() {
     Cmd::given()
-        .command_show_config()
+        .command_config()
         .with_include("definitely-not-here")
         .when_run()
         .should_succeed()
@@ -26,7 +26,7 @@ fn show_config_should_mark_missing_path() {
 #[test]
 fn show_config_should_distinguish_existing_from_missing() {
     Cmd::given()
-        .command_show_config()
+        .command_config()
         .with_include_dir("existing")
         .with_include("missing-dir")
         .when_run()
@@ -39,7 +39,7 @@ fn show_config_should_distinguish_existing_from_missing() {
 #[test]
 fn show_config_should_output_nothing_without_includes() {
     Cmd::given()
-        .command_show_config()
+        .command_config()
         .when_run()
         .should_succeed()
         .expect_no_output();
@@ -48,7 +48,7 @@ fn show_config_should_output_nothing_without_includes() {
 #[test]
 fn show_config_should_mark_error_on_bad_path() {
     Cmd::given()
-        .command_show_config()
+        .command_config()
         .with_include_dir("good")
         .with_include("/dev/null")
         .when_run()
