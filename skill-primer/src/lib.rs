@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+// ── Public types ──────────────────────────────────────────────
+
 #[derive(Debug)]
 pub struct LsOutput {
     pub skill_paths: Vec<String>,
@@ -16,6 +18,13 @@ pub struct PrimeResponse {
 pub struct ConfigOutput {
     pub lines: Vec<String>,
 }
+
+// ── Constants ──────────────────────────────────────────────────
+
+/// The default relative skill path scanned during the CWD-to-HOME walk.
+const DEFAULT_SKILL_PATH: &str = ".agents/skills";
+
+// ── Public entry points ─────────────────────────────────────
 
 /// Generate `ls` output for the configured skill path and working directory.
 pub fn ls(path_args: &[PathBuf], cwd: &Path) -> Result<LsOutput, Vec<String>> {
@@ -127,79 +136,49 @@ pub fn config(path_args: &[PathBuf], cwd: &Path) -> Result<ConfigOutput, Vec<Str
     Ok(ConfigOutput { lines })
 }
 
-/// Collect all skills from the configured path arguments and working directory.
+/// Resolve all candidate skill paths.
 ///
-/// This is a convenience function that combines find_candidate_skill_paths,
-/// parse_skill_directories, and collect_skills into a single pipeline.
-fn collect_skills(
+/// Walks from CWD upward, collecting the selected relative skill path at each
+/// level until HOME is reached. Paths are deduplicated by canonical path; the
+/// first occurrence in discovery order wins.
+pub fn find_candidate_skill_paths(
     path_args: &[PathBuf],
     cwd: &Path,
-) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
-    let candidate_paths = find_candidate_skill_paths(path_args, cwd)?;
-    let dirs_only_candidates = candidate_paths
-        .into_iter()
-        .try_fold(vec![], |mut dirs, path| {
-            if !path.is_file() {
-                if path.is_dir() {
-                    dirs.push(path);
+) -> Result<Vec<PathBuf>, Vec<String>> {
+    let skill_path = selected_skill_path(path_args, cwd)?;
+    let home = std::env::var("HOME").ok().map(PathBuf::from);
+    let cwd = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
+
+    let home_canonical = home.as_ref().map(|h| canonical_key(h));
+
+    let ancestors = std::iter::successors(Some(cwd), |current| {
+        current.parent().map(|p| p.to_path_buf())
+    });
+
+    let dirs: Vec<PathBuf> = match home_canonical {
+        Some(_) => ancestors
+            .take_while(|current| Some(current) != home_canonical.as_ref())
+            .chain(std::iter::once(home.clone().unwrap()))
+            .collect(),
+        None => ancestors.collect(),
+    };
+
+    // Flatten each directory into its skill-dir candidate, deduplicating.
+    let (paths, _seen): (Vec<PathBuf>, std::collections::HashSet<PathBuf>) =
+        dirs.iter().map(|dir| dir.join(&skill_path)).fold(
+            (Vec::new(), std::collections::HashSet::new()),
+            |(mut paths, mut seen), candidate| {
+                if seen.insert(canonical_key(&candidate)) {
+                    paths.push(candidate);
                 }
-                Ok(dirs)
-            } else {
-                Err(vec![format!(
-                    "error: skill path '{}' is a file, not a directory",
-                    path.display()
-                )])
-            }
-        })?;
-    collect_skills_from_dirs(&dirs_only_candidates)
+                (paths, seen)
+            },
+        );
+
+    Ok(paths)
 }
 
-/// Collect all skills from the given skill directories, handling validation,
-/// deduplication, and warning-to-string conversion.
-///
-/// Returns `Err` for empty paths or file-as-directory errors.
-fn collect_skills_from_dirs(
-    skill_dirs: &[PathBuf],
-) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
-    let mut all_skills: Vec<Skill> = Vec::new();
-    let mut seen_names: HashMap<String, PathBuf> = HashMap::new();
-    let mut stderr: Vec<String> = Vec::new();
-
-    for dir in skill_dirs {
-        if dir.as_os_str().is_empty() {
-            return Err(vec!["error: skill path cannot be empty".to_string()]);
-        }
-        let result = scan_skill_directory(dir);
-        for warning in &result.warnings {
-            match warning {
-                ScanWarning::IsFile(path) => {
-                    return Err(vec![format!(
-                        "error: skill path '{}' is a file, not a directory",
-                        path.display()
-                    )]);
-                }
-                _ => stderr.push(warning.to_stderr()),
-            }
-        }
-        for skill in result.skills {
-            match seen_names.entry(skill.name.clone()) {
-                std::collections::hash_map::Entry::Occupied(_) => {
-                    stderr.push(format!(
-                        "warning: duplicate skill '{}' at {}, keeping first",
-                        skill.name,
-                        skill.path.display()
-                    ));
-                }
-                std::collections::hash_map::Entry::Vacant(e) => {
-                    e.insert(skill.path.clone());
-                    all_skills.push(skill);
-                }
-            }
-        }
-    }
-
-    Ok((all_skills, stderr))
-}
+// ── Private types ─────────────────────────────────────────────
 
 /// Parsed YAML frontmatter from a SKILL.md file.
 #[derive(Debug, serde::Deserialize)]
@@ -287,20 +266,94 @@ struct ScanResult {
     pub warnings: Vec<ScanWarning>,
 }
 
-/// Escape special XML characters in a text string.
-fn escape_xml(text: &str) -> String {
-    let mut escaped = String::with_capacity(text.len());
-    for ch in text.chars() {
-        match ch {
-            '&' => escaped.push_str("&amp;"),
-            '<' => escaped.push_str("&lt;"),
-            '>' => escaped.push_str("&gt;"),
-            '"' => escaped.push_str("&quot;"),
-            '\'' => escaped.push_str("&apos;"),
-            _ => escaped.push(ch),
+/// A validated skill name.
+///
+/// Invariant: non-empty, at most 64 chars, only lowercase ASCII letters,
+/// ASCII digits, and hyphens, and no leading, trailing, or consecutive hyphens.
+#[derive(Debug, Clone)]
+struct SkillName(String);
+
+impl std::ops::Deref for SkillName {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+
+// ── Private helpers (caller-before-callee) ─────────────────
+
+/// Collect all skills from the configured path arguments and working directory.
+///
+/// This is a convenience function that combines find_candidate_skill_paths,
+/// parse_skill_directories, and collect_skills into a single pipeline.
+fn collect_skills(
+    path_args: &[PathBuf],
+    cwd: &Path,
+) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
+    let candidate_paths = find_candidate_skill_paths(path_args, cwd)?;
+    let dirs_only_candidates = candidate_paths
+        .into_iter()
+        .try_fold(vec![], |mut dirs, path| {
+            if !path.is_file() {
+                if path.is_dir() {
+                    dirs.push(path);
+                }
+                Ok(dirs)
+            } else {
+                Err(vec![format!(
+                    "error: skill path '{}' is a file, not a directory",
+                    path.display()
+                )])
+            }
+        })?;
+    collect_skills_from_dirs(&dirs_only_candidates)
+}
+
+/// Collect all skills from the given skill directories, handling validation,
+/// deduplication, and warning-to-string conversion.
+///
+/// Returns `Err` for empty paths or file-as-directory errors.
+fn collect_skills_from_dirs(
+    skill_dirs: &[PathBuf],
+) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
+    let mut all_skills: Vec<Skill> = Vec::new();
+    let mut seen_names: HashMap<String, PathBuf> = HashMap::new();
+    let mut stderr: Vec<String> = Vec::new();
+
+    for dir in skill_dirs {
+        if dir.as_os_str().is_empty() {
+            return Err(vec!["error: skill path cannot be empty".to_string()]);
+        }
+        let result = scan_skill_directory(dir);
+        for warning in &result.warnings {
+            match warning {
+                ScanWarning::IsFile(path) => {
+                    return Err(vec![format!(
+                        "error: skill path '{}' is a file, not a directory",
+                        path.display()
+                    )]);
+                }
+                _ => stderr.push(warning.to_stderr()),
+            }
+        }
+        for skill in result.skills {
+            match seen_names.entry(skill.name.clone()) {
+                std::collections::hash_map::Entry::Occupied(_) => {
+                    stderr.push(format!(
+                        "warning: duplicate skill '{}' at {}, keeping first",
+                        skill.name,
+                        skill.path.display()
+                    ));
+                }
+                std::collections::hash_map::Entry::Vacant(e) => {
+                    e.insert(skill.path.clone());
+                    all_skills.push(skill);
+                }
+            }
         }
     }
-    escaped
+
+    Ok((all_skills, stderr))
 }
 
 /// Recursively scan a directory for SKILL.md files and extract skill metadata.
@@ -385,53 +438,6 @@ fn scan_skill_directory(dir: &Path) -> ScanResult {
     ScanResult { skills, warnings }
 }
 
-/// A validated skill name.
-///
-/// Invariant: non-empty, at most 64 chars, only lowercase ASCII letters,
-/// ASCII digits, and hyphens, and no leading, trailing, or consecutive hyphens.
-#[derive(Debug, Clone)]
-struct SkillName(String);
-
-impl std::ops::Deref for SkillName {
-    type Target = str;
-    fn deref(&self) -> &str {
-        &self.0
-    }
-}
-
-/// Parse a skill name, enforcing the specification rules.
-///
-/// Rules:
-/// - Must be non-empty
-/// - At most 64 characters
-/// - Only lowercase ASCII letters, ASCII digits, and hyphens
-/// - Must not start or end with a hyphen
-/// - Must not contain consecutive hyphens
-fn parse_skill_name(name: &str) -> Result<SkillName, String> {
-    if name.is_empty() {
-        return Err("name is empty".to_string());
-    }
-    if name.len() > 64 {
-        return Err("name exceeds 64 characters".to_string());
-    }
-    if name.starts_with('-') {
-        return Err("name starts with hyphen".to_string());
-    }
-    if name.ends_with('-') {
-        return Err("name ends with hyphen".to_string());
-    }
-    if name.contains("--") {
-        return Err("name contains consecutive hyphens".to_string());
-    }
-    if let Some(c) = name
-        .chars()
-        .find(|c| !c.is_ascii_lowercase() && !c.is_ascii_digit() && *c != '-')
-    {
-        return Err(format!("name contains invalid character '{}'", c));
-    }
-    Ok(SkillName(name.to_string()))
-}
-
 /// Parse YAML frontmatter from a SKILL.md file content.
 ///
 /// Returns `None` if no valid frontmatter is found or if required fields
@@ -467,62 +473,37 @@ fn parse_skill_frontmatter(content: &str) -> Option<SkillFrontmatter> {
     Some(frontmatter)
 }
 
-/// Compute a canonical key for deduplication purposes.
+/// Parse a skill name, enforcing the specification rules.
 ///
-/// If the path exists, uses `std::fs::canonicalize` to resolve symlinks.
-/// If the path does not exist, returns the path as-is (already absolute
-/// in normal usage).
-fn canonical_key(path: &Path) -> PathBuf {
-    if path.exists() {
-        path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
-    } else {
-        path.to_path_buf()
+/// Rules:
+/// - Must be non-empty
+/// - At most 64 characters
+/// - Only lowercase ASCII letters, ASCII digits, and hyphens
+/// - Must not start or end with a hyphen
+/// - Must not contain consecutive hyphens
+fn parse_skill_name(name: &str) -> Result<SkillName, String> {
+    if name.is_empty() {
+        return Err("name is empty".to_string());
     }
-}
-
-/// The default relative skill path scanned during the CWD-to-HOME walk.
-const DEFAULT_SKILL_PATH: &str = ".agents/skills";
-
-/// Resolve all candidate skill paths.
-///
-/// Walks from CWD upward, collecting the selected relative skill path at each
-/// level until HOME is reached. Paths are deduplicated by canonical path; the
-/// first occurrence in discovery order wins.
-pub fn find_candidate_skill_paths(
-    path_args: &[PathBuf],
-    cwd: &Path,
-) -> Result<Vec<PathBuf>, Vec<String>> {
-    let skill_path = selected_skill_path(path_args, cwd)?;
-    let home = std::env::var("HOME").ok().map(PathBuf::from);
-    let cwd = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
-
-    let home_canonical = home.as_ref().map(|h| canonical_key(h));
-
-    let ancestors = std::iter::successors(Some(cwd), |current| {
-        current.parent().map(|p| p.to_path_buf())
-    });
-
-    let dirs: Vec<PathBuf> = match home_canonical {
-        Some(_) => ancestors
-            .take_while(|current| Some(current) != home_canonical.as_ref())
-            .chain(std::iter::once(home.clone().unwrap()))
-            .collect(),
-        None => ancestors.collect(),
-    };
-
-    // Flatten each directory into its skill-dir candidate, deduplicating.
-    let (paths, _seen): (Vec<PathBuf>, std::collections::HashSet<PathBuf>) =
-        dirs.iter().map(|dir| dir.join(&skill_path)).fold(
-            (Vec::new(), std::collections::HashSet::new()),
-            |(mut paths, mut seen), candidate| {
-                if seen.insert(canonical_key(&candidate)) {
-                    paths.push(candidate);
-                }
-                (paths, seen)
-            },
-        );
-
-    Ok(paths)
+    if name.len() > 64 {
+        return Err("name exceeds 64 characters".to_string());
+    }
+    if name.starts_with('-') {
+        return Err("name starts with hyphen".to_string());
+    }
+    if name.ends_with('-') {
+        return Err("name ends with hyphen".to_string());
+    }
+    if name.contains("--") {
+        return Err("name contains consecutive hyphens".to_string());
+    }
+    if let Some(c) = name
+        .chars()
+        .find(|c| !c.is_ascii_lowercase() && !c.is_ascii_digit() && *c != '-')
+    {
+        return Err(format!("name contains invalid character '{}'", c));
+    }
+    Ok(SkillName(name.to_string()))
 }
 
 fn selected_skill_path(path_args: &[PathBuf], cwd: &Path) -> Result<PathBuf, Vec<String>> {
@@ -553,6 +534,35 @@ fn parse_skill_path(path: &Path, cwd: &Path) -> Result<PathBuf, Vec<String>> {
     Ok(path.to_path_buf())
 }
 
+/// Escape special XML characters in a text string.
+fn escape_xml(text: &str) -> String {
+    let mut escaped = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '&' => escaped.push_str("&amp;"),
+            '<' => escaped.push_str("&lt;"),
+            '>' => escaped.push_str("&gt;"),
+            '"' => escaped.push_str("&quot;"),
+            '\'' => escaped.push_str("&apos;"),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
+}
+
+/// Compute a canonical key for deduplication purposes.
+///
+/// If the path exists, uses `std::fs::canonicalize` to resolve symlinks.
+/// If the path does not exist, returns the path as-is (already absolute
+/// in normal usage).
+fn canonical_key(path: &Path) -> PathBuf {
+    if path.exists() {
+        path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+    } else {
+        path.to_path_buf()
+    }
+}
+
 /// Format a skill name for the `ls` output name column.
 ///
 /// Returns a 24-character string: short names are right-padded with spaces,
@@ -572,6 +582,8 @@ fn format_skill_name(name: &str) -> String {
         result
     }
 }
+
+// ── Tests ─────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
