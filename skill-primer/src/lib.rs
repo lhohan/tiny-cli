@@ -19,10 +19,7 @@ pub struct ConfigOutput {
 
 /// Generate `ls` output for the configured skill path and working directory.
 pub fn ls(path_args: &[PathBuf], cwd: &Path) -> Result<LsOutput, Vec<String>> {
-    let skill_paths = resolve_skill_paths(path_args, cwd)?;
-    let scan_dirs = parse_skill_directories(skill_paths)?;
-
-    let (all_skills, warnings) = collect_skills(&scan_dirs)?;
+    let (all_skills, warnings) = collect_skills(path_args, cwd)?;
 
     if all_skills.is_empty() {
         return Ok(LsOutput {
@@ -73,9 +70,7 @@ pub fn prime(path_args: &[PathBuf], cwd: &Path) -> Result<PrimeResponse, Vec<Str
     let mut instructions = String::with_capacity(2048);
     instructions.push_str(header);
 
-    let resolved = resolve_skill_paths(path_args, cwd)?;
-    let scan_dirs = parse_skill_directories(resolved)?;
-    let (all_skills, warnings) = collect_skills(&scan_dirs)?;
+    let (all_skills, warnings) = collect_skills(path_args, cwd)?;
 
     if all_skills.is_empty() {
         instructions.push_str("No skills detected.\n");
@@ -115,11 +110,11 @@ pub fn config(path_args: &[PathBuf], cwd: &Path) -> Result<ConfigOutput, Vec<Str
     lines.push(format!("  {}", skill_path.display()));
     lines.push(String::new());
 
-    let resolved = resolve_skill_paths(path_args, cwd)?;
+    let candidate_paths = find_candidate_skill_paths(path_args, cwd)?;
 
-    if !resolved.is_empty() {
-        lines.push("Resolved directories:".to_string());
-        for path in &resolved {
+    if !candidate_paths.is_empty() {
+        lines.push("Candidate directories:".to_string());
+        for path in &candidate_paths {
             let status = if path.is_dir() {
                 "(found)"
             } else {
@@ -132,11 +127,40 @@ pub fn config(path_args: &[PathBuf], cwd: &Path) -> Result<ConfigOutput, Vec<Str
     Ok(ConfigOutput { lines })
 }
 
+/// Collect all skills from the configured path arguments and working directory.
+///
+/// This is a convenience function that combines find_candidate_skill_paths,
+/// parse_skill_directories, and collect_skills into a single pipeline.
+fn collect_skills(
+    path_args: &[PathBuf],
+    cwd: &Path,
+) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
+    let candidate_paths = find_candidate_skill_paths(path_args, cwd)?;
+    let dirs_only_candidates = candidate_paths
+        .into_iter()
+        .try_fold(vec![], |mut dirs, path| {
+            if !path.is_file() {
+                if path.is_dir() {
+                    dirs.push(path);
+                }
+                Ok(dirs)
+            } else {
+                Err(vec![format!(
+                    "error: skill path '{}' is a file, not a directory",
+                    path.display()
+                )])
+            }
+        })?;
+    collect_skills_from_dirs(&dirs_only_candidates)
+}
+
 /// Collect all skills from the given skill directories, handling validation,
 /// deduplication, and warning-to-string conversion.
 ///
 /// Returns `Err` for empty paths or file-as-directory errors.
-fn collect_skills(skill_dirs: &[PathBuf]) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
+fn collect_skills_from_dirs(
+    skill_dirs: &[PathBuf],
+) -> Result<(Vec<Skill>, Vec<String>), Vec<String>> {
     let mut all_skills: Vec<Skill> = Vec::new();
     let mut seen_names: HashMap<String, PathBuf> = HashMap::new();
     let mut stderr: Vec<String> = Vec::new();
@@ -464,7 +488,10 @@ const DEFAULT_SKILL_PATH: &str = ".agents/skills";
 /// Walks from CWD upward, collecting the selected relative skill path at each
 /// level until HOME is reached. Paths are deduplicated by canonical path; the
 /// first occurrence in discovery order wins.
-pub fn resolve_skill_paths(path_args: &[PathBuf], cwd: &Path) -> Result<Vec<PathBuf>, Vec<String>> {
+pub fn find_candidate_skill_paths(
+    path_args: &[PathBuf],
+    cwd: &Path,
+) -> Result<Vec<PathBuf>, Vec<String>> {
     let skill_path = selected_skill_path(path_args, cwd)?;
     let home = std::env::var("HOME").ok().map(PathBuf::from);
     let cwd = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
@@ -524,22 +551,6 @@ fn parse_skill_path(path: &Path, cwd: &Path) -> Result<PathBuf, Vec<String>> {
         )]);
     }
     Ok(path.to_path_buf())
-}
-
-fn parse_skill_directories(paths: Vec<PathBuf>) -> Result<Vec<PathBuf>, Vec<String>> {
-    paths.into_iter().try_fold(vec![], |mut dirs, path| {
-        if !path.is_file() {
-            if path.is_dir() {
-                dirs.push(path);
-            }
-            Ok(dirs)
-        } else {
-            Err(vec![format!(
-                "error: skill path '{}' is a file, not a directory",
-                path.display()
-            )])
-        }
-    })
 }
 
 /// Format a skill name for the `ls` output name column.

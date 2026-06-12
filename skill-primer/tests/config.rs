@@ -29,7 +29,7 @@ fn config_annotates_existing_resolved_directory_as_found() {
         .command_config()
         .when_run()
         .should_succeed()
-        .expect_output("Resolved directories:")
+        .expect_output("Candidate directories:")
         .expect_output(".agents/skills (found)");
 }
 
