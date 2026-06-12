@@ -365,6 +365,7 @@ impl CmdResult {
             .expect_output("config ")
             .expect_output("--warnings")
             .expect_output("--no-warnings")
+            .expect_output(env!("CARGO_PKG_VERSION"))
     }
 
     /// Composite assertion for the full `prime` subcommand output.

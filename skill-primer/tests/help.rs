@@ -28,6 +28,15 @@ fn no_subcommand_with_path_should_error_and_show_help() {
 }
 
 #[test]
+fn version_flag_prints_version() {
+    Cmd::given()
+        .arg("--version")
+        .when_run()
+        .should_succeed()
+        .expect_output(env!("CARGO_PKG_VERSION"));
+}
+
+#[test]
 fn warnings_flags_should_be_mutually_exclusive() {
     Cmd::given()
         .args(&["--warnings", "--no-warnings", "prime"])

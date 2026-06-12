@@ -3,8 +3,12 @@ use skills_primer::*;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(name = "skills-primer")]
-#[command(about = "Print skill loading instructions and skill catalog")]
+#[command(
+    name = "skills-primer",
+    version = env!("CARGO_PKG_VERSION"),
+    about = "Print skill loading instructions and skill catalog",
+    help_template = "{name} {version}\n{about-with-newline}\n{usage-heading} {usage}\n\n{all-args}"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
