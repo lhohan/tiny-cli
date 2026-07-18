@@ -124,7 +124,7 @@ To make the feed publicly available:
    ```bash
    cd /path/to/tiny-cli
    ./models-watch/models-watch.sh
-   ./models-watch/models-feed.sh --output feed.xml
+   ./models-watch/models-feed.sh --output models-watch.xml
    ```
 
 3. Commit the feed file and push to the `pages` branch:
@@ -138,12 +138,12 @@ To make the feed publicly available:
 
    # With Git
    git checkout pages
-   git add feed.xml
+   git add models-watch.xml
    git commit -m "chore: update RSS feed"
    git push origin pages
    ```
 
-The feed will be available at `https://<your-org>.codeberg.page/tiny-cli/feed.xml`.
+The feed will be available at `https://<your-org>.codeberg.page/tiny-cli/models-watch.xml`.
 
 ## Testing
 
