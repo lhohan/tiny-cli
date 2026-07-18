@@ -111,15 +111,20 @@ in cron.
 
 ### Publishing to Codeberg Pages
 
-To make the feed publicly available via Codeberg Pages:
+`models-watch` lives inside the `tiny-cli` monorepo, so the Codeberg Pages
+project URL is `https://<your-org>.codeberg.page/tiny-cli/`.
+
+To make the feed publicly available:
 
 1. Create a `pages` branch (or configure Pages to serve from a specific
    directory in your default branch).
-2. Run the feed script with `--output` pointing to a tracked path:
+2. Run both scripts from the **repo root**, with `--output` pointing to a
+   repo-root-relative path so the feed URL is flat:
 
    ```bash
-   ./models-watch.sh
-   ./models-feed.sh --output public/feed.xml
+   cd /path/to/tiny-cli
+   ./models-watch/models-watch.sh
+   ./models-watch/models-feed.sh --output feed.xml
    ```
 
 3. Commit the feed file and push to the `pages` branch:
@@ -133,13 +138,12 @@ To make the feed publicly available via Codeberg Pages:
 
    # With Git
    git checkout pages
-   git add public/feed.xml
+   git add feed.xml
    git commit -m "chore: update RSS feed"
    git push origin pages
    ```
 
-The feed will be available at `https://<your-org>.codeberg.page/models-watch/feed.xml`
-(or whichever path matches your Pages setup).
+The feed will be available at `https://<your-org>.codeberg.page/tiny-cli/feed.xml`.
 
 ## Testing
 
