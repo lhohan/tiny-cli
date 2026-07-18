@@ -8,9 +8,14 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-/// Fluent DSL entry point.
+/// Fluent DSL entry point for models-watch.sh.
 pub fn given() -> AppSpec {
     AppSpec::new()
+}
+
+/// Fluent DSL entry point for models-feed.sh.
+pub fn given_feed() -> AppSpec {
+    AppSpec::new().with_script("models-feed.sh")
 }
 
 /// Panic with a test failure message.
@@ -53,9 +58,11 @@ pub struct DeltaEntry {
 /// Setup phase: configure the test environment.
 pub struct AppSpec {
     tool_dir: PathBuf,
+    script_name: String,
     api_fixture: Option<String>,
     prior_snapshot: Option<String>,
     notify_file: Option<PathBuf>,
+    output_path: Option<PathBuf>,
     args: Vec<String>,
     skip_api_env: bool,
 }
@@ -64,9 +71,11 @@ impl AppSpec {
     fn new() -> Self {
         Self {
             tool_dir: make_temp_tool_dir(),
+            script_name: "models-watch.sh".to_string(),
             api_fixture: None,
             prior_snapshot: None,
             notify_file: None,
+            output_path: None,
             args: Vec::new(),
             skip_api_env: false,
         }
@@ -87,6 +96,18 @@ impl AppSpec {
     /// Enable `--notify-file` mode; the notification message will be written to `notify_file`.
     pub fn with_notify_file(mut self, path: PathBuf) -> Self {
         self.notify_file = Some(path);
+        self
+    }
+
+    /// Set the script name (e.g. "models-feed.sh") to run instead of models-watch.sh.
+    pub fn with_script(mut self, name: &str) -> Self {
+        self.script_name = name.to_string();
+        self
+    }
+
+    /// Set the `--output` path for scripts that support it (e.g. models-feed.sh).
+    pub fn with_output(mut self, path: PathBuf) -> Self {
+        self.output_path = Some(path);
         self
     }
 
@@ -148,16 +169,14 @@ impl AppSpec {
             std::fs::write(state_dir.join("latest.json"), snapshot).expect("write prior snapshot");
         }
 
-        let script_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .expect("parent of tests-rust")
-            .join("models-watch.sh");
+        let script_name = self.script_name.clone();
 
         ExecutionContext {
             tool_dir: self.tool_dir,
-            script_path,
+            script_name,
             api_fixture_path,
             notify_file: self.notify_file,
+            output_path: self.output_path,
             args: self.args,
             skip_api_env: self.skip_api_env,
         }
@@ -167,9 +186,10 @@ impl AppSpec {
 /// Action phase: the script has been invoked.
 pub struct ExecutionContext {
     tool_dir: PathBuf,
-    script_path: PathBuf,
+    script_name: String,
     api_fixture_path: PathBuf,
     notify_file: Option<PathBuf>,
+    output_path: Option<PathBuf>,
     args: Vec<String>,
     skip_api_env: bool,
 }
@@ -179,9 +199,13 @@ impl ExecutionContext {
     pub fn then_result(self) -> AppResult {
         // Build the command using the stubbed tool directory.
         // The script uses the directory it lives in as its state root.
-        // We symlink or copy the script to the temp tool dir so state is local.
-        let script_in_tool = self.tool_dir.join("models-watch.sh");
-        std::fs::copy(&self.script_path, &script_in_tool).expect("copy script to tool dir");
+        // We copy the script to the temp tool dir so state is local.
+        let script_in_tool = self.tool_dir.join(&self.script_name);
+        let script_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("parent of tests-rust")
+            .join(&self.script_name);
+        std::fs::copy(&script_path, &script_in_tool).expect("copy script to tool dir");
 
         let mut cmd = Command::new("bash");
         cmd.arg(&script_in_tool);
@@ -197,17 +221,27 @@ impl ExecutionContext {
         if let Some(ref notify_file) = self.notify_file {
             cmd.arg("--notify-file").arg(notify_file);
         }
+        if let Some(ref output_path) = self.output_path {
+            cmd.arg("--output").arg(output_path);
+        }
         for arg in &self.args {
             cmd.arg(arg);
         }
 
+        let script_display = &self.script_name;
         let output = match cmd.output() {
             Ok(o) => o,
-            Err(err) => fail(format!("failed to run models-watch.sh: {err}")),
+            Err(err) => fail(format!("failed to run {script_display}: {err}")),
         };
+
+        // Determine where the feed script writes by default.
+        let feed_path = self
+            .output_path
+            .unwrap_or_else(|| self.tool_dir.join("state").join("feed.xml"));
 
         AppResult {
             tool_dir: self.tool_dir,
+            feed_path: Some(feed_path),
             exit_code: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).to_string(),
             stderr: String::from_utf8_lossy(&output.stderr).to_string(),
@@ -219,6 +253,7 @@ impl ExecutionContext {
 /// Assertion phase: inspect results.
 pub struct AppResult {
     tool_dir: PathBuf,
+    feed_path: Option<PathBuf>,
     exit_code: i32,
     stdout: String,
     stderr: String,
@@ -411,6 +446,59 @@ impl AppResult {
             None => fail("--notify-file was not set, cannot check notify content"),
         }
         self
+    }
+
+    // -- RSS feed assertions --
+
+    /// Assert that the feed output file exists.
+    pub fn expect_rss_file(&self) -> &Self {
+        match &self.feed_path {
+            Some(path) => {
+                if !path.exists() {
+                    fail(format!(
+                        "expected RSS feed file at {}, but it does not exist",
+                        path.display()
+                    ));
+                }
+            }
+            None => fail("no feed_path set, cannot check RSS file"),
+        }
+        self
+    }
+
+    /// Assert the RSS feed contains exactly `expected` `<item>` elements.
+    pub fn expect_rss_item_count(&self, expected: usize) -> &Self {
+        let feed = self.read_rss_feed();
+        let count = feed.matches("<item>").count();
+        if count != expected {
+            fail(format!(
+                "expected {} RSS items, found {}",
+                expected, count
+            ));
+        }
+        self
+    }
+
+    /// Assert the RSS feed contains the given substring.
+    pub fn expect_rss_contains(&self, needle: &str) -> &Self {
+        let feed = self.read_rss_feed();
+        if !feed.contains(needle) {
+            fail(format!(
+                "expected RSS feed to contain '{}', but it did not.\n--- feed ---\n{}",
+                needle, feed
+            ));
+        }
+        self
+    }
+
+    /// Read the entire RSS feed file content.
+    pub fn read_rss_feed(&self) -> String {
+        let path = self
+            .feed_path
+            .as_ref()
+            .expect("no feed_path set, cannot read RSS");
+        std::fs::read_to_string(path)
+            .unwrap_or_else(|e| fail(format!("cannot read RSS feed file: {e}")))
     }
 
     // -- helpers --
