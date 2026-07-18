@@ -97,10 +97,9 @@ in cron.
 - One `<item>` per change event (delta), newest first
 - Window: last 100 deltas
 - Item `<title>` summarises add/remove/change counts
-- Item `<description>` lists affected model IDs with `<br/>` line breaks
+- Item `<description>` lists affected model IDs as plain text (wrapped in CDATA for XML safety)
 - Item `<guid>` is `models-watch-<ISO timestamp>` (`isPermaLink="false"`)
 - Item `<pubDate>` is the delta timestamp in RFC-822 format
-- Model IDs in descriptions are wrapped in `<![CDATA[...]]>` for safe XML
 
 ### Exit codes
 

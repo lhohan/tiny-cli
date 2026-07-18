@@ -179,44 +179,41 @@ for delta_file in "${newest_first[@]}"; do
         title="Models: $title"
     fi
 
-    # Build description listing all affected model IDs (will be wrapped in CDATA)
-    html_lines=()
+    # Build description as plain text (wrapped in CDATA for XML safety)
+    desc_lines=()
 
     if [[ "$added_count" -gt 0 ]]; then
-        html_lines+=("<b>Added:</b>")
+        desc_lines+=("Added:")
         while IFS= read -r line; do
-            [[ -n "$line" ]] && html_lines+=("  • $line")
+            [[ -n "$line" ]] && desc_lines+=("  $line")
         done < <(jq -r '.added[]' "$delta_file")
     fi
 
     if [[ "$removed_count" -gt 0 ]]; then
-        [[ ${#html_lines[@]} -gt 0 ]] && html_lines+=("")
-        html_lines+=("<b>Removed:</b>")
+        desc_lines+=("Removed:")
         while IFS= read -r line; do
-            [[ -n "$line" ]] && html_lines+=("  • $line")
+            [[ -n "$line" ]] && desc_lines+=("  $line")
         done < <(jq -r '.removed[]' "$delta_file")
     fi
 
     if [[ "$changed_count" -gt 0 ]]; then
-        [[ ${#html_lines[@]} -gt 0 ]] && html_lines+=("")
-        html_lines+=("<b>Changed:</b>")
+        desc_lines+=("Changed:")
         while IFS=$'\t' read -r model_id old_name new_name; do
-            [[ -n "$model_id" ]] && html_lines+=("  • $model_id: \"$old_name\" → \"$new_name\"")
+            [[ -n "$model_id" ]] && desc_lines+=("  $model_id - \"$old_name\" → \"$new_name\"")
         done < <(jq -r '.changed[] | [.id, .old_name, .new_name] | @tsv' "$delta_file")
     fi
 
-    if [[ ${#html_lines[@]} -eq 0 ]]; then
+    if [[ ${#desc_lines[@]} -eq 0 ]]; then
         description="No changes"
     else
-        # Join with <br/>
         description=""
-        for ((d=0; d<${#html_lines[@]}; d++)); do
+        for line in "${desc_lines[@]}"; do
             if [[ -n "$description" ]]; then
-                description+="<br/>"
+                description+=$'\n'
             fi
-            description+="${html_lines[$d]}"
+            description+="$line"
         done
-        # Wrap entire description in CDATA so HTML tags are safe
+        # Wrap in CDATA for XML safety (model IDs may contain <, &, etc.)
         description="<![CDATA[${description}]]>"
     fi
 
