@@ -7,16 +7,18 @@
 # models-watch.sh, no network access, no side effects beyond writing the feed.
 #
 # Usage:
-#   ./models-feed.sh [--output <file>] [--state-dir <dir>]
+#   ./models-feed.sh [--output <file>] [--state-dir <dir>] [--feed-url <url>]
 #
 # Flags:
 #   --output <file>     Write feed to <file>  (default: state/feed.xml)
 #   --state-dir <dir>   Read deltas from <dir> (default: state/ relative
 #                       to this script's directory)
+#   --feed-url <url>    Public URL of this feed (adds atom:link rel="self")
 #
 # Environment:
 #   MODELS_WATCH_FEED_FILE   Same as --output (default: state/feed.xml)
 #   MODELS_WATCH_STATE_DIR   Same as --state-dir
+#   MODELS_WATCH_FEED_URL    Same as --feed-url
 #
 # Exit codes:
 #   0  — feed written successfully (or nothing new; no error)
@@ -33,6 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 STATE_DIR="${MODELS_WATCH_STATE_DIR:-${SCRIPT_DIR}/state}"
 OUTPUT_FILE="${MODELS_WATCH_FEED_FILE:-}"
+FEED_URL="${MODELS_WATCH_FEED_URL:-}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -42,6 +45,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --state-dir)
             STATE_DIR="$2"
+            shift 2
+            ;;
+        --feed-url)
+            FEED_URL="$2"
             shift 2
             ;;
         *)
@@ -127,19 +134,6 @@ rfc822_from_iso() {
 }
 
 # ---------------------------------------------------------------------------
-# XML escaping (JQ @html)
-# ---------------------------------------------------------------------------
-xml_escape() {
-    jq -R -s '@html' <<< "$1"
-}
-
-xml_escape_cdata() {
-    local raw="$1"
-    # Wrap in CDATA to avoid any XML issues — safe for arbitrary text
-    printf '<![CDATA[%s]]>' "$raw"
-}
-
-# ---------------------------------------------------------------------------
 # Build RSS feed
 # ---------------------------------------------------------------------------
 
@@ -185,51 +179,53 @@ for delta_file in "${newest_first[@]}"; do
         title="Models: $title"
     fi
 
-    # Build description listing all affected model IDs
-    desc_lines=()
+    # Build description listing all affected model IDs (will be wrapped in CDATA)
+    html_lines=()
 
     if [[ "$added_count" -gt 0 ]]; then
-        desc_lines+=("<b>Added:</b>")
+        html_lines+=("<b>Added:</b>")
         while IFS= read -r line; do
-            [[ -n "$line" ]] && desc_lines+=("  • $(xml_escape_cdata "$line")")
+            [[ -n "$line" ]] && html_lines+=("  • $line")
         done < <(jq -r '.added[]' "$delta_file")
     fi
 
     if [[ "$removed_count" -gt 0 ]]; then
-        [[ ${#desc_lines[@]} -gt 0 ]] && desc_lines+=("")
-        desc_lines+=("<b>Removed:</b>")
+        [[ ${#html_lines[@]} -gt 0 ]] && html_lines+=("")
+        html_lines+=("<b>Removed:</b>")
         while IFS= read -r line; do
-            [[ -n "$line" ]] && desc_lines+=("  • $(xml_escape_cdata "$line")")
+            [[ -n "$line" ]] && html_lines+=("  • $line")
         done < <(jq -r '.removed[]' "$delta_file")
     fi
 
     if [[ "$changed_count" -gt 0 ]]; then
-        [[ ${#desc_lines[@]} -gt 0 ]] && desc_lines+=("")
-        desc_lines+=("<b>Changed:</b>")
+        [[ ${#html_lines[@]} -gt 0 ]] && html_lines+=("")
+        html_lines+=("<b>Changed:</b>")
         while IFS=$'\t' read -r model_id old_name new_name; do
-            [[ -n "$model_id" ]] && desc_lines+=("  • $(xml_escape_cdata "$model_id"): \"$old_name\" → \"$new_name\"")
+            [[ -n "$model_id" ]] && html_lines+=("  • $model_id: \"$old_name\" → \"$new_name\"")
         done < <(jq -r '.changed[] | [.id, .old_name, .new_name] | @tsv' "$delta_file")
     fi
 
-    if [[ ${#desc_lines[@]} -eq 0 ]]; then
+    if [[ ${#html_lines[@]} -eq 0 ]]; then
         description="No changes"
     else
         # Join with <br/>
         description=""
-        for ((d=0; d<${#desc_lines[@]}; d++)); do
+        for ((d=0; d<${#html_lines[@]}; d++)); do
             if [[ -n "$description" ]]; then
                 description+="<br/>"
             fi
-            description+="${desc_lines[$d]}"
+            description+="${html_lines[$d]}"
         done
+        # Wrap entire description in CDATA so HTML tags are safe
+        description="<![CDATA[${description}]]>"
     fi
 
-    # Escape title
-    escaped_title=$(xml_escape_cdata "$title")
+    # Escape title for XML (it contains text only, wrap in CDATA for safety)
+    title="<![CDATA[${title}]]>"
 
     item="
     <item>
-      <title>${escaped_title}</title>
+      <title>${title}</title>
       <link>${FEED_LINK}</link>
       <guid isPermaLink=\"false\">${guid}</guid>
       <pubDate>${pub_date}</pubDate>
@@ -239,14 +235,22 @@ for delta_file in "${newest_first[@]}"; do
     items_xml+="${item}"
 done
 
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # Assemble full RSS document
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+
+# Add Atom namespace if we know our own URL (for atom:link rel="self")
+ATOM_NS=""
+ATOM_LINK=""
+if [[ -n "$FEED_URL" ]]; then
+    ATOM_NS=' xmlns:atom="http://www.w3.org/2005/Atom"'
+    ATOM_LINK="    <atom:link href=\"${FEED_URL}\" rel=\"self\" type=\"application/rss+xml\"/>"$'\n'
+fi
 
 feed="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<rss version=\"2.0\">
+<rss version=\"2.0\"${ATOM_NS}>
   <channel>
-    <title>${FEED_TITLE}</title>
+    ${ATOM_LINK}<title>${FEED_TITLE}</title>
     <link>${FEED_LINK}</link>
     <description>${FEED_DESC}</description>
     <language>en</language>

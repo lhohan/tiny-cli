@@ -89,6 +89,7 @@ in cron.
 |------|---------|-------------|
 | `--output <file>` | `state/feed.xml` | Where to write the RSS feed. Also settable via `MODELS_WATCH_FEED_FILE`. |
 | `--state-dir <dir>` | sibling `state/` | Directory containing `change-*.json` deltas. Also settable via `MODELS_WATCH_STATE_DIR`. |
+| `--feed-url <url>` | — | Public URL of the feed (adds `<atom:link rel="self">` for reader discovery). Also settable via `MODELS_WATCH_FEED_URL`. |
 
 ### Feed format
 
@@ -124,7 +125,7 @@ To make the feed publicly available:
    ```bash
    cd /path/to/tiny-cli
    ./models-watch/models-watch.sh
-   ./models-watch/models-feed.sh --output models-watch.xml
+   ./models-watch/models-feed.sh --output models-watch.xml --feed-url https://<your-org>.codeberg.page/tiny-cli/models-watch.xml
    ```
 
 3. Commit the feed file and push to the `pages` branch:
