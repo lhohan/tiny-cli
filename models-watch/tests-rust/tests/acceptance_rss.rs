@@ -182,10 +182,10 @@ fn feed_emits_one_item_per_model() {
         .should_succeed()
         .expect_rss_file()
         .expect_rss_item_count(4)
-        .expect_rss_contains("New: alpha")
-        .expect_rss_contains("New: beta")
-        .expect_rss_contains("Removed: gamma")
-        .expect_rss_contains("Updated: delta");
+        .expect_rss_contains("alpha is now available.")
+        .expect_rss_contains("beta is now available.")
+        .expect_rss_contains("gamma is no longer available.")
+        .expect_rss_contains("delta: \"Old Name\" → \"New Name\"");
 }
 
 // ---------------------------------------------------------------------------

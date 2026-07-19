@@ -167,12 +167,10 @@ for delta_file in "${newest_first[@]}"; do
 
         escaped_id=$(xml_escape "$model_id")
         guid="models-watch-${ts}-new-${escaped_id}"
-        title="<![CDATA[New: ${model_id}]]>"
         description="<![CDATA[${model_id} is now available.]]>"
 
         items_xml+="
     <item>
-      <title>${title}</title>
       <guid isPermaLink=\"false\">${guid}</guid>
       <pubDate>${pub_date}</pubDate>
       <description>${description}</description>
@@ -189,12 +187,10 @@ for delta_file in "${newest_first[@]}"; do
 
         escaped_id=$(xml_escape "$model_id")
         guid="models-watch-${ts}-updated-${escaped_id}"
-        title="<![CDATA[Updated: ${model_id}]]>"
         description="<![CDATA[${model_id}: \"${old_name}\" → \"${new_name}\"]]>"
 
         items_xml+="
     <item>
-      <title>${title}</title>
       <guid isPermaLink=\"false\">${guid}</guid>
       <pubDate>${pub_date}</pubDate>
       <description>${description}</description>
@@ -211,12 +207,10 @@ for delta_file in "${newest_first[@]}"; do
 
         escaped_id=$(xml_escape "$model_id")
         guid="models-watch-${ts}-removed-${escaped_id}"
-        title="<![CDATA[Removed: ${model_id}]]>"
         description="<![CDATA[${model_id} is no longer available.]]>"
 
         items_xml+="
     <item>
-      <title>${title}</title>
       <guid isPermaLink=\"false\">${guid}</guid>
       <pubDate>${pub_date}</pubDate>
       <description>${description}</description>
