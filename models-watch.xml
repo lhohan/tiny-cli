@@ -6,305 +6,607 @@
     <link>https://models.dev</link>
     <description>Model change notifications for opencode-go and free OpenCode Zen models</description>
     <language>en</language>
-    <lastBuildDate>Sun, 19 Jul 2026 09:43:03 +0200</lastBuildDate>
+    <lastBuildDate>Sun, 19 Jul 2026 11:55:36 +0200</lastBuildDate>
     
     <item>
-      <title><![CDATA[Models: 1 changed]]></title>
-      <guid isPermaLink="false">models-watch-2026-07-18T11:00:02Z</guid>
+      <title><![CDATA[Changed: opencode-go/kimi-k3]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-18T11:00:02Z-changed-opencode-go/kimi-k3</guid>
       <pubDate>Sat, 18 Jul 2026 11:00:02 +0000</pubDate>
-      <description><![CDATA[Changed:
-  opencode-go/kimi-k3 - "Kimi K3" → "Kimi K3 (2x usage)"]]></description>
+      <description><![CDATA[opencode-go/kimi-k3: "Kimi K3" → "Kimi K3 (2x usage)"]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 2 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-07-17T07:00:01Z</guid>
+      <title><![CDATA[Added: opencode-go/grok-4.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-17T07:00:01Z-added-opencode-go/grok-4.5</guid>
       <pubDate>Fri, 17 Jul 2026 07:00:01 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode-go/grok-4.5
-  opencode-go/kimi-k3]]></description>
+      <description><![CDATA[opencode-go/grok-4.5]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-07-07T18:00:00Z</guid>
+      <title><![CDATA[Added: opencode-go/kimi-k3]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-17T07:00:01Z-added-opencode-go/kimi-k3</guid>
+      <pubDate>Fri, 17 Jul 2026 07:00:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/kimi-k3]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/hy3-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-07T18:00:00Z-added-opencode/hy3-free</guid>
       <pubDate>Tue, 07 Jul 2026 18:00:00 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode/hy3-free]]></description>
+      <description><![CDATA[opencode/hy3-free]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 changed]]></title>
-      <guid isPermaLink="false">models-watch-2026-07-02T13:00:03Z</guid>
+      <title><![CDATA[Changed: opencode-go/minimax-m3]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-02T13:00:03Z-changed-opencode-go/minimax-m3</guid>
       <pubDate>Thu, 02 Jul 2026 13:00:03 +0000</pubDate>
-      <description><![CDATA[Changed:
-  opencode-go/minimax-m3 - "MiniMax-M3 (3x usage)" → "MiniMax-M3"]]></description>
+      <description><![CDATA[opencode-go/minimax-m3: "MiniMax-M3 (3x usage)" → "MiniMax-M3"]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 6 changed]]></title>
-      <guid isPermaLink="false">models-watch-2026-07-01T09:00:01Z</guid>
+      <title><![CDATA[Changed: opencode-go/minimax-m2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-01T09:00:01Z-changed-opencode-go/minimax-m2.5</guid>
       <pubDate>Wed, 01 Jul 2026 09:00:01 +0000</pubDate>
-      <description><![CDATA[Changed:
-  opencode-go/minimax-m2.5 - "MiniMax M2.5" → "MiniMax-M2.5"
-  opencode-go/minimax-m2.7 - "MiniMax M2.7" → "MiniMax-M2.7"
-  opencode-go/minimax-m3 - "MiniMax M3 (3x usage)" → "MiniMax-M3 (3x usage)"
-  opencode/minimax-m2.1-free - "MiniMax M2.1 Free" → "MiniMax-M2.1 Free"
-  opencode/minimax-m2.5-free - "MiniMax M2.5 Free" → "MiniMax-M2.5 Free"
-  opencode/minimax-m3-free - "MiniMax M3 Free" → "MiniMax-M3 Free"]]></description>
+      <description><![CDATA[opencode-go/minimax-m2.5: "MiniMax M2.5" → "MiniMax-M2.5"]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-06-17T13:00:01Z</guid>
+      <title><![CDATA[Changed: opencode-go/minimax-m2.7]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-01T09:00:01Z-changed-opencode-go/minimax-m2.7</guid>
+      <pubDate>Wed, 01 Jul 2026 09:00:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/minimax-m2.7: "MiniMax M2.7" → "MiniMax-M2.7"]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Changed: opencode-go/minimax-m3]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-01T09:00:01Z-changed-opencode-go/minimax-m3</guid>
+      <pubDate>Wed, 01 Jul 2026 09:00:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/minimax-m3: "MiniMax M3 (3x usage)" → "MiniMax-M3 (3x usage)"]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Changed: opencode/minimax-m2.1-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-01T09:00:01Z-changed-opencode/minimax-m2.1-free</guid>
+      <pubDate>Wed, 01 Jul 2026 09:00:01 +0000</pubDate>
+      <description><![CDATA[opencode/minimax-m2.1-free: "MiniMax M2.1 Free" → "MiniMax-M2.1 Free"]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Changed: opencode/minimax-m2.5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-01T09:00:01Z-changed-opencode/minimax-m2.5-free</guid>
+      <pubDate>Wed, 01 Jul 2026 09:00:01 +0000</pubDate>
+      <description><![CDATA[opencode/minimax-m2.5-free: "MiniMax M2.5 Free" → "MiniMax-M2.5 Free"]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Changed: opencode/minimax-m3-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-07-01T09:00:01Z-changed-opencode/minimax-m3-free</guid>
+      <pubDate>Wed, 01 Jul 2026 09:00:01 +0000</pubDate>
+      <description><![CDATA[opencode/minimax-m3-free: "MiniMax M3 Free" → "MiniMax-M3 Free"]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/glm-5.2]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-17T13:00:01Z-added-opencode-go/glm-5.2</guid>
       <pubDate>Wed, 17 Jun 2026 13:00:01 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode-go/glm-5.2]]></description>
+      <description><![CDATA[opencode-go/glm-5.2]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-06-13T07:00:01Z</guid>
+      <title><![CDATA[Added: opencode-go/kimi-k2.7-code]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-13T07:00:01Z-added-opencode-go/kimi-k2.7-code</guid>
       <pubDate>Sat, 13 Jun 2026 07:00:01 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode-go/kimi-k2.7-code]]></description>
+      <description><![CDATA[opencode-go/kimi-k2.7-code]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 changed]]></title>
-      <guid isPermaLink="false">models-watch-2026-06-12T18:00:01Z</guid>
+      <title><![CDATA[Changed: opencode-go/minimax-m3]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-12T18:00:01Z-changed-opencode-go/minimax-m3</guid>
       <pubDate>Fri, 12 Jun 2026 18:00:01 +0000</pubDate>
-      <description><![CDATA[Changed:
-  opencode-go/minimax-m3 - "MiniMax M3" → "MiniMax M3 (3x usage)"]]></description>
+      <description><![CDATA[opencode-go/minimax-m3: "MiniMax M3" → "MiniMax M3 (3x usage)"]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-06-09T18:00:02Z</guid>
+      <title><![CDATA[Added: opencode/north-mini-code-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-09T18:00:02Z-added-opencode/north-mini-code-free</guid>
       <pubDate>Tue, 09 Jun 2026 18:00:02 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode/north-mini-code-free]]></description>
+      <description><![CDATA[opencode/north-mini-code-free]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-06-04T18:00:01Z</guid>
+      <title><![CDATA[Added: opencode/nemotron-3-ultra-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-04T18:00:01Z-added-opencode/nemotron-3-ultra-free</guid>
       <pubDate>Thu, 04 Jun 2026 18:00:01 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode/nemotron-3-ultra-free]]></description>
+      <description><![CDATA[opencode/nemotron-3-ultra-free]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-06-03T18:00:01Z</guid>
+      <title><![CDATA[Added: opencode-go/qwen3.7-plus]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-03T18:00:01Z-added-opencode-go/qwen3.7-plus</guid>
       <pubDate>Wed, 03 Jun 2026 18:00:01 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode-go/qwen3.7-plus]]></description>
+      <description><![CDATA[opencode-go/qwen3.7-plus]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 4 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-06-01T07:00:00Z</guid>
+      <title><![CDATA[Added: opencode-go/minimax-m3]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-01T07:00:00Z-added-opencode-go/minimax-m3</guid>
       <pubDate>Mon, 01 Jun 2026 07:00:00 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode-go/minimax-m3
-  opencode-go/qwen3.7-max
-  opencode/mimo-v2.5-free
-  opencode/minimax-m3-free]]></description>
+      <description><![CDATA[opencode-go/minimax-m3]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-05-11T18:00:01Z</guid>
+      <title><![CDATA[Added: opencode-go/qwen3.7-max]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-01T07:00:00Z-added-opencode-go/qwen3.7-max</guid>
+      <pubDate>Mon, 01 Jun 2026 07:00:00 +0000</pubDate>
+      <description><![CDATA[opencode-go/qwen3.7-max]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/mimo-v2.5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-01T07:00:00Z-added-opencode/mimo-v2.5-free</guid>
+      <pubDate>Mon, 01 Jun 2026 07:00:00 +0000</pubDate>
+      <description><![CDATA[opencode/mimo-v2.5-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/minimax-m3-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-06-01T07:00:00Z-added-opencode/minimax-m3-free</guid>
+      <pubDate>Mon, 01 Jun 2026 07:00:00 +0000</pubDate>
+      <description><![CDATA[opencode/minimax-m3-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/deepseek-v4-flash-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-11T18:00:01Z-added-opencode/deepseek-v4-flash-free</guid>
       <pubDate>Mon, 11 May 2026 18:00:01 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode/deepseek-v4-flash-free]]></description>
+      <description><![CDATA[opencode/deepseek-v4-flash-free]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-05-10T09:00:00Z</guid>
+      <title><![CDATA[Added: opencode/ring-2.6-1t-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-10T09:00:00Z-added-opencode/ring-2.6-1t-free</guid>
       <pubDate>Sun, 10 May 2026 09:00:00 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode/ring-2.6-1t-free]]></description>
+      <description><![CDATA[opencode/ring-2.6-1t-free]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 29 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z</guid>
+      <title><![CDATA[Added: opencode-go/deepseek-v4-flash]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/deepseek-v4-flash</guid>
       <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode-go/deepseek-v4-flash
-  opencode-go/deepseek-v4-pro
-  opencode-go/glm-5
-  opencode-go/glm-5.1
-  opencode-go/kimi-k2.5
-  opencode-go/kimi-k2.6
-  opencode-go/mimo-v2-omni
-  opencode-go/mimo-v2-pro
-  opencode-go/mimo-v2.5
-  opencode-go/mimo-v2.5-pro
-  opencode-go/minimax-m2.5
-  opencode-go/minimax-m2.7
-  opencode-go/qwen3.5-plus
-  opencode-go/qwen3.6-plus
-  opencode/big-pickle
-  opencode/glm-4.7-free
-  opencode/glm-5-free
-  opencode/grok-code
-  opencode/hy3-preview-free
-  opencode/kimi-k2.5-free
-  opencode/ling-2.6-flash-free
-  opencode/mimo-v2-flash-free
-  opencode/mimo-v2-omni-free
-  opencode/mimo-v2-pro-free
-  opencode/minimax-m2.1-free
-  opencode/minimax-m2.5-free
-  opencode/nemotron-3-super-free
-  opencode/qwen3.6-plus-free
-  opencode/trinity-large-preview-free]]></description>
+      <description><![CDATA[opencode-go/deepseek-v4-flash]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 29 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z</guid>
+      <title><![CDATA[Added: opencode-go/deepseek-v4-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/deepseek-v4-pro</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/deepseek-v4-pro]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/glm-5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/glm-5</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/glm-5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/glm-5.1]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/glm-5.1</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/glm-5.1]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/kimi-k2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/kimi-k2.5</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/kimi-k2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/kimi-k2.6]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/kimi-k2.6</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/kimi-k2.6]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2-omni]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/mimo-v2-omni</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2-omni]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/mimo-v2-pro</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2-pro]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/mimo-v2.5</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2.5-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/mimo-v2.5-pro</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2.5-pro]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/minimax-m2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/minimax-m2.5</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/minimax-m2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/minimax-m2.7]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/minimax-m2.7</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/minimax-m2.7]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/qwen3.5-plus]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/qwen3.5-plus</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/qwen3.5-plus]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/qwen3.6-plus]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode-go/qwen3.6-plus</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode-go/qwen3.6-plus]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/big-pickle]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/big-pickle</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/big-pickle]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/glm-4.7-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/glm-4.7-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/glm-4.7-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/glm-5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/glm-5-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/glm-5-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/grok-code]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/grok-code</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/grok-code]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/hy3-preview-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/hy3-preview-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/hy3-preview-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/kimi-k2.5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/kimi-k2.5-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/kimi-k2.5-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/ling-2.6-flash-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/ling-2.6-flash-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/ling-2.6-flash-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/mimo-v2-flash-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/mimo-v2-flash-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/mimo-v2-flash-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/mimo-v2-omni-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/mimo-v2-omni-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/mimo-v2-omni-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/mimo-v2-pro-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/mimo-v2-pro-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/mimo-v2-pro-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/minimax-m2.1-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/minimax-m2.1-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/minimax-m2.1-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/minimax-m2.5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/minimax-m2.5-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/minimax-m2.5-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/nemotron-3-super-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/nemotron-3-super-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/nemotron-3-super-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/qwen3.6-plus-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/qwen3.6-plus-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/qwen3.6-plus-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/trinity-large-preview-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T08:03:01Z-added-opencode/trinity-large-preview-free</guid>
+      <pubDate>Thu, 07 May 2026 08:03:01 +0000</pubDate>
+      <description><![CDATA[opencode/trinity-large-preview-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/deepseek-v4-flash]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/deepseek-v4-flash</guid>
       <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode-go/deepseek-v4-flash
-  opencode-go/deepseek-v4-pro
-  opencode-go/glm-5
-  opencode-go/glm-5.1
-  opencode-go/kimi-k2.5
-  opencode-go/kimi-k2.6
-  opencode-go/mimo-v2-omni
-  opencode-go/mimo-v2-pro
-  opencode-go/mimo-v2.5
-  opencode-go/mimo-v2.5-pro
-  opencode-go/minimax-m2.5
-  opencode-go/minimax-m2.7
-  opencode-go/qwen3.5-plus
-  opencode-go/qwen3.6-plus
-  opencode/big-pickle
-  opencode/glm-4.7-free
-  opencode/glm-5-free
-  opencode/grok-code
-  opencode/hy3-preview-free
-  opencode/kimi-k2.5-free
-  opencode/ling-2.6-flash-free
-  opencode/mimo-v2-flash-free
-  opencode/mimo-v2-omni-free
-  opencode/mimo-v2-pro-free
-  opencode/minimax-m2.1-free
-  opencode/minimax-m2.5-free
-  opencode/nemotron-3-super-free
-  opencode/qwen3.6-plus-free
-  opencode/trinity-large-preview-free]]></description>
+      <description><![CDATA[opencode-go/deepseek-v4-flash]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 29 added, 29 removed]]></title>
-      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z</guid>
+      <title><![CDATA[Added: opencode-go/deepseek-v4-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/deepseek-v4-pro</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/deepseek-v4-pro]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/glm-5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/glm-5</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/glm-5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/glm-5.1]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/glm-5.1</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/glm-5.1]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/kimi-k2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/kimi-k2.5</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/kimi-k2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/kimi-k2.6]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/kimi-k2.6</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/kimi-k2.6]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2-omni]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/mimo-v2-omni</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2-omni]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/mimo-v2-pro</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2-pro]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/mimo-v2.5</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2.5-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/mimo-v2.5-pro</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2.5-pro]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/minimax-m2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/minimax-m2.5</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/minimax-m2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/minimax-m2.7]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/minimax-m2.7</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/minimax-m2.7]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/qwen3.5-plus]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/qwen3.5-plus</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/qwen3.5-plus]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/qwen3.6-plus]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode-go/qwen3.6-plus</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode-go/qwen3.6-plus]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/big-pickle]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/big-pickle</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/big-pickle]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/glm-4.7-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/glm-4.7-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/glm-4.7-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/glm-5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/glm-5-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/glm-5-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/grok-code]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/grok-code</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/grok-code]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/hy3-preview-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/hy3-preview-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/hy3-preview-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/kimi-k2.5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/kimi-k2.5-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/kimi-k2.5-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/ling-2.6-flash-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/ling-2.6-flash-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/ling-2.6-flash-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/mimo-v2-flash-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/mimo-v2-flash-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/mimo-v2-flash-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/mimo-v2-omni-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/mimo-v2-omni-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/mimo-v2-omni-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/mimo-v2-pro-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/mimo-v2-pro-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/mimo-v2-pro-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/minimax-m2.1-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/minimax-m2.1-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/minimax-m2.1-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/minimax-m2.5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/minimax-m2.5-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/minimax-m2.5-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/nemotron-3-super-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/nemotron-3-super-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/nemotron-3-super-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/qwen3.6-plus-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/qwen3.6-plus-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/qwen3.6-plus-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/trinity-large-preview-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:51:07Z-added-opencode/trinity-large-preview-free</guid>
+      <pubDate>Thu, 07 May 2026 07:51:07 +0000</pubDate>
+      <description><![CDATA[opencode/trinity-large-preview-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/deepseek-v4-flash]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/deepseek-v4-flash</guid>
       <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
-      <description><![CDATA[Added:
-  opencode-go/deepseek-v4-flash
-  opencode-go/deepseek-v4-pro
-  opencode-go/glm-5
-  opencode-go/glm-5.1
-  opencode-go/kimi-k2.5
-  opencode-go/kimi-k2.6
-  opencode-go/mimo-v2-omni
-  opencode-go/mimo-v2-pro
-  opencode-go/mimo-v2.5
-  opencode-go/mimo-v2.5-pro
-  opencode-go/minimax-m2.5
-  opencode-go/minimax-m2.7
-  opencode-go/qwen3.5-plus
-  opencode-go/qwen3.6-plus
-  opencode/big-pickle
-  opencode/glm-4.7-free
-  opencode/glm-5-free
-  opencode/grok-code
-  opencode/hy3-preview-free
-  opencode/kimi-k2.5-free
-  opencode/ling-2.6-flash-free
-  opencode/mimo-v2-flash-free
-  opencode/mimo-v2-omni-free
-  opencode/mimo-v2-pro-free
-  opencode/minimax-m2.1-free
-  opencode/minimax-m2.5-free
-  opencode/nemotron-3-super-free
-  opencode/qwen3.6-plus-free
-  opencode/trinity-large-preview-free
-Removed:
-  big-pickle
-  deepseek-v4-flash
-  deepseek-v4-pro
-  glm-4.7-free
-  glm-5
-  glm-5-free
-  glm-5.1
-  grok-code
-  hy3-preview-free
-  kimi-k2.5
-  kimi-k2.5-free
-  kimi-k2.6
-  ling-2.6-flash-free
-  mimo-v2-flash-free
-  mimo-v2-omni
-  mimo-v2-omni-free
-  mimo-v2-pro
-  mimo-v2-pro-free
-  mimo-v2.5
-  mimo-v2.5-pro
-  minimax-m2.1-free
-  minimax-m2.5
-  minimax-m2.5-free
-  minimax-m2.7
-  nemotron-3-super-free
-  qwen3.5-plus
-  qwen3.6-plus
-  qwen3.6-plus-free
-  trinity-large-preview-free]]></description>
+      <description><![CDATA[opencode-go/deepseek-v4-flash]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 removed]]></title>
-      <guid isPermaLink="false">models-watch-2026-05-07T07:00:00Z</guid>
-      <pubDate>Thu, 07 May 2026 07:00:00 +0000</pubDate>
-      <description><![CDATA[Removed:
-  gpt-5-nano]]></description>
+      <title><![CDATA[Added: opencode-go/deepseek-v4-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/deepseek-v4-pro</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/deepseek-v4-pro]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 1 changed]]></title>
-      <guid isPermaLink="false">models-watch-2026-05-06T07:00:01Z</guid>
-      <pubDate>Wed, 06 May 2026 07:00:01 +0000</pubDate>
-      <description><![CDATA[Changed:
-  kimi-k2.6 - "Kimi K2.6 (3x limits)" → "Kimi K2.6"]]></description>
+      <title><![CDATA[Added: opencode-go/glm-5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/glm-5</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/glm-5]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 16 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-04-30T07:00:00Z</guid>
-      <pubDate>Thu, 30 Apr 2026 07:00:00 +0000</pubDate>
-      <description><![CDATA[Added:
-  big-pickle
-  glm-4.7-free
-  glm-5-free
-  gpt-5-nano
-  grok-code
-  hy3-preview-free
-  kimi-k2.5-free
-  ling-2.6-flash-free
-  mimo-v2-flash-free
-  mimo-v2-omni-free
-  mimo-v2-pro-free
-  minimax-m2.1-free
-  minimax-m2.5-free
-  nemotron-3-super-free
-  qwen3.6-plus-free
-  trinity-large-preview-free]]></description>
+      <title><![CDATA[Added: opencode-go/glm-5.1]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/glm-5.1</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/glm-5.1]]></description>
     </item>
     <item>
-      <title><![CDATA[Models: 14 added]]></title>
-      <guid isPermaLink="false">models-watch-2026-04-29T12:16:38Z</guid>
-      <pubDate>Wed, 29 Apr 2026 12:16:38 +0000</pubDate>
-      <description><![CDATA[Added:
-  deepseek-v4-flash
-  deepseek-v4-pro
-  glm-5
-  glm-5.1
-  kimi-k2.5
-  kimi-k2.6
-  mimo-v2-omni
-  mimo-v2-pro
-  mimo-v2.5
-  mimo-v2.5-pro
-  minimax-m2.5
-  minimax-m2.7
-  qwen3.5-plus
-  qwen3.6-plus]]></description>
+      <title><![CDATA[Added: opencode-go/kimi-k2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/kimi-k2.5</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/kimi-k2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/kimi-k2.6]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/kimi-k2.6</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/kimi-k2.6]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2-omni]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/mimo-v2-omni</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2-omni]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/mimo-v2-pro</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2-pro]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/mimo-v2.5</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/mimo-v2.5-pro]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/mimo-v2.5-pro</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/mimo-v2.5-pro]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/minimax-m2.5]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/minimax-m2.5</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/minimax-m2.5]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/minimax-m2.7]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/minimax-m2.7</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/minimax-m2.7]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/qwen3.5-plus]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/qwen3.5-plus</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/qwen3.5-plus]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode-go/qwen3.6-plus]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode-go/qwen3.6-plus</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode-go/qwen3.6-plus]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/big-pickle]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode/big-pickle</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode/big-pickle]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/glm-4.7-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode/glm-4.7-free</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode/glm-4.7-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/glm-5-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode/glm-5-free</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode/glm-5-free]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/grok-code]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode/grok-code</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode/grok-code]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Added: opencode/hy3-preview-free]]></title>
+      <guid isPermaLink="false">models-watch-2026-05-07T07:37:45Z-added-opencode/hy3-preview-free</guid>
+      <pubDate>Thu, 07 May 2026 07:37:45 +0000</pubDate>
+      <description><![CDATA[opencode/hy3-preview-free]]></description>
     </item>
   </channel>
 </rss>
