@@ -145,6 +145,20 @@ To make the feed publicly available:
 
 The feed will be available at `https://<your-org>.codeberg.page/tiny-cli/models-watch.xml`.
 
+### Convenience: `mise run publish-feed`
+
+The repo root defines a `publish-feed` mise task that runs the full pipeline
+automatically (detect changes, regenerate feed, commit, bookmark, push).
+From the repo root:
+
+```bash
+mise run publish-feed
+```
+
+This invokes `models-watch/publish-feed.sh`, which chains the same steps shown
+above. If no deltas exist or the feed content is unchanged, the script exits 0
+without committing or pushing.
+
 ## Testing
 
 ```bash

@@ -223,7 +223,6 @@ for delta_file in "${newest_first[@]}"; do
     item="
     <item>
       <title>${title}</title>
-      <link>${FEED_LINK}</link>
       <guid isPermaLink=\"false\">${guid}</guid>
       <pubDate>${pub_date}</pubDate>
       <description>${description}</description>
