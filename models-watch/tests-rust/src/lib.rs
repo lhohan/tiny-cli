@@ -491,6 +491,11 @@ impl AppResult {
         self
     }
 
+    /// Assert the RSS feed contains a `<pubDate>` element with the given RFC-822 date string.
+    pub fn expect_rss_pubDate(&self, expected: &str) -> &Self {
+        self.expect_rss_contains(&format!("<pubDate>{}</pubDate>", expected))
+    }
+
     /// Read the entire RSS feed file content.
     pub fn read_rss_feed(&self) -> String {
         let path = self

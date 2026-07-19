@@ -19,7 +19,8 @@ fn feed_should_write_rss_when_deltas_exist() {
         .then_result()
         .should_succeed()
         .expect_rss_file()
-        .expect_rss_item_count(1);
+        .expect_rss_item_count(1)
+        .expect_rss_pubDate("Wed, 29 Apr 2026 10:00:00 +0000");
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +57,22 @@ fn feed_should_order_items_newest_first() {
     assert!(
         first_pos < second_pos,
         "'newest-model' should appear before 'oldest-model' in the feed"
+    );
+
+    // pubDate from newer delta (2026-04-30T10:00:00Z) must appear before older
+    let newer_pub = "Thu, 30 Apr 2026 10:00:00 +0000";
+    let older_pub = "Wed, 29 Apr 2026 10:00:00 +0000";
+    assert!(
+        feed.contains(newer_pub),
+        "RSS feed should contain pubDate for the newer delta"
+    );
+    assert!(
+        feed.contains(older_pub),
+        "RSS feed should contain pubDate for the older delta"
+    );
+    assert!(
+        feed.find(newer_pub) < feed.find(older_pub),
+        "newer pubDate should appear before older pubDate in the feed"
     );
 }
 
@@ -185,7 +202,8 @@ fn feed_emits_one_item_per_model() {
         .expect_rss_contains("alpha is now available.")
         .expect_rss_contains("beta is now available.")
         .expect_rss_contains("gamma is no longer available.")
-        .expect_rss_contains("delta: \"Old Name\" → \"New Name\"");
+        .expect_rss_contains("delta: \"Old Name\" → \"New Name\"")
+        .expect_rss_pubDate("Wed, 29 Apr 2026 10:00:00 +0000");
 }
 
 // ---------------------------------------------------------------------------
