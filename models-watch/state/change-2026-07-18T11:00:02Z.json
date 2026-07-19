@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-07-18T11:00:02Z",
+  "added": [],
+  "removed": [],
+  "changed": [
+    {
+      "id": "opencode-go/kimi-k3",
+      "old_name": "Kimi K3",
+      "new_name": "Kimi K3 (2x usage)"
+    }
+  ]
+}

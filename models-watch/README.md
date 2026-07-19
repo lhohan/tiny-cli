@@ -71,6 +71,7 @@ All runtime state lives under `state/` relative to the script:
 |------|---------|
 | `state/latest.json` | Synthetic merged snapshot of watched models, keyed by provider-prefixed model ID (used for comparison on next run) |
 | `state/change-<timestamp>.json` | Delta file, written when models are added, removed, or renamed |
+| `state/posted.json` | Ledger of broadcast deltas, written by `models-broadcast.sh` |
 
 ## Public RSS Feed
 
@@ -135,11 +136,139 @@ This invokes `models-watch/publish-feed.sh`, which chains:
 If no deltas exist or the feed content is unchanged, the script exits 0
 without committing or pushing.
 
+## Broadcast to Bluesky
+
+`models-broadcast.sh` posts model change deltas to Bluesky through the
+[com.atproto.repo.createRecord](https://docs.bsky.app/docs/api/com-atproto-repo-create-record)
+endpoint.
+
+### Usage
+
+```bash
+./models-broadcast.sh [--state-dir <dir>] [--capture-dir <dir>] [--limit <n>]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--state-dir <dir>` | sibling `state/` | Directory containing `change-*.json` deltas and `posted.json` ledger |
+| `--capture-dir <dir>` | — | Preview mode: write rendered posts as numbered JSON files, no auth or network |
+| `--limit <n>` | — | Post at most `n` complete deltas (positive integer, mutually exclusive with `--capture-dir`) |
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Capture written or all eligible deltas posted |
+| 2 | Unknown flag, missing flag value, or invalid `--limit` |
+| 3 | No unledgered deltas to process |
+| 4 | Missing Bluesky credentials (`BLUESKY_HANDLE` / `BLUESKY_APP_PASSWORD`) or session creation failed |
+
+### Capture mode (`--capture-dir`)
+
+Writes one JSON record per rendered post into the specified directory. Each
+record contains the delta filename, model ID, action type, and rendered post
+text. Capture mode performs no authentication, makes no network requests, and
+does not modify the posted ledger. It uses a fixed placeholder DID in the
+rendered record body.
+
+Use capture mode to preview what would be posted before running live.
+
+### Credentials
+
+Set these environment variables for live posting:
+
+| Variable | Required | Default |
+|----------|----------|---------|
+| `BLUESKY_HANDLE` | Yes | — |
+| `BLUESKY_APP_PASSWORD` | Yes | — |
+| `BLUESKY_PDS` | No | `https://bsky.social` |
+
+Use an [App Password](https://bsky.app/settings/app-passwords) rather than
+your account password.
+
+### State ledger (`state/posted.json`)
+
+The ledger tracks which deltas have been broadcast:
+
+```json
+{
+  "deltas": {
+    "change-2026-07-18T11:00:02Z.json": "<sha256>"
+  },
+  "skipped": {
+    "change-2026-06-03T18:00:01Z.json": "pre-provider-prefix history"
+  }
+}
+```
+
+- `deltas`: maps posted delta basenames to the SHA-256 of the compact JSON
+  array of their final rendered post texts (UTF-8, no trailing newline).
+- `skipped`: auditable terminal entries for deltas that will never be posted.
+  A filename may not appear in both maps.
+
+A missing ledger is treated as empty. A malformed ledger (wrong shape, invalid
+hashes, overlapping maps) causes the script to exit with an error before making
+any requests.
+
+### Text truncation
+
+All posts are limited to 300 Unicode code points. For updated posts, the old
+name is shortened first, then the new name, then the model ID as a last resort.
+Added and removed posts shorten only the model ID. Every shortened non-empty
+value ends in `…`. The original and final values of shortened fields are
+logged to stderr.
+
+### Risk: no retry on ambiguous failure
+
+The script makes one attempt per request. Any transport or non-2xx response
+stops the run without recording the incomplete delta in the ledger. This
+prevents double-posting but means a failure mid-run leaves the ledger
+partially updated. The next run will re-attempt unledgered deltas, which may
+produce duplicate posts for deltas that were partially posted before the
+failure.
+
+### Initial rollout
+
+The existing history contains 21 delta files. The 11 oldest deltas predate
+provider-prefixed IDs and have been recorded as skipped in the initial
+`state/posted.json`. The 10 newest deltas are eligible for broadcast. See
+`docs/plans/2026-07-20-bluesky-broadcast.md` for the bootstrap plan.
+
+## GitHub Actions
+
+Two workflows under `.github/workflows/` automate detection and broadcasting:
+
+### Detect Model Updates (`detect.yaml`)
+
+- Runs every 6 hours and on `workflow_dispatch`.
+- `main` only, `contents: write`.
+- Runs `models-watch.sh`, then commits and pushes changed
+  `state/latest.json` and `state/change-*.json` files.
+
+### Broadcast Model Updates (`broadcast.yaml`)
+
+- Runs after a successful `Detect Model Updates` run (`workflow_run`) and
+  on `workflow_dispatch`.
+- `main` only, `contents: write`.
+- Exposes `BLUESKY_HANDLE`, `BLUESKY_APP_PASSWORD`, and `BLUESKY_PDS`
+  secrets.
+- Runs `models-broadcast.sh`, treating exit `3` (no eligible deltas) as
+  a successful no-op.
+- Commits and pushes `state/posted.json` when it changes.
+
+Both workflows share the `models-watch` concurrency group with
+`cancel-in-progress: false` to serialise detection, posting, and ledger
+commits.
+
 ## Testing
 
 ```bash
+bash -n models-watch.sh
+bash -n models-broadcast.sh
 cd tests-rust && cargo test
 ```
 
-Tests exercise both `models-watch.sh` and `models-feed.sh` as black-box
-commands using a Rust fluent acceptance DSL.
+Tests exercise all three scripts (`models-watch.sh`, `models-feed.sh`, and
+`models-broadcast.sh`) as black-box commands using a Rust fluent acceptance
+DSL. Broadcaster tests cover capture mode, live posting via `file://` PDS,
+text truncation, delta validation, and credential checking.

@@ -1,4 +1,8 @@
-use models_watch_tests::{given, DeltaEntry};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use models_watch_tests::{given, given_broadcast, DeltaEntry};
+
+static CAPTURE_COUNTER: AtomicU64 = AtomicU64::new(0);
 use serde_json::{json, Map, Value};
 
 // ---------------------------------------------------------------------------
@@ -588,4 +592,518 @@ fn models_watch_should_exit_3_when_opencode_block_missing() {
         .when_run()
         .then_result()
         .should_exit_with(3);
+}
+
+// ---------------------------------------------------------------------------
+// Broadcaster – capture mode
+// ---------------------------------------------------------------------------
+
+
+fn capture_dir() -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!(
+        "models-watch-capture-{}-{}",
+        std::process::id(),
+        CAPTURE_COUNTER.fetch_add(1, Ordering::SeqCst)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("create capture dir");
+    dir
+}
+
+#[test]
+fn broadcast_capture_renders_post_for_added_model() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+  "timestamp": "2026-07-20T10:00:00Z",
+  "added": ["opencode-go/new-model"],
+  "removed": [],
+  "changed": []
+}"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_capture_contains(1, "New: opencode-go/new-model is now available.")
+        .expect_no_ledger();
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_renders_removed_changed_added_in_order() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/model-c"],
+          "removed": ["opencode-go/model-a"],
+          "changed": [{"id": "opencode-go/model-b", "old_name": "Old B", "new_name": "New B"}]
+        }"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(3)
+        // Capture files contain JSON-escaped content; check for model IDs and action markers
+        .expect_capture_contains(1, "model-a")
+        .expect_capture_contains(1, "no longer available")
+        .expect_capture_contains(2, "model-b")
+        .expect_capture_contains(2, "Old B")
+        .expect_capture_contains(2, "New B")
+        .expect_capture_contains(3, "model-c")
+        .expect_capture_contains(3, "now available")
+        .expect_no_ledger();
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_sorts_by_model_id_within_each_action_group() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/model-z", "opencode-go/model-a"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(2)
+        .expect_capture_contains(1, "opencode-go/model-a")
+        .expect_capture_contains(2, "opencode-go/model-z")
+        .expect_no_ledger();
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_unknown_flag_exits_2() {
+    given_broadcast()
+        .with_arg("--bogus")
+        .when_run()
+        .then_result()
+        .should_exit_with(2)
+        .expect_stdout_does_not_contain("capture"); // stderr check via stderr_contains perhaps
+}
+
+#[test]
+fn broadcast_capture_no_eligible_deltas_exits_3() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_exit_with(3);
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_skips_ledgered_deltas() {
+    let capture_dir = capture_dir();
+
+    let ledger = r#"{"deltas": {"change-2026-07-20T10:00:00Z.json": "abc123"}}"#;
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/already-posted"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_state_ledger(ledger)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_exit_with(3);
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_two_deltas_process_both() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/first"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_state_delta("change-2026-07-21T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-21T10:00:00Z",
+          "added": ["opencode-go/second"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(2)
+        .expect_capture_contains(1, "opencode-go/first")
+        .expect_capture_contains(2, "opencode-go/second");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_processes_oldest_first() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-21T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-21T10:00:00Z",
+          "added": ["opencode-go/second"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/first"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(2)
+        .expect_capture_contains(1, "opencode-go/first")
+        .expect_capture_contains(2, "opencode-go/second");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+// ---------------------------------------------------------------------------
+// Broadcaster – flag validation
+// ---------------------------------------------------------------------------
+
+#[test]
+fn broadcast_rejects_limit_with_capture_dir() {
+    given_broadcast()
+        .with_arg("--capture-dir")
+        .with_arg("/tmp/foo")
+        .with_arg("--limit")
+        .with_arg("5")
+        .when_run()
+        .then_result()
+        .should_exit_with(2)
+        .expect_stderr_contains("mutually exclusive");
+}
+
+#[test]
+fn broadcast_rejects_invalid_limit_value() {
+    given_broadcast()
+        .with_arg("--limit")
+        .with_arg("foo")
+        .when_run()
+        .then_result()
+        .should_exit_with(2)
+        .expect_stderr_contains("positive integer");
+}
+
+#[test]
+fn broadcast_rejects_missing_state_dir_value() {
+    given_broadcast()
+        .with_arg("--state-dir")
+        .with_arg("--capture-dir")
+        .with_arg("/tmp/x")
+        .when_run()
+        .then_result()
+        .should_exit_with(2)
+        .expect_stderr_contains("requires a value");
+}
+
+// ---------------------------------------------------------------------------
+// Broadcaster – validation
+// ---------------------------------------------------------------------------
+
+#[test]
+fn broadcast_rejects_delta_with_non_provider_id() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["no-prefix-model"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
+        .expect_stderr_contains("non-provider-prefixed");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_rejects_delta_missing_timestamp() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "added": ["opencode-go/model"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
+        .expect_stderr_contains("missing string timestamp");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_rejects_delta_malformed_changed_entry() {
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": [],
+          "removed": [],
+          "changed": [{"id": "opencode-go/model", "old_name": 123, "new_name": "New"}]
+        }"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
+        .expect_stderr_contains("malformed changed");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Broadcaster – live posting with file:// PDS transport
+// ---------------------------------------------------------------------------
+
+/// Write a fixture envelope for a `file://` PDS endpoint call.
+fn write_pds_fixture(pds_root: &std::path::Path, endpoint: &str, number: usize, status: u16, body: &serde_json::Value) {
+    let dir = pds_root.join("xrpc").join(endpoint);
+    std::fs::create_dir_all(&dir).expect("create PDS fixture dir");
+    let envelope = serde_json::json!({
+        "status": status,
+        "body": body
+    });
+    std::fs::write(dir.join(format!("{}.json", number)), envelope.to_string())
+        .expect("write PDS fixture");
+}
+
+#[test]
+fn broadcast_posts_via_file_pds_transport() {
+    let capture_dir = capture_dir();
+    let pds_root = capture_dir.join("pds-root");
+    std::fs::create_dir_all(&pds_root).expect("create pds root");
+
+    // Fixture: session creation succeeds
+    write_pds_fixture(
+        &pds_root,
+        "com.atproto.server.createSession",
+        1,
+        200,
+        &serde_json::json!({
+            "accessJwt": "test-jwt",
+            "did": "did:plc:testdid"
+        }),
+    );
+
+    // Fixture: record creation succeeds
+    write_pds_fixture(
+        &pds_root,
+        "com.atproto.repo.createRecord",
+        1,
+        200,
+        &serde_json::json!({
+            "uri": "at://did:plc:testdid/app.bsky.feed.post/3test",
+            "cid": "bafyreibtest"
+        }),
+    );
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/new-model"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_env("BLUESKY_PDS", format!("file://{}", pds_root.display()))
+        .with_env("BLUESKY_HANDLE", "test.bsky.social")
+        .with_env("BLUESKY_APP_PASSWORD", "test-pass")
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_ledger_has_entry("change-2026-07-20T10:00:00Z.json");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_missing_credentials_exits_4() {
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/new-model"],
+          "removed": [],
+          "changed": []
+        }"#)
+        // No BLUESKY_HANDLE or BLUESKY_APP_PASSWORD set
+        .when_run()
+        .then_result()
+        .should_exit_with(4)
+        .expect_stderr_contains("BLUESKY_HANDLE");
+}
+
+// ---------------------------------------------------------------------------
+// Broadcaster – text truncation
+// ---------------------------------------------------------------------------
+
+fn truncation_delta_for_added(long_id: &str) -> String {
+    format!(
+        r#"{{"timestamp":"2026-07-20T10:00:00Z","added":["{}"],"removed":[],"changed":[]}}"#,
+        long_id
+    )
+}
+
+fn truncation_delta_for_changed(old_name: &str, new_name: &str) -> String {
+    format!(
+        r#"{{"timestamp":"2026-07-20T10:00:00Z","added":[],"removed":[],"changed":[{{"id":"opencode-go/m","old_name":"{}","new_name":"{}"}}]}}"#,
+        old_name, new_name
+    )
+}
+
+fn check_capture_text(capture_dir: &std::path::Path) -> String {
+    let capture = capture_dir.join("1.json");
+    let raw = std::fs::read_to_string(&capture).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+    v["text"].as_str().unwrap().to_string()
+}
+
+#[test]
+fn broadcast_truncates_long_model_id_in_new_post() {
+    let capture_dir = capture_dir();
+    let long_id = "opencode-go/".to_string() + &"x".repeat(285);
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", truncation_delta_for_added(&long_id))
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("original")
+        .expect_stderr_contains("final");
+
+    let text = check_capture_text(&capture_dir);
+    assert!(
+        text.chars().count() <= 300,
+        "should be <= 300 cp, got {}: {:?}",
+        text.chars().count(),
+        text
+    );
+    assert!(text.contains('…'), "should contain ellipsis: {:?}", text);
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_truncates_long_old_name_in_updated_post() {
+    let capture_dir = capture_dir();
+    let long_old = "X".repeat(275);
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", truncation_delta_for_changed(&long_old, "N"))
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("original")
+        .expect_stderr_contains("final");
+
+    let text = check_capture_text(&capture_dir);
+    assert!(
+        text.chars().count() <= 300,
+        "should be <= 300 cp, got {}: {:?}",
+        text.chars().count(),
+        text
+    );
+    assert!(text.contains('…'), "should contain ellipsis: {:?}", text);
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_truncates_long_new_name_in_updated_post() {
+    let capture_dir = capture_dir();
+    let long_new = "Y".repeat(280);
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", truncation_delta_for_changed("O", &long_new))
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("original")
+        .expect_stderr_contains("final");
+
+    let text = check_capture_text(&capture_dir);
+    assert!(
+        text.chars().count() <= 300,
+        "should be <= 300 cp, got {}: {:?}",
+        text.chars().count(),
+        text
+    );
+    assert!(text.contains('…'), "should contain ellipsis: {:?}", text);
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+// ---------------------------------------------------------------------------
+// Broadcaster – ledger validation
+// ---------------------------------------------------------------------------
+
+#[test]
+fn broadcast_rejects_malformed_ledger_overlapping_keys() {
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/new-model"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_state_ledger(r#"{"deltas":{"change-2026-07-20T10:00:00Z.json":"abc"},"skipped":{"change-2026-07-20T10:00:00Z.json":"reason"}}"#)
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
+        .expect_stderr_contains("overlapping");
+}
+
+#[test]
+fn broadcast_rejects_malformed_ledger_wrong_type() {
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/new-model"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_state_ledger(r#""not an object""#)
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
+        .expect_stderr_contains("invalid shape");
 }

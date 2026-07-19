@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-06-01T07:00:00Z",
+  "added": [
+    "opencode-go/minimax-m3",
+    "opencode-go/qwen3.7-max",
+    "opencode/mimo-v2.5-free",
+    "opencode/minimax-m3-free"
+  ],
+  "removed": [],
+  "changed": []
+}

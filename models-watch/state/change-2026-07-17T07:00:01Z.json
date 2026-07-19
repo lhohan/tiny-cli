@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-07-17T07:00:01Z",
+  "added": [
+    "opencode-go/grok-4.5",
+    "opencode-go/kimi-k3"
+  ],
+  "removed": [],
+  "changed": []
+}

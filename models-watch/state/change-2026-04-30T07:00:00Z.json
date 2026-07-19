@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-04-30T07:00:00Z",
+  "added": [
+    "big-pickle",
+    "glm-4.7-free",
+    "glm-5-free",
+    "gpt-5-nano",
+    "grok-code",
+    "hy3-preview-free",
+    "kimi-k2.5-free",
+    "ling-2.6-flash-free",
+    "mimo-v2-flash-free",
+    "mimo-v2-omni-free",
+    "mimo-v2-pro-free",
+    "minimax-m2.1-free",
+    "minimax-m2.5-free",
+    "nemotron-3-super-free",
+    "qwen3.6-plus-free",
+    "trinity-large-preview-free"
+  ],
+  "removed": [],
+  "changed": []
+}

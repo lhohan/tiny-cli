@@ -18,6 +18,11 @@ pub fn given_feed() -> AppSpec {
     AppSpec::new().with_script("models-feed.sh")
 }
 
+/// Fluent DSL entry point for models-broadcast.sh.
+pub fn given_broadcast() -> AppSpec {
+    AppSpec::new().with_script("models-broadcast.sh")
+}
+
 /// Panic with a test failure message.
 pub fn fail(message: impl Into<String>) -> ! {
     std::panic::panic_any(message.into());
@@ -65,6 +70,11 @@ pub struct AppSpec {
     output_path: Option<PathBuf>,
     args: Vec<String>,
     skip_api_env: bool,
+    capture_dir: Option<PathBuf>,
+    limit: Option<usize>,
+    state_deltas: Vec<(String, String)>,
+    state_ledger: Option<String>,
+    envs: Vec<(String, String)>,
 }
 
 impl AppSpec {
@@ -78,6 +88,11 @@ impl AppSpec {
             output_path: None,
             args: Vec::new(),
             skip_api_env: false,
+            capture_dir: None,
+            limit: None,
+            state_deltas: Vec::new(),
+            state_ledger: None,
+            envs: Vec::new(),
         }
     }
 
@@ -116,6 +131,36 @@ impl AppSpec {
     /// used only when `--report` exits before the fetch.
     pub fn without_api_env(mut self) -> Self {
         self.skip_api_env = true;
+        self
+    }
+
+    /// Set `--capture-dir <path>` for models-broadcast.sh capture mode.
+    pub fn with_capture_dir(mut self, path: PathBuf) -> Self {
+        self.capture_dir = Some(path);
+        self
+    }
+
+    /// Set `--limit <n>` for models-broadcast.sh.
+    pub fn with_limit(mut self, n: usize) -> Self {
+        self.limit = Some(n);
+        self
+    }
+
+    /// Write a specific delta file into `state/`.
+    pub fn with_state_delta(mut self, filename: impl Into<String>, content: impl Into<String>) -> Self {
+        self.state_deltas.push((filename.into(), content.into()));
+        self
+    }
+
+    /// Write `state/posted.json` ledger content.
+    pub fn with_state_ledger(mut self, content: impl Into<String>) -> Self {
+        self.state_ledger = Some(content.into());
+        self
+    }
+
+    /// Set an environment variable for the script run.
+    pub fn with_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.envs.push((key.into(), value.into()));
         self
     }
 
@@ -169,6 +214,23 @@ impl AppSpec {
             std::fs::write(state_dir.join("latest.json"), snapshot).expect("write prior snapshot");
         }
 
+        // Write state deltas if provided.
+        if !self.state_deltas.is_empty() {
+            let state_dir = self.tool_dir.join("state");
+            std::fs::create_dir_all(&state_dir).expect("create state dir");
+            for (filename, content) in &self.state_deltas {
+                std::fs::write(state_dir.join(filename), content)
+                    .expect("write state delta");
+            }
+        }
+
+        // Write state ledger if provided.
+        if let Some(ref ledger) = self.state_ledger {
+            let state_dir = self.tool_dir.join("state");
+            std::fs::create_dir_all(&state_dir).expect("create state dir");
+            std::fs::write(state_dir.join("posted.json"), ledger).expect("write state ledger");
+        }
+
         let script_name = self.script_name.clone();
 
         ExecutionContext {
@@ -179,6 +241,11 @@ impl AppSpec {
             output_path: self.output_path,
             args: self.args,
             skip_api_env: self.skip_api_env,
+            capture_dir: self.capture_dir,
+            limit: self.limit,
+            state_deltas: self.state_deltas,
+            state_ledger: self.state_ledger,
+            envs: self.envs,
         }
     }
 }
@@ -192,6 +259,11 @@ pub struct ExecutionContext {
     output_path: Option<PathBuf>,
     args: Vec<String>,
     skip_api_env: bool,
+    capture_dir: Option<PathBuf>,
+    limit: Option<usize>,
+    state_deltas: Vec<(String, String)>,
+    state_ledger: Option<String>,
+    envs: Vec<(String, String)>,
 }
 
 impl ExecutionContext {
@@ -218,11 +290,22 @@ impl ExecutionContext {
         // Suppress osascript pop-ups during tests.
         cmd.env("MODELS_WATCH_NO_OSASCRIPT", "1");
 
+        // Set extra env vars from test setup.
+        for (key, value) in &self.envs {
+            cmd.env(key, value);
+        }
+
         if let Some(ref notify_file) = self.notify_file {
             cmd.arg("--notify-file").arg(notify_file);
         }
         if let Some(ref output_path) = self.output_path {
             cmd.arg("--output").arg(output_path);
+        }
+        if let Some(ref capture_dir) = self.capture_dir {
+            cmd.arg("--capture-dir").arg(capture_dir);
+        }
+        if let Some(limit) = self.limit {
+            cmd.arg("--limit").arg(limit.to_string());
         }
         for arg in &self.args {
             cmd.arg(arg);
@@ -239,9 +322,12 @@ impl ExecutionContext {
             .output_path
             .unwrap_or_else(|| self.tool_dir.join("state").join("feed.rss"));
 
+        let capture_path = self.capture_dir;
+
         AppResult {
             tool_dir: self.tool_dir,
             feed_path: Some(feed_path),
+            capture_path,
             exit_code: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).to_string(),
             stderr: String::from_utf8_lossy(&output.stderr).to_string(),
@@ -254,6 +340,7 @@ impl ExecutionContext {
 pub struct AppResult {
     tool_dir: PathBuf,
     feed_path: Option<PathBuf>,
+    capture_path: Option<PathBuf>,
     exit_code: i32,
     stdout: String,
     stderr: String,
@@ -444,6 +531,133 @@ impl AppResult {
                 }
             }
             None => fail("--notify-file was not set, cannot check notify content"),
+        }
+        self
+    }
+
+    // -- broadcaster assertions --
+
+    /// Assert that exactly `n` capture files exist in the capture directory.
+    pub fn expect_capture_count(&self, n: usize) -> &Self {
+        let capture_dir = match &self.capture_path {
+            Some(p) => p,
+            None => fail("no capture_dir set, cannot check capture count"),
+        };
+        if !capture_dir.exists() {
+            fail(format!(
+                "expected capture dir {} to exist, but it does not",
+                capture_dir.display()
+            ));
+        }
+        let files: Vec<_> = std::fs::read_dir(capture_dir)
+            .expect("read capture dir")
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_file())
+            .collect();
+        if files.len() != n {
+            fail(format!(
+                "expected {} capture file(s), got {}",
+                n,
+                files.len()
+            ));
+        }
+        self
+    }
+
+    /// Assert that capture file `index` (1-based) contains the given substring.
+    pub fn expect_capture_contains(&self, index: usize, needle: &str) -> &Self {
+        let capture_dir = match &self.capture_path {
+            Some(p) => p,
+            None => fail("no capture_dir set, cannot check capture file"),
+        };
+        let file_path = capture_dir.join(format!("{}.json", index));
+        if !file_path.exists() {
+            fail(format!(
+                "expected capture file {} to exist, but it does not",
+                file_path.display()
+            ));
+        }
+        let content = std::fs::read_to_string(&file_path)
+            .unwrap_or_else(|e| fail(format!("cannot read capture file: {e}")));
+        if !content.contains(needle) {
+            fail(format!(
+                "expected capture file {} to contain '{}', but it did not.\n--- content ---\n{}",
+                index, needle, content
+            ));
+        }
+        self
+    }
+
+    /// Assert that `state/posted.json` exists and has a `deltas` entry for `key` with value `hash`.
+    pub fn expect_ledger_entry(&self, key: &str, hash: &str) -> &Self {
+        let ledger_path = self.tool_dir.join("state").join("posted.json");
+        if !ledger_path.exists() {
+            fail("expected posted.json to exist, but it does not");
+        }
+        let content = std::fs::read_to_string(&ledger_path)
+            .unwrap_or_else(|e| fail(format!("cannot read posted.json: {e}")));
+        let ledger: serde_json::Value = serde_json::from_str(&content)
+            .unwrap_or_else(|e| fail(format!("invalid JSON in posted.json: {e}")));
+        let entry = ledger["deltas"][key].as_str();
+        match entry {
+            Some(h) if h == hash => {}
+            Some(h) => fail(format!(
+                "expected posted.json deltas['{}'] to be '{}', got '{}'",
+                key, hash, h
+            )),
+            None => fail(format!(
+                "expected posted.json deltas['{}'] to exist, but it does not. ledger: {}",
+                key, content
+            )),
+        }
+        self
+    }
+
+    /// Assert that `state/posted.json` does not exist.
+    /// Assert that `state/posted.json` exists and has a `deltas` key for `delta_name`.
+    pub fn expect_ledger_has_entry(&self, delta_name: &str) -> &Self {
+        let ledger_path = self.tool_dir.join("state").join("posted.json");
+        if !ledger_path.exists() {
+            fail("expected posted.json to exist, but it does not");
+        }
+        let content = std::fs::read_to_string(&ledger_path)
+            .unwrap_or_else(|e| fail(format!("cannot read posted.json: {e}")));
+        let ledger: serde_json::Value = serde_json::from_str(&content)
+            .unwrap_or_else(|e| fail(format!("invalid JSON in posted.json: {e}")));
+        let entry = ledger["deltas"][delta_name].as_str();
+        match entry {
+            Some(h) if !h.is_empty() => {}
+            Some(h) => fail(format!(
+                "expected posted.json deltas['{}'] to have non-empty hash, got '{}'",
+                delta_name, h
+            )),
+            None => fail(format!(
+                "expected posted.json deltas['{}'] to exist, but it does not. ledger: {}",
+                delta_name, content
+            )),
+        }
+        self
+    }
+
+    pub fn expect_no_ledger(&self) -> &Self {
+        let ledger_path = self.tool_dir.join("state").join("posted.json");
+        if ledger_path.exists() {
+            let content = std::fs::read_to_string(&ledger_path)
+                .unwrap_or_else(|_| "<unreadable>".to_string());
+            fail(format!(
+                "expected no posted.json, but it exists with content: {}",
+                content
+            ));
+        }
+        self
+    }
+
+    pub fn expect_stderr_contains(&self, needle: &str) -> &Self {
+        if !self.stderr.contains(needle) {
+            fail(format!(
+                "expected stderr to contain '{}', but it did not.\n--- stderr ---\n{}",
+                needle, self.stderr
+            ));
         }
         self
     }
