@@ -109,54 +109,30 @@ in cron.
 | 2 | Unknown flag |
 | 3 | No change deltas exist (nothing to publish) |
 
-### Publishing to Codeberg Pages
+### Publishing to GitHub Pages
 
-`models-watch` lives inside the `tiny-cli` monorepo, so the Codeberg Pages
-project URL is `https://<your-org>.codeberg.page/tiny-cli/`.
-
-To make the feed publicly available:
-
-1. Create a `pages` branch (or configure Pages to serve from a specific
-   directory in your default branch).
-2. Run both scripts from the **repo root**, with `--output` pointing to a
-   repo-root-relative path so the feed URL is flat:
-
-   ```bash
-   cd /path/to/tiny-cli
-   ./models-watch/models-watch.sh
-   ./models-watch/models-feed.sh --output models-watch.xml --feed-url https://<your-org>.codeberg.page/tiny-cli/models-watch.xml
-   ```
-
-3. Commit the feed file and push to the `pages` branch:
-
-   ```bash
-   # With Jujutsu
-   jj new
-   jj bookmark create pages
-   jj describe -m "chore: update RSS feed"
-   jj push --remote origin --bookmark pages
-
-   # With Git
-   git checkout pages
-   git add models-watch.rss
-   git commit -m "chore: update RSS feed"
-   git push origin pages
-   ```
-
-The feed will be available at `https://<your-org>.codeberg.page/tiny-cli/models-watch.rss`.
+[GitHub Pages](https://pages.github.com/) is configured to serve from the
+`docs/` directory on the `main` branch, so the feed is available at:
+`https://<user>.github.io/tiny-cli/models-watch.rss`
 
 ### Convenience: `mise run publish-feed`
 
 The repo root defines a `publish-feed` mise task that runs the full pipeline
-automatically (detect changes, regenerate feed, commit, bookmark, push).
+automatically (detect changes, regenerate feed to `docs/`, commit, push `main`).
 From the repo root:
 
 ```bash
 mise run publish-feed
 ```
 
-This invokes `models-watch/publish-feed.sh`, which chains the same steps shown
-above. If no deltas exist or the feed content is unchanged, the script exits 0
+This invokes `models-watch/publish-feed.sh`, which chains:
+1. `models-watch.sh` — detect model changes
+2. `models-feed.sh --output docs/models-watch.rss --feed-url <url>` — regenerate
+3. `jj commit` — commit only the feed file
+4. `jj bookmark set main -r @-` — move main bookmark
+5. `jj git push --bookmark main` — push to GitHub
+
+If no deltas exist or the feed content is unchanged, the script exits 0
 without committing or pushing.
 
 ## Testing
