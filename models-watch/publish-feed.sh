@@ -3,9 +3,11 @@
 # publish-feed — detect model changes, regenerate RSS feed, publish to GitHub Pages
 #
 # Runs the full pipeline from the tiny-cli repo root:
-#   models-watch.sh → models-feed.sh → hash check → jj commit → push main
+#   models-watch.sh → models-feed.sh → hash check → jj commit → jj bookmark set main → jj git push
 #
-# GitHub Pages serves from docs/ on the main branch.
+# GitHub Pages is configured to serve from the `docs/` folder on the `main`
+# branch, so we write to `docs/models-watch.rss` and push the `main` bookmark
+# to the `github` remote.
 #
 # Exit codes:
 #   0 - feed published, or skipped (no change / no deltas)
@@ -17,6 +19,8 @@ IFS=$'\n\t'
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FEED_URL="https://lhohan.github.io/tiny-cli/models-watch.rss"
+FEED_FILE="docs/models-watch.rss"
+PUSH_REMOTE="github"
 
 cd "$REPO_ROOT"
 
@@ -32,11 +36,11 @@ hash_file() {
 }
 
 # --------------------------------------------------------------------------
-# 1. Capture hash of existing feed (if any)
+# 1. Capture hash of existing feed (if any) — BEFORE regeneration
 # --------------------------------------------------------------------------
 hash_before=""
-if [[ -f docs/models-watch.rss ]]; then
-    hash_before=$(hash_file docs/models-watch.rss)
+if [[ -f "$FEED_FILE" ]]; then
+    hash_before=$(hash_file "$FEED_FILE")
 fi
 
 # --------------------------------------------------------------------------
@@ -48,7 +52,7 @@ fi
 # 3. Regenerate feed; exit 3 (no deltas) is a clean skip
 # --------------------------------------------------------------------------
 set +e
-./models-watch/models-feed.sh --output docs/models-watch.rss --feed-url "$FEED_URL"
+./models-watch/models-feed.sh --output "$FEED_FILE" --feed-url "$FEED_URL"
 feed_exit=$?
 set -e
 
@@ -63,7 +67,7 @@ fi
 # --------------------------------------------------------------------------
 # 4. Hash after regeneration
 # --------------------------------------------------------------------------
-hash_after=$(hash_file docs/models-watch.rss)
+hash_after=$(hash_file "$FEED_FILE")
 
 # --------------------------------------------------------------------------
 # 5. Skip commit if feed content is identical
@@ -76,12 +80,12 @@ fi
 # --------------------------------------------------------------------------
 # 6. Commit only the feed file (other changes stay in working copy)
 # --------------------------------------------------------------------------
-jj commit -m "chore: update RSS feed" docs/models-watch.rss
+jj commit -m "chore: update RSS feed" "$FEED_FILE"
 
 # --------------------------------------------------------------------------
 # 7. Move main bookmark to the feed commit (@- after commit) and push
 # --------------------------------------------------------------------------
 jj bookmark set main -r @-
-jj git push --bookmark main
+jj git push --remote "$PUSH_REMOTE" --bookmark main
 
 echo "Feed published to GitHub Pages."

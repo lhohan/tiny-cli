@@ -1,3 +1,3 @@
 [tasks.publish-feed]
-description = "Detect model changes, regenerate RSS feed, and publish to Codeberg Pages"
+description = "Detect model changes, regenerate RSS feed, and publish to GitHub Pages"
 run = "./models-watch/publish-feed.sh"
