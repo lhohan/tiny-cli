@@ -138,12 +138,12 @@ To make the feed publicly available:
 
    # With Git
    git checkout pages
-   git add models-watch.xml
+   git add models-watch.rss
    git commit -m "chore: update RSS feed"
    git push origin pages
    ```
 
-The feed will be available at `https://<your-org>.codeberg.page/tiny-cli/models-watch.xml`.
+The feed will be available at `https://<your-org>.codeberg.page/tiny-cli/models-watch.rss`.
 
 ### Convenience: `mise run publish-feed`
 

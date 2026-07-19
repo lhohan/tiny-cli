@@ -14,7 +14,7 @@ IFS=$'\n\t'
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-FEED_URL="https://hanlho.codeberg.page/tiny-cli/models-watch.xml"
+FEED_URL="https://hanlho.codeberg.page/tiny-cli/models-watch.rss"
 
 cd "$REPO_ROOT"
 
@@ -33,8 +33,8 @@ hash_file() {
 # 1. Capture hash of existing feed (if any)
 # --------------------------------------------------------------------------
 hash_before=""
-if [[ -f models-watch.xml ]]; then
-    hash_before=$(hash_file models-watch.xml)
+if [[ -f models-watch.rss ]]; then
+    hash_before=$(hash_file models-watch.rss)
 fi
 
 # --------------------------------------------------------------------------
@@ -46,7 +46,7 @@ fi
 # 3. Regenerate feed; exit 3 (no deltas) is a clean skip
 # --------------------------------------------------------------------------
 set +e
-./models-watch/models-feed.sh --output models-watch.xml --feed-url "$FEED_URL"
+./models-watch/models-feed.sh --output models-watch.rss --feed-url "$FEED_URL"
 feed_exit=$?
 set -e
 
@@ -61,7 +61,7 @@ fi
 # --------------------------------------------------------------------------
 # 4. Hash after regeneration
 # --------------------------------------------------------------------------
-hash_after=$(hash_file models-watch.xml)
+hash_after=$(hash_file models-watch.rss)
 
 # --------------------------------------------------------------------------
 # 5. Skip commit if feed content is identical
@@ -74,7 +74,7 @@ fi
 # --------------------------------------------------------------------------
 # 6. Commit only the feed file (other changes stay in working copy)
 # --------------------------------------------------------------------------
-jj commit -m "chore: update RSS feed" models-watch.xml
+jj commit -m "chore: update RSS feed" models-watch.rss
 
 # --------------------------------------------------------------------------
 # 7. Move pages bookmark to the feed commit (@- after commit)
