@@ -11,8 +11,8 @@ description = "Print last 10 recorded changes"
 run = "./models-watch.sh --report"
 
 [tasks.feed]
-description = "Regenerate RSS feed from existing deltas"
-run = "./models-feed.sh"
+description = "Check for model changes then regenerate the RSS feed"
+run = "./models-watch.sh && ./models-feed.sh"
 
 [tasks.test]
 description = "Run Rust acceptance tests"

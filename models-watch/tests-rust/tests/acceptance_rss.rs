@@ -60,7 +60,7 @@ fn feed_should_order_items_newest_first() {
 }
 
 // ---------------------------------------------------------------------------
-// Window: limit to last 100 deltas
+// Window: limit to last 100 items
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -155,4 +155,125 @@ fn feed_should_write_to_custom_output_path() {
 
     assert!(out_path.exists(), "feed file should exist at custom path");
     let _ = std::fs::remove_file(&out_path);
+}
+
+// ---------------------------------------------------------------------------
+// Per-model granularity: one item per (action × model)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn feed_emits_one_item_per_model() {
+    let deltas = vec![DeltaEntry {
+        timestamp: "2026-04-29T10:00:00Z".to_string(),
+        added: vec!["alpha".to_string(), "beta".to_string()],
+        removed: vec!["gamma".to_string()],
+        changed: vec![(
+            "delta".to_string(),
+            "Old Name".to_string(),
+            "New Name".to_string(),
+        )],
+    }];
+
+    let result = given_feed()
+        .with_deltas(deltas)
+        .when_run()
+        .then_result();
+    result
+        .should_succeed()
+        .expect_rss_file()
+        .expect_rss_item_count(4)
+        .expect_rss_contains("New: alpha")
+        .expect_rss_contains("New: beta")
+        .expect_rss_contains("Removed: gamma")
+        .expect_rss_contains("Updated: delta");
+}
+
+// ---------------------------------------------------------------------------
+// Per-model guids: unique per action + model
+// ---------------------------------------------------------------------------
+
+#[test]
+fn feed_guids_are_unique_per_model() {
+    let deltas = vec![DeltaEntry {
+        timestamp: "2026-04-29T10:00:00Z".to_string(),
+        added: vec!["model-a".to_string(), "model-b".to_string()],
+        removed: vec![],
+        changed: vec![],
+    }];
+
+    let result = given_feed()
+        .with_deltas(deltas)
+        .when_run()
+        .then_result();
+    result.should_succeed().expect_rss_file();
+
+    let feed = result.read_rss_feed();
+    // Two distinct guids with different model IDs
+    assert!(
+        feed.contains("models-watch-2026-04-29T10:00:00Z-new-model-a"),
+        "missing guid for model-a"
+    );
+    assert!(
+        feed.contains("models-watch-2026-04-29T10:00:00Z-new-model-b"),
+        "missing guid for model-b"
+    );
+    // Each guid appears exactly once
+    assert_eq!(
+        feed.matches("models-watch-").count(),
+        2,
+        "expected exactly 2 guids"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 100-item cap cuts mid-delta when a single delta has multiple models
+// ---------------------------------------------------------------------------
+
+#[test]
+fn feed_should_cap_at_100_items_mid_delta() {
+    // Newest delta has 3 added models. Then 49 deltas with 2 models each.
+    // Processed newest-first: 3 + (49 × 2) = 101 items, capped at 100.
+    // The oldest delta (model-00) contributes 2 models, but only 1 fits.
+    let mut deltas = Vec::new();
+
+    // Newest: 3 models
+    deltas.push(DeltaEntry {
+        timestamp: "2026-07-30T00:00:00Z".to_string(),
+        added: vec![
+            "burst-a".to_string(),
+            "burst-b".to_string(),
+            "burst-c".to_string(),
+        ],
+        removed: vec![],
+        changed: vec![],
+    });
+
+    // Older: 49 deltas with 2 models each (model-48..model-00 from newest to oldest)
+    for i in 0..49 {
+        let ts = format!("2026-07-{:02}T{:02}:00:00Z", (i / 24) + 1, i % 24);
+        deltas.push(DeltaEntry {
+            timestamp: ts,
+            added: vec![format!("model-{:02}-a", i), format!("model-{:02}-b", i)],
+            removed: vec![],
+            changed: vec![],
+        });
+    }
+
+    let result = given_feed()
+        .with_deltas(deltas)
+        .when_run()
+        .then_result();
+    result.should_succeed().expect_rss_item_count(100);
+
+    let feed = result.read_rss_feed();
+    // The oldest non-burst delta is model-00 (i=0, smallest timestamp).
+    // Its first model is the 100th item; its second model is cut.
+    assert!(
+        feed.contains("model-00-a"),
+        "model-00-a should appear (the 100th item)"
+    );
+    assert!(
+        !feed.contains("model-00-b"),
+        "model-00-b should be cut (the 101st item)"
+    );
 }

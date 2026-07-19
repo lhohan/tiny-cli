@@ -22,7 +22,7 @@ Provide a public **RSS 2.0 feed** of model changes detected by `models-watch`. A
 
 1. **New file `models-feed.sh`** (`#!/usr/bin/env bash`, `set -euo pipefail`) — self-contained, mirroring models-watch.sh conventions:
    - Resolves `STATE_DIR` relative to its own location (`SCRIPT_DIR` pattern), defaulting to the sibling `state/` directory so it reads the same deltas `models-watch.sh` writes. Override via `MODELS_WATCH_STATE_DIR`.
-   - Output path via `--output <file>` / `MODELS_WATCH_FEED_FILE` env; default `state/feed.xml`.
+   - Output path via `--output <file>` / `MODELS_WATCH_FEED_FILE` env; default `state/feed.rss`.
    - Globs `state/change-*.json`, sorts lexicographically, takes the **last 100** (matches the established sort pattern in `models-watch.sh`'s `do_report`), reverses to newest-first.
    - Builds an **RFC-822 date** via dual-path `date` (BSD `/bin/date -j -f …` / GNU `date -Ru`), same outer shape as `utc_to_local`.
    - Emits RSS 2.0: channel header (`title="models-watch"`, `link="https://models.dev"`, `description`, `language=en`, `lastBuildDate`=now RFC-822) plus one `<item>` per delta: `title` summarising added/removed/changed counts, `pubDate` RFC-822, `guid isPermaLink="false"`=`models-watch-<timestamp>`, `description` listing IDs.
@@ -66,4 +66,4 @@ Provide a public **RSS 2.0 feed** of model changes detected by `models-watch`. A
 - `bash -n models-feed.sh` and `bash -n models-watch.sh` (syntax; the latter unchanged).
 - `mise run test` (full suite green; all existing tests untouched, new RSS tests pass).
 - New RSS tests assert: feed exists after a change, item count == `min(100, total deltas)`, newest item first, valid RSS 2.0 structure, RFC-822 dates, HTML-escaped special chars, `--output` path honoured, exit 3 on empty state, no network fetch.
-- Manual sanity: run `./models-watch.sh` against a fixture then `./models-feed.sh --output /tmp/feed.xml`; `cat /tmp/feed.xml`; validate in an RSS reader / `xmllint --noout` if available.
+- Manual sanity: run `./models-watch.sh` against a fixture then `./models-feed.sh --output /tmp/feed.rss`; `cat /tmp/feed.rss`; validate in an RSS reader / `xmllint --noout` if available.

@@ -237,7 +237,7 @@ impl ExecutionContext {
         // Determine where the feed script writes by default.
         let feed_path = self
             .output_path
-            .unwrap_or_else(|| self.tool_dir.join("state").join("feed.xml"));
+            .unwrap_or_else(|| self.tool_dir.join("state").join("feed.rss"));
 
         AppResult {
             tool_dir: self.tool_dir,

@@ -10,13 +10,13 @@
 #   ./models-feed.sh [--output <file>] [--state-dir <dir>] [--feed-url <url>]
 #
 # Flags:
-#   --output <file>     Write feed to <file>  (default: state/feed.xml)
+#   --output <file>     Write feed to <file>  (default: state/feed.rss)
 #   --state-dir <dir>   Read deltas from <dir> (default: state/ relative
 #                       to this script's directory)
 #   --feed-url <url>    Public URL of this feed (adds atom:link rel="self")
 #
 # Environment:
-#   MODELS_WATCH_FEED_FILE   Same as --output (default: state/feed.xml)
+#   MODELS_WATCH_FEED_FILE   Same as --output (default: state/feed.rss)
 #   MODELS_WATCH_STATE_DIR   Same as --state-dir
 #   MODELS_WATCH_FEED_URL    Same as --feed-url
 #
@@ -60,7 +60,7 @@ done
 
 # Default output if not set via flag or env
 if [[ -z "$OUTPUT_FILE" ]]; then
-    OUTPUT_FILE="${STATE_DIR}/feed.xml"
+    OUTPUT_FILE="${STATE_DIR}/feed.rss"
 fi
 
 # ---------------------------------------------------------------------------
@@ -142,93 +142,87 @@ FEED_LINK="https://models.dev"
 FEED_DESC="Model change notifications for opencode-go and free OpenCode Zen models"
 NOW_RFC822=$(rfc822_now)
 
-# Build items with jq from each delta file
+# Build one <item> per (action x model), newest-first, capped at 100 items total
+MAX_ITEMS=100
+items_count=0
+xml_escape() {
+    local s="$1"
+    s="${s//&/&amp;}"
+    s="${s//</&lt;}"
+    s="${s//>/&gt;}"
+    echo "$s"
+}
+
 items_xml=""
 for delta_file in "${newest_first[@]}"; do
+    [[ $items_count -ge $MAX_ITEMS ]] && break
+
     ts=$(jq -r '.timestamp' "$delta_file")
     pub_date=$(rfc822_from_iso "$ts")
-    guid="models-watch-${ts}"
 
-    # Build summary title
-    added_count=$(jq '.added | length' "$delta_file")
-    removed_count=$(jq '.removed | length' "$delta_file")
-    changed_count=$(jq '.changed | length' "$delta_file")
+    # ---- Added models, one item each ----
+    while IFS= read -r model_id; do
+        [[ -z "$model_id" ]] && continue
+        [[ $items_count -ge $MAX_ITEMS ]] && break 2
 
-    parts=()
-    if [[ "$added_count" -gt 0 ]]; then
-        parts+=("${added_count} added")
-    fi
-    if [[ "$removed_count" -gt 0 ]]; then
-        parts+=("${removed_count} removed")
-    fi
-    if [[ "$changed_count" -gt 0 ]]; then
-        parts+=("${changed_count} changed")
-    fi
+        escaped_id=$(xml_escape "$model_id")
+        guid="models-watch-${ts}-new-${escaped_id}"
+        title="<![CDATA[New: ${model_id}]]>"
+        description="<![CDATA[${model_id}]]>"
 
-    if [[ ${#parts[@]} -eq 0 ]]; then
-        title="No changes"
-    else
-        # Join with ", "
-        title=""
-        for ((p=0; p<${#parts[@]}; p++)); do
-            if [[ -n "$title" ]]; then
-                title+=", "
-            fi
-            title+="${parts[$p]}"
-        done
-        title="Models: $title"
-    fi
-
-    # Build description as plain text (wrapped in CDATA for XML safety)
-    desc_lines=()
-
-    if [[ "$added_count" -gt 0 ]]; then
-        desc_lines+=("Added:")
-        while IFS= read -r line; do
-            [[ -n "$line" ]] && desc_lines+=("  $line")
-        done < <(jq -r '.added[]' "$delta_file")
-    fi
-
-    if [[ "$removed_count" -gt 0 ]]; then
-        desc_lines+=("Removed:")
-        while IFS= read -r line; do
-            [[ -n "$line" ]] && desc_lines+=("  $line")
-        done < <(jq -r '.removed[]' "$delta_file")
-    fi
-
-    if [[ "$changed_count" -gt 0 ]]; then
-        desc_lines+=("Changed:")
-        while IFS=$'\t' read -r model_id old_name new_name; do
-            [[ -n "$model_id" ]] && desc_lines+=("  $model_id - \"$old_name\" → \"$new_name\"")
-        done < <(jq -r '.changed[] | [.id, .old_name, .new_name] | @tsv' "$delta_file")
-    fi
-
-    if [[ ${#desc_lines[@]} -eq 0 ]]; then
-        description="No changes"
-    else
-        description=""
-        for line in "${desc_lines[@]}"; do
-            if [[ -n "$description" ]]; then
-                description+=$'\n'
-            fi
-            description+="$line"
-        done
-        # Wrap in CDATA for XML safety (model IDs may contain <, &, etc.)
-        description="<![CDATA[${description}]]>"
-    fi
-
-    # Escape title for XML (it contains text only, wrap in CDATA for safety)
-    title="<![CDATA[${title}]]>"
-
-    item="
+        items_xml+="
     <item>
       <title>${title}</title>
       <guid isPermaLink=\"false\">${guid}</guid>
       <pubDate>${pub_date}</pubDate>
       <description>${description}</description>
     </item>"
+        items_count=$((items_count + 1))
+    done < <(jq -r '.added[]' "$delta_file")
 
-    items_xml+="${item}"
+    [[ $items_count -ge $MAX_ITEMS ]] && break
+
+    # ---- Changed models, one item each ----
+    while IFS=$'\t' read -r model_id old_name new_name; do
+        [[ -z "$model_id" ]] && continue
+        [[ $items_count -ge $MAX_ITEMS ]] && break 2
+
+        escaped_id=$(xml_escape "$model_id")
+        guid="models-watch-${ts}-updated-${escaped_id}"
+        title="<![CDATA[Updated: ${model_id}]]>"
+        description="<![CDATA[${model_id}: \"${old_name}\" → \"${new_name}\"]]>"
+
+        items_xml+="
+    <item>
+      <title>${title}</title>
+      <guid isPermaLink=\"false\">${guid}</guid>
+      <pubDate>${pub_date}</pubDate>
+      <description>${description}</description>
+    </item>"
+        items_count=$((items_count + 1))
+    done < <(jq -r '.changed[] | [.id, .old_name, .new_name] | @tsv' "$delta_file")
+
+    [[ $items_count -ge $MAX_ITEMS ]] && break
+
+    # ---- Removed models, one item each ----
+    while IFS= read -r model_id; do
+        [[ -z "$model_id" ]] && continue
+        [[ $items_count -ge $MAX_ITEMS ]] && break 2
+
+        escaped_id=$(xml_escape "$model_id")
+        guid="models-watch-${ts}-removed-${escaped_id}"
+        title="<![CDATA[Removed: ${model_id}]]>"
+        description="<![CDATA[${model_id}]]>"
+
+        items_xml+="
+    <item>
+      <title>${title}</title>
+      <guid isPermaLink=\"false\">${guid}</guid>
+      <pubDate>${pub_date}</pubDate>
+      <description>${description}</description>
+    </item>"
+        items_count=$((items_count + 1))
+    done < <(jq -r '.removed[]' "$delta_file")
 done
 
 # --------------------------------------------------------------------------

@@ -87,18 +87,18 @@ in cron.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--output <file>` | `state/feed.xml` | Where to write the RSS feed. Also settable via `MODELS_WATCH_FEED_FILE`. |
+| `--output <file>` | `state/feed.rss` | Where to write the RSS feed. Also settable via `MODELS_WATCH_FEED_FILE`. |
 | `--state-dir <dir>` | sibling `state/` | Directory containing `change-*.json` deltas. Also settable via `MODELS_WATCH_STATE_DIR`. |
 | `--feed-url <url>` | — | Public URL of the feed (adds `<atom:link rel="self">` for reader discovery). Also settable via `MODELS_WATCH_FEED_URL`. |
 
 ### Feed format
 
 - RSS 2.0, XML 1.0, UTF-8
-- One `<item>` per change event (delta), newest first
-- Window: last 100 deltas
-- Item `<title>` summarises add/remove/change counts
-- Item `<description>` lists affected model IDs as plain text (wrapped in CDATA for XML safety)
-- Item `<guid>` is `models-watch-<ISO timestamp>` (`isPermaLink="false"`)
+- One `<item>` **per affected model**, split by action (added, changed, removed), newest first
+- Window: last 100 **items** total (a single delta with many models may be partially included)
+- Item `<title>` is `New: <model-id>`, `Updated: <model-id>`, or `Removed: <model-id>`
+- Item `<description>` contains the model ID (and for changed, the old → new name) in CDATA
+- Item `<guid>` is `models-watch-<ISO timestamp>-<action>-<model-id>` (`isPermaLink="false"`)
 - Item `<pubDate>` is the delta timestamp in RFC-822 format
 
 ### Exit codes
