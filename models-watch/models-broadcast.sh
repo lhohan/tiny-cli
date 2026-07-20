@@ -287,6 +287,7 @@ if [[ -f "$LEDGER_FILE" ]]; then
         (.deltas | type == "object" or .deltas == null) and
         (.skipped | type == "object" or .skipped == null) and
         ([.deltas[]? | type == "string" and test("^[0-9a-fA-F]{64}$")] | all) and
+        ([.skipped[]? | type == "string"] | all) and
         (. as $root | [(.deltas // {}) | keys[] | select(($root.skipped // {})[.] != null)] | length == 0)
     ' "$LEDGER_FILE" >/dev/null 2>&1; then
         echo "ERROR: posted.json has invalid shape (must be object with optional deltas/skipped maps, no overlapping keys)" >&2

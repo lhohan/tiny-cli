@@ -1223,3 +1223,20 @@ fn broadcast_rejects_malformed_ledger_wrong_type() {
         .should_exit_with(1)
         .expect_stderr_contains("invalid shape");
 }
+
+#[test]
+fn broadcast_rejects_malformed_ledger_with_non_string_skipped_value() {
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/new-model"],
+          "removed": [],
+          "changed": []
+        }"#)
+        .with_state_ledger(r#"{"skipped":{"change-2026-07-20T10:00:00Z.json":false}}"#)
+        .with_capture_dir(capture_dir())
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
+        .expect_stderr_contains("invalid shape");
+}
