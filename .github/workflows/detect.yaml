@@ -9,6 +9,10 @@ concurrency:
   group: models-watch
   cancel-in-progress: false
 
+defaults:
+  run:
+    working-directory: models-watch
+
 jobs:
   detect:
     runs-on: ubuntu-latest
@@ -27,11 +31,12 @@ jobs:
         run: ./models-watch.sh
 
       - name: Commit and push state changes
+        working-directory: .
         run: |
-          if ! git diff --quiet -- state/latest.json state/change-*.json; then
+          if ! git diff --quiet -- models-watch/state/latest.json models-watch/state/change-*.json; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add state/latest.json state/change-*.json
+            git add models-watch/state/latest.json models-watch/state/change-*.json
             git commit -m "chore(models-watch): update model state [skip ci]"
             git push
           fi

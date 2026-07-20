@@ -236,25 +236,29 @@ provider-prefixed IDs and have been recorded as skipped in the initial
 
 ## GitHub Actions
 
-Two workflows under `.github/workflows/` automate detection and broadcasting:
+The workflows live at the monorepo root under `../.github/workflows/`, which
+is the location GitHub Actions discovers. Both run their shell commands inside
+`models-watch/`, so script and state paths remain local to this tool.
 
 ### Detect Model Updates (`detect.yaml`)
 
 - Runs every 6 hours and on `workflow_dispatch`.
 - `main` only, `contents: write`.
 - Runs `models-watch.sh`, then commits and pushes changed
-  `state/latest.json` and `state/change-*.json` files.
+  `models-watch/state/latest.json` and `models-watch/state/change-*.json`
+  files.
 
 ### Broadcast Model Updates (`broadcast.yaml`)
 
 - Runs after a successful `Detect Model Updates` run (`workflow_run`) and
   on `workflow_dispatch`.
-- `main` only, `contents: write`.
+- Successful detection runs on `main`, or manual dispatches specifically on
+  `main`, with `contents: write`.
 - Exposes `BLUESKY_HANDLE`, `BLUESKY_APP_PASSWORD`, and `BLUESKY_PDS`
   secrets.
 - Runs `models-broadcast.sh`, treating exit `3` (no eligible deltas) as
   a successful no-op.
-- Commits and pushes `state/posted.json` when it changes.
+- Commits and pushes `models-watch/state/posted.json` when it changes.
 
 Both workflows share the `models-watch` concurrency group with
 `cancel-in-progress: false` to serialise detection, posting, and ledger
