@@ -711,7 +711,7 @@ fn broadcast_capture_no_eligible_deltas_exits_3() {
 fn broadcast_capture_skips_ledgered_deltas() {
     let capture_dir = capture_dir();
 
-    let ledger = r#"{"deltas": {"change-2026-07-20T10:00:00Z.json": "abc123"}}"#;
+    let ledger = r#"{"deltas": {"change-2026-07-20T10:00:00Z.json": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}"#;
 
     given_broadcast()
         .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
@@ -948,7 +948,123 @@ fn broadcast_posts_via_file_pds_transport() {
         .when_run()
         .then_result()
         .should_succeed()
+        .expect_ledger_entry(
+            "change-2026-07-20T10:00:00Z.json",
+            "4c699019775537375bfdea9f3d8cdb7a064fdb4d898b428d19824aedb6352717",
+        );
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_does_not_ledger_rejected_record_response() {
+    let capture_dir = capture_dir();
+    let pds_root = capture_dir.join("pds-root");
+    std::fs::create_dir_all(&pds_root).expect("create pds root");
+
+    write_pds_fixture(
+        &pds_root,
+        "com.atproto.server.createSession",
+        1,
+        200,
+        &serde_json::json!({"accessJwt": "test-jwt", "did": "did:plc:testdid"}),
+    );
+    write_pds_fixture(
+        &pds_root,
+        "com.atproto.repo.createRecord",
+        1,
+        401,
+        &serde_json::json!({"error": "AuthRequired", "message": "expired token"}),
+    );
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/new-model"], "removed": [], "changed": []
+        }"#)
+        .with_env("BLUESKY_PDS", format!("file://{}", pds_root.display()))
+        .with_env("BLUESKY_HANDLE", "test.bsky.social")
+        .with_env("BLUESKY_APP_PASSWORD", "test-pass")
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
+        .expect_stderr_contains("createRecord failed")
+        .expect_no_ledger();
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_persists_completed_delta_before_later_failure() {
+    let capture_dir = capture_dir();
+    let pds_root = capture_dir.join("pds-root");
+    std::fs::create_dir_all(&pds_root).expect("create pds root");
+
+    write_pds_fixture(
+        &pds_root,
+        "com.atproto.server.createSession",
+        1,
+        200,
+        &serde_json::json!({"accessJwt": "test-jwt", "did": "did:plc:testdid"}),
+    );
+    write_pds_fixture(
+        &pds_root,
+        "com.atproto.repo.createRecord",
+        1,
+        200,
+        &serde_json::json!({"uri": "at://first", "cid": "first"}),
+    );
+    write_pds_fixture(
+        &pds_root,
+        "com.atproto.repo.createRecord",
+        2,
+        500,
+        &serde_json::json!({"error": "InternalServerError"}),
+    );
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/first"], "removed": [], "changed": []
+        }"#)
+        .with_state_delta("change-2026-07-20T11:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T11:00:00Z",
+          "added": ["opencode-go/second"], "removed": [], "changed": []
+        }"#)
+        .with_env("BLUESKY_PDS", format!("file://{}", pds_root.display()))
+        .with_env("BLUESKY_HANDLE", "test.bsky.social")
+        .with_env("BLUESKY_APP_PASSWORD", "test-pass")
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
         .expect_ledger_has_entry("change-2026-07-20T10:00:00Z.json");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_validates_all_selected_deltas_before_creating_a_session() {
+    let capture_dir = capture_dir();
+    let pds_root = capture_dir.join("empty-pds-root");
+    std::fs::create_dir_all(&pds_root).expect("create PDS root");
+
+    given_broadcast()
+        .with_state_delta("change-2026-07-20T10:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T10:00:00Z",
+          "added": ["opencode-go/valid"], "removed": [], "changed": []
+        }"#)
+        .with_state_delta("change-2026-07-20T11:00:00Z.json", r#"{
+          "timestamp": "2026-07-20T11:00:00Z",
+          "added": ["not-provider-prefixed"], "removed": [], "changed": []
+        }"#)
+        .with_env("BLUESKY_PDS", format!("file://{}", pds_root.display()))
+        .with_env("BLUESKY_HANDLE", "test.bsky.social")
+        .with_env("BLUESKY_APP_PASSWORD", "test-pass")
+        .when_run()
+        .then_result()
+        .should_exit_with(1)
+        .expect_stderr_contains("invalid delta change-2026-07-20T11:00:00Z.json")
+        .expect_no_ledger();
 
     let _ = std::fs::remove_dir_all(&capture_dir);
 }

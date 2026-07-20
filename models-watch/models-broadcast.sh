@@ -286,6 +286,7 @@ if [[ -f "$LEDGER_FILE" ]]; then
         type == "object" and
         (.deltas | type == "object" or .deltas == null) and
         (.skipped | type == "object" or .skipped == null) and
+        ([.deltas[]? | type == "string" and test("^[0-9a-fA-F]{64}$")] | all) and
         (. as $root | [(.deltas // {}) | keys[] | select(($root.skipped // {})[.] != null)] | length == 0)
     ' "$LEDGER_FILE" >/dev/null 2>&1; then
         echo "ERROR: posted.json has invalid shape (must be object with optional deltas/skipped maps, no overlapping keys)" >&2
@@ -334,6 +335,16 @@ if [[ -n "$LIMIT" ]]; then
     eligible=("${eligible[@]:0:$LIMIT}")
 fi
 
+# Reject malformed input before capture mode or live mode can produce partial
+# output.  In particular, live mode must never post an earlier delta when a
+# later selected delta is invalid.
+for df in "${eligible[@]}"; do
+    if ! validate_delta "$df"; then
+        echo "ERROR: invalid delta $(basename "$df"), aborting" >&2
+        exit 1
+    fi
+done
+
 # ---------------------------------------------------------------------------
 # Capture mode: write render records without auth or state changes
 # ---------------------------------------------------------------------------
@@ -343,12 +354,6 @@ if [[ -n "$CAPTURE_DIR" ]]; then
     file_counter=1
     for df in "${eligible[@]}"; do
         basename_df="$(basename "$df")"
-
-        # Validate delta
-        if ! validate_delta "$df"; then
-            echo "ERROR: invalid delta, aborting" >&2
-            exit 1
-        fi
 
         # Render posts in removed, changed, added order, each alphabetically
         # Removed
@@ -432,13 +437,31 @@ pds_request() {
         # Real HTTP transport via curl
         local url="${PDS_URL}/xrpc/${endpoint}"
         local -a curl_args=(-sS --max-time 30 -X POST -H "Content-Type: application/json")
+        local response_file http_status response curl_status=0
         if [[ -n "$jwt" ]]; then
             curl_args+=(-H "Authorization: Bearer ${jwt}")
         fi
         if [[ -n "$body" ]]; then
             curl_args+=(-d "$body")
         fi
-        curl "${curl_args[@]}" "$url"
+        response_file="$(mktemp "${TMPDIR:-/tmp}/models-broadcast.XXXXXX")"
+        if http_status="$(curl "${curl_args[@]}" --output "$response_file" --write-out '%{http_code}' "$url")"; then
+            :
+        else
+            curl_status=$?
+        fi
+        response="$(<"$response_file")"
+        rm -f "$response_file"
+
+        # Use the same envelope as file:// fixtures so HTTP error bodies cannot
+        # be mistaken for successful createRecord responses.
+        if (( curl_status != 0 )); then
+            jq -cn --arg status "$http_status" --arg body "$response" \
+                '{transport_error: "curl failed", status: ($status | tonumber?), body: ($body | fromjson? // $body)}'
+        else
+            jq -cn --arg status "$http_status" --arg body "$response" \
+                '{status: ($status | tonumber?), body: ($body | fromjson? // $body)}'
+        fi
     fi
 }
 
@@ -448,8 +471,8 @@ pds_response_ok() {
     if echo "$resp" | jq -e '.transport_error' >/dev/null 2>&1; then
         return 1
     fi
-    # file:// fixture with non-200 status
-    if echo "$resp" | jq -e '.status and (.status != 200)' >/dev/null 2>&1; then
+    # Both transports return a status envelope. Only a 2xx response is success.
+    if ! echo "$resp" | jq -e '(.status | type == "number") and (.status >= 200 and .status < 300)' >/dev/null 2>&1; then
         return 1
     fi
     return 0
@@ -468,7 +491,10 @@ pds_response_body() {
 
 # Create session
 session_body="$(pds_session_body "$BLUESKY_HANDLE" "$BLUESKY_APP_PASSWORD")"
-session_resp="$(pds_request "com.atproto.server.createSession" 1 "" "$session_body")"
+if ! session_resp="$(pds_request "com.atproto.server.createSession" 1 "" "$session_body")"; then
+    echo "ERROR: createSession request failed" >&2
+    exit 4
+fi
 
 if ! pds_response_ok "$session_resp"; then
     echo "ERROR: createSession failed: $(echo "$session_resp" | jq -c .)" >&2
@@ -491,27 +517,39 @@ fi
 # Compute SHA-256
 sha256() {
     if command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$@"
+        sha256sum "$@" | awk '{print $1}'
     elif command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 "$@"
+        shasum -a 256 "$@" | awk '{print $1}'
     else
         echo "ERROR: no sha256sum or shasum available" >&2
         exit 1
     fi
 }
 
-request_counter=1
+# Persist each fully posted delta before moving on. This leaves only the
+# unavoidable ambiguity within a delta if a request fails after acceptance.
+write_ledger_entry() {
+    local name="$1"
+    local hash="$2"
+    local updated tmp_file
 
-# Build new ledger entries as JSON
-new_ledger=$(jq -n '{}' 2>/dev/null || echo '{}')
+    mkdir -p "$STATE_DIR"
+    if [[ -f "$LEDGER_FILE" ]]; then
+        updated="$(jq --arg name "$name" --arg hash "$hash" \
+            '.deltas = ((.deltas // {}) + {($name): $hash})' "$LEDGER_FILE")"
+    else
+        updated="$(jq -n --arg name "$name" --arg hash "$hash" '{deltas: {($name): $hash}}')"
+    fi
+
+    tmp_file="$(mktemp "${LEDGER_FILE}.tmp.XXXXXX")"
+    printf '%s\n' "$updated" > "$tmp_file"
+    mv "$tmp_file" "$LEDGER_FILE"
+}
+
+request_counter=1
 
 for df in "${eligible[@]}"; do
     basename_df="$(basename "$df")"
-
-    if ! validate_delta "$df"; then
-        echo "ERROR: invalid delta $basename_df, aborting" >&2
-        exit 1
-    fi
 
     # Collect rendered post texts for this delta
     post_texts=()
@@ -524,7 +562,10 @@ for df in "${eligible[@]}"; do
         post_texts+=("$text")
         created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         record_body="$(pds_record_body "$DID" "$text" "$created_at")"
-        resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"
+        if ! resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"; then
+            echo "ERROR: createRecord request failed for $model_id" >&2
+            exit 1
+        fi
         if ! pds_response_ok "$resp"; then
             echo "ERROR: createRecord failed for $model_id" >&2
             exit 1
@@ -544,7 +585,10 @@ for df in "${eligible[@]}"; do
         post_texts+=("$text")
         created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         record_body="$(pds_record_body "$DID" "$text" "$created_at")"
-        resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"
+        if ! resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"; then
+            echo "ERROR: createRecord request failed for $mid" >&2
+            exit 1
+        fi
         if ! pds_response_ok "$resp"; then
             echo "ERROR: createRecord failed for $mid" >&2
             exit 1
@@ -561,7 +605,10 @@ for df in "${eligible[@]}"; do
         post_texts+=("$text")
         created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         record_body="$(pds_record_body "$DID" "$text" "$created_at")"
-        resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"
+        if ! resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"; then
+            echo "ERROR: createRecord request failed for $model_id" >&2
+            exit 1
+        fi
         if ! pds_response_ok "$resp"; then
             echo "ERROR: createRecord failed for $model_id" >&2
             exit 1
@@ -573,22 +620,7 @@ for df in "${eligible[@]}"; do
     # Compute hash: SHA-256 of compact JSON array of post texts (UTF-8, no trailing newline)
     hash_input="$(jq -nc '$ARGS.positional' --args "${post_texts[@]}")"
     hash="$(printf '%s' "$hash_input" | sha256)"
-
-    new_ledger="$(echo "$new_ledger" | jq --arg name "$basename_df" --arg hash "$hash" \
-        '.deltas[$name] = $hash')"
+    write_ledger_entry "$basename_df" "$hash"
 done
-
-# ---------------------------------------------------------------------------
-# Write updated ledger
-# ---------------------------------------------------------------------------
-mkdir -p "$STATE_DIR"
-
-if [[ -f "$LEDGER_FILE" ]]; then
-    merged="$(jq -s '.[0] as $ex | .[1] as $nu | $ex | .deltas = ($ex.deltas + $nu.deltas)' \
-        "$LEDGER_FILE" <(echo "$new_ledger"))"
-    echo "$merged" > "$LEDGER_FILE"
-else
-    echo "$new_ledger" > "$LEDGER_FILE"
-fi
 
 exit 0
