@@ -1646,6 +1646,47 @@
         "cache_read": 0
       }
     },
+    "opencode/laguna-s-2.1-free": {
+      "id": "laguna-s-2.1-free",
+      "name": "Laguna S 2.1 Free",
+      "description": "Agentic coding model from Poolside in the XS size class for local deployment",
+      "family": "laguna",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "structured_output": false,
+      "temperature": true,
+      "release_date": "2026-07-21",
+      "last_updated": "2026-07-21",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 256000,
+        "output": 32000
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    },
     "opencode/nemotron-3-super-free": {
       "id": "nemotron-3-super-free",
       "name": "Nemotron 3 Super Free",
