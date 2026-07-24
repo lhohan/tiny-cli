@@ -1204,6 +1204,38 @@
         "cache_read": 0
       }
     },
+    "opencode/ling-3.0-flash-free": {
+      "id": "ling-3.0-flash-free",
+      "name": "Ling-3.0-flash Free",
+      "description": "Efficient model for low-latency assistance, extraction, and routine automation",
+      "family": "ling",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [],
+      "tool_call": true,
+      "structured_output": false,
+      "temperature": true,
+      "release_date": "2026-07-23",
+      "last_updated": "2026-07-23",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 262144,
+        "output": 32768
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    },
     "opencode/laguna-s-2.1-free": {
       "id": "laguna-s-2.1-free",
       "name": "Laguna S 2.1 Free",
