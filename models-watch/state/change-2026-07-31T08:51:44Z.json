@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-07-31T08:51:44Z",
+  "added": [
+    "opencode-go/gpt-5.6-luna"
+  ],
+  "removed": [],
+  "changed": [
+    {
+      "id": "opencode-go/deepseek-v4-flash",
+      "old_name": "DeepSeek V4 Flash",
+      "new_name": "DeepSeek V4 Flash (New)"
+    },
+    {
+      "id": "opencode-go/kimi-k3",
+      "old_name": "Kimi K3 (2x usage)",
+      "new_name": "Kimi K3"
+    },
+    {
+      "id": "opencode/deepseek-v4-flash-free",
+      "old_name": "DeepSeek V4 Flash Free",
+      "new_name": "DeepSeek V4 Flash Free (New)"
+    }
+  ]
+}
