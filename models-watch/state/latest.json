@@ -231,6 +231,7 @@
         {
           "type": "effort",
           "values": [
+            "low",
             "high",
             "max"
           ]
@@ -1413,6 +1414,7 @@
         {
           "type": "effort",
           "values": [
+            "low",
             "high",
             "max"
           ]
