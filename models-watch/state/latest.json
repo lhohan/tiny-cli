@@ -1849,6 +1849,37 @@
         "cache_read": 0
       }
     },
+    "opencode/ling-3.0-tiny-free": {
+      "id": "ling-3.0-tiny-free",
+      "name": "Ling-3.0-tiny Free",
+      "description": "Compact MoE model for responsive agents, instruction following, and multi-turn conversations",
+      "family": "ling",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [],
+      "tool_call": true,
+      "structured_output": false,
+      "temperature": true,
+      "release_date": "2026-08-06",
+      "last_updated": "2026-08-06",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 262144,
+        "output": 32768
+      },
+      "cost": {
+        "input": 0,
+        "output": 0
+      }
+    },
     "opencode/mimo-v2-flash-free": {
       "id": "mimo-v2-flash-free",
       "name": "MiMo V2 Flash Free",
@@ -1955,6 +1986,7 @@
         "context": 262144,
         "output": 32768
       },
+      "status": "deprecated",
       "cost": {
         "input": 0,
         "output": 0,
