@@ -97,8 +97,7 @@ in cron.
 - RSS 2.0, XML 1.0, UTF-8
 - One `<item>` **per affected model**, split by action (added, changed, removed), newest first
 - Window: last 100 **items** total (a single delta with many models may be partially included)
-- Item `<title>` is `New: <model-id>`, `Updated: <model-id>`, or `Removed: <model-id>`
-- Item `<description>` contains the model ID (and for changed, the old → new name) in CDATA
+- Item `<description>` contains the model ID (and for changed, the old → new name) in CDATA; the model ID is also used as the item title when the consuming reader synthesises one
 - Item `<guid>` is `models-watch-<ISO timestamp>-<action>-<model-id>` (`isPermaLink="false"`)
 - Item `<pubDate>` is the delta timestamp in RFC-822 format
 
@@ -106,7 +105,7 @@ in cron.
 
 | Code | Meaning |
 |------|---------|
-| 0 | Feed written (or no deltas, no error) |
+| 0 | Feed written |
 | 2 | Unknown flag |
 | 3 | No change deltas exist (nothing to publish) |
 
