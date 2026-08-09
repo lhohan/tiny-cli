@@ -224,7 +224,7 @@ New on OpenCode Zen: Laguna S 2.1 Free
 ID: opencode/laguna-s-2.1-free
 Pricing: $0.00 / $0.00 per 1M tokens (free)
 Context: 262.1K, max output 32.7K
-Capabilities: Tool calling Yes | Structured output – | Reasoning Yes | Attachment support No
+Capabilities: Tool calling | Reasoning
 
 https://models.dev/providers/opencode/
 ```
@@ -237,7 +237,7 @@ New on OpenCode Go: Qwen3.8 Max
 ID: opencode-go/qwen3.8-max
 Pricing: $2.00 / $6.00 per 1M tokens
 Context: 1M, max output 131K
-Capabilities: Tool calling Yes | Structured output Yes | Reasoning Yes | Attachment support Yes
+Capabilities: Tool calling | Structured output | Reasoning | Attachment support
 
 https://models.dev/providers/opencode-go/
 ```
@@ -256,8 +256,9 @@ https://models.dev/providers/opencode-go/
   65536 → `65.5K`) plus max output. The API exposes no separate max-input
   figure.
 - **Capabilities**: tool calling, structured output, reasoning, attachment
-  support — each `Yes` when `true`, `No` when `false`, `–` when the key is
-  absent (`structured_output` is absent on many models).
+  support — only capabilities that are `true` are listed, joined by ` | `.
+  The line is omitted entirely when none are true. (`No`/missing keys are
+  not shown; `structured_output` is absent on many models.)
 - **URL line**: the provider page, made clickable via an
   `app.bsky.richtext.facet` link facet using UTF-8 **byte** offsets. Posts
   without a URL omit the facet.

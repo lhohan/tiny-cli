@@ -237,14 +237,20 @@ render_rich_added() {
             if $v == ($v | floor) then "\($v | floor)K" else "\($v)K" end
           else tostring end;
         def fmt_limit($v): if $v == null then "–" else ($v | fmt_ctx) end;
-        def yn($k): if has($k) then (if .[$k] then "Yes" else "No" end) else "–" end;
+        def yes_caps:
+          [
+            (if .tool_call then "Tool calling" else empty end),
+            (if .structured_output then "Structured output" else empty end),
+            (if .reasoning then "Reasoning" else empty end),
+            (if .attachment then "Attachment support" else empty end)
+          ];
         [
           {key: "title", text: $title},
           {key: "blank1", text: ""},
           {key: "id", text: ("ID: " + $id)},
           {key: "pricing", text: $pricing},
           {key: "context", text: ("Context: " + fmt_limit(.limit.context) + ", max output " + fmt_limit(.limit.output))},
-          {key: "caps", text: ("Capabilities: Tool calling " + yn("tool_call") + " | Structured output " + yn("structured_output") + " | Reasoning " + yn("reasoning") + " | Attachment support " + yn("attachment"))},
+          {key: "caps", text: (if (yes_caps | length) > 0 then ("Capabilities: " + (yes_caps | join(" | "))) else empty end)},
           {key: "blank2", text: ""},
           {key: "url", text: $url}
         ]

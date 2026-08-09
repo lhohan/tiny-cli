@@ -755,7 +755,7 @@ fn broadcast_capture_renders_rich_post_for_free_zen_model() {
          ID: opencode/laguna-s-2.1-free\n\
          Pricing: $0.00 / $0.00 per 1M tokens (free)\n\
          Context: 262.1K, max output 32.7K\n\
-         Capabilities: Tool calling Yes | Structured output – | Reasoning Yes | Attachment support No\n\n\
+         Capabilities: Tool calling | Reasoning\n\n\
          https://models.dev/providers/opencode/"
     );
     assert!(
@@ -828,9 +828,46 @@ fn broadcast_capture_renders_rich_post_for_paid_go_model() {
          ID: opencode-go/qwen3.8-max\n\
          Pricing: $2.00 / $6.00 per 1M tokens\n\
          Context: 1M, max output 131K\n\
-         Capabilities: Tool calling Yes | Structured output Yes | Reasoning Yes | Attachment support Yes\n\n\
+         Capabilities: Tool calling | Structured output | Reasoning | Attachment support\n\n\
          https://models.dev/providers/opencode-go/"
     );
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_rich_post_omits_caps_line_when_no_capabilities() {
+    let capture_dir = capture_dir();
+
+    // No capability is true (tool_call false, others missing): the
+    // Capabilities line is omitted entirely rather than listing No/–.
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", r#"{
+  "timestamp": "2026-08-09T07:00:03Z",
+  "added": ["opencode-go/m"],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode-go/m": {
+      "id": "m",
+      "name": "Plain Model",
+      "cost": {"input": 0.4, "output": 1.6},
+      "limit": {"context": 1000000, "output": 131072},
+      "tool_call": false
+    }
+  }
+}"#)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1);
+
+    let capture = read_capture_json(&capture_dir, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert!(!text.contains("Capabilities:"), "Capabilities line must be omitted");
+    assert!(text.contains("Context:"), "Context must be kept");
+    assert!(text.contains("ID: opencode-go/m"), "ID must be kept");
 
     let _ = std::fs::remove_dir_all(&capture_dir);
 }
