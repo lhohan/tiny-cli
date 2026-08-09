@@ -146,6 +146,57 @@ fn models_watch_should_write_delta_when_models_added() {
         .expect_snapshot_exists();
 }
 
+#[test]
+fn models_watch_embeds_added_model_metadata_in_delta() {
+    let model_b = json!({
+        "id": "model-b",
+        "name": "Model B",
+        "cost": {"input": 0.4, "output": 1.6},
+        "limit": {"context": 1000000, "output": 131072},
+        "tool_call": true,
+        "reasoning": true,
+        "attachment": false
+    });
+    let prior_fixture = json!({
+        "opencode-go": {"id": "opencode-go", "name": "OpenCode Go", "models": {
+            "model-a": {"id": "model-a", "name": "Model A"}
+        }},
+        "opencode": {"id": "opencode", "name": "OpenCode Zen", "models": {}}
+    });
+    let current_fixture = json!({
+        "opencode-go": {"id": "opencode-go", "name": "OpenCode Go", "models": {
+            "model-a": {"id": "model-a", "name": "Model A"},
+            "model-b": model_b.clone()
+        }},
+        "opencode": {"id": "opencode", "name": "OpenCode Zen", "models": {}}
+    });
+
+    given()
+        .with_api_fixture(&current_fixture.to_string())
+        .with_prior_snapshot(snapshot_from_fixture(&prior_fixture.to_string()))
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_delta_added(&["opencode-go/model-b"])
+        .expect_delta_model_meta("opencode-go/model-b", &model_b)
+        .expect_snapshot_exists();
+}
+
+#[test]
+fn models_watch_embeds_all_models_on_first_run() {
+    let fixture = api_fixture(&[("model-a", "Model A")]);
+
+    given()
+        .with_api_fixture(&fixture)
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_delta_model_meta(
+            "opencode-go/model-a",
+            &json!({"id": "model-a", "name": "Model A"}),
+        );
+}
+
 // ---------------------------------------------------------------------------
 // Models removed
 // ---------------------------------------------------------------------------
@@ -628,6 +679,340 @@ fn broadcast_capture_renders_post_for_added_model() {
         .expect_capture_count(1)
         .expect_capture_contains(1, "New: opencode-go/new-model is now available.")
         .expect_no_ledger();
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+// ---------------------------------------------------------------------------
+// Broadcaster – rich announcement format (delta carries a `models` key)
+// ---------------------------------------------------------------------------
+
+fn read_capture_json(capture_dir: &std::path::Path, index: usize) -> serde_json::Value {
+    let capture = capture_dir.join(format!("{}.json", index));
+    let raw = std::fs::read_to_string(&capture).unwrap();
+    serde_json::from_str(&raw).unwrap()
+}
+
+/// A delta with a `models` key for one paid Go model named `name` (no
+/// `structured_output` key, so it must render as `–`).
+fn rich_go_delta(name: &str) -> String {
+    format!(
+        r#"{{
+  "timestamp": "2026-08-09T07:00:03Z",
+  "added": ["opencode-go/m"],
+  "removed": [],
+  "changed": [],
+  "models": {{
+    "opencode-go/m": {{
+      "id": "m",
+      "name": "{}",
+      "cost": {{"input": 0.4, "output": 1.6}},
+      "limit": {{"context": 1000000, "output": 131072}},
+      "tool_call": true,
+      "reasoning": true,
+      "attachment": true
+    }}
+  }}
+}}"#,
+        name
+    )
+}
+
+#[test]
+fn broadcast_capture_renders_rich_post_for_free_zen_model() {
+    let capture_dir = capture_dir();
+    let delta = r#"{
+  "timestamp": "2026-08-09T07:00:03Z",
+  "added": ["opencode/laguna-s-2.1-free"],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode/laguna-s-2.1-free": {
+      "id": "laguna-s-2.1-free",
+      "name": "Laguna S 2.1 Free",
+      "cost": {"input": 0, "output": 0},
+      "limit": {"context": 262144, "output": 32768},
+      "tool_call": true,
+      "reasoning": true,
+      "attachment": false
+    }
+  }
+}"#;
+
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", delta)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1);
+
+    let capture = read_capture_json(&capture_dir, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert_eq!(
+        text,
+        "New on OpenCode Zen: Laguna S 2.1 Free\n\n\
+         ID: opencode/laguna-s-2.1-free\n\
+         Pricing: $0.00 / $0.00 per 1M tokens (free)\n\
+         Context: 262.1K, max output 32.7K\n\
+         Capabilities: Tool calling Yes | Structured output – | Reasoning Yes | Attachment support No\n\n\
+         https://models.dev/providers/opencode/"
+    );
+    assert!(
+        text.chars().count() <= 300,
+        "rich post must fit in 300 code points, got {}",
+        text.chars().count()
+    );
+
+    // The exact id is preserved for copy-paste; no invented -free suffix.
+    assert_eq!(capture["model_id"], "opencode/laguna-s-2.1-free");
+
+    // URL link facet with UTF-8 byte offsets covering the final URL line.
+    let url = "https://models.dev/providers/opencode/";
+    assert!(text.ends_with(url), "URL must be the final line: {:?}", text);
+    let facets = capture["facets"].as_array().unwrap();
+    assert_eq!(facets.len(), 1);
+    let facet = &facets[0];
+    assert_eq!(facet["features"][0]["$type"], "app.bsky.richtext.facet#link");
+    assert_eq!(facet["features"][0]["uri"], url);
+    let total_bytes = text.as_bytes().len();
+    let url_bytes = url.as_bytes().len();
+    assert_eq!(facet["index"]["byteStart"].as_u64().unwrap() as usize, total_bytes - url_bytes);
+    assert_eq!(facet["index"]["byteEnd"].as_u64().unwrap() as usize, total_bytes);
+    // Outcome check on top of the arithmetic checks: the byte range must
+    // slice the URL exactly.
+    assert_eq!(
+        &text.as_bytes()[facet["index"]["byteStart"].as_u64().unwrap() as usize
+            ..facet["index"]["byteEnd"].as_u64().unwrap() as usize],
+        url.as_bytes()
+    );
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_renders_rich_post_for_paid_go_model() {
+    let capture_dir = capture_dir();
+    let delta = r#"{
+  "timestamp": "2026-08-09T07:00:03Z",
+  "added": ["opencode-go/qwen3.8-max"],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode-go/qwen3.8-max": {
+      "id": "qwen3.8-max",
+      "name": "Qwen3.8 Max",
+      "cost": {"input": 2, "output": 6},
+      "limit": {"context": 1000000, "output": 131072},
+      "tool_call": true,
+      "structured_output": true,
+      "reasoning": true,
+      "attachment": true
+    }
+  }
+}"#;
+
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", delta)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1);
+
+    let capture = read_capture_json(&capture_dir, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert_eq!(
+        text,
+        "New on OpenCode Go: Qwen3.8 Max\n\n\
+         ID: opencode-go/qwen3.8-max\n\
+         Pricing: $2.00 / $6.00 per 1M tokens\n\
+         Context: 1M, max output 131K\n\
+         Capabilities: Tool calling Yes | Structured output Yes | Reasoning Yes | Attachment support Yes\n\n\
+         https://models.dev/providers/opencode-go/"
+    );
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_rich_ladder_drops_capabilities_line() {
+    // Name of 100 chars pushes the full rich post over 300 cp; the
+    // least-important field (Capabilities) is dropped and everything else fits.
+    let capture_dir = capture_dir();
+
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", rich_go_delta(&"X".repeat(100)))
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("DROP: caps line");
+
+    let capture = read_capture_json(&capture_dir, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert!(!text.contains("Capabilities:"), "Capabilities must be dropped");
+    assert!(!text.contains("Tool calling"), "Capabilities must be dropped");
+    assert!(text.contains("Context:"), "Context must be kept");
+    assert!(text.contains("Pricing:"), "Pricing must be kept");
+    assert!(text.contains("ID: opencode-go/m"), "ID must be kept");
+    assert!(text.ends_with("https://models.dev/providers/opencode-go/"), "URL must be kept");
+    assert!(capture["facets"].is_array(), "facets must be kept with the URL");
+    assert!(text.chars().count() <= 300, "text must fit in 300 cp");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_rich_ladder_drops_context_then_pricing() {
+    let capture_dir1 = capture_dir();
+
+    // Name of 160 chars: Capabilities AND Context dropped, Pricing kept.
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", rich_go_delta(&"X".repeat(160)))
+        .with_capture_dir(capture_dir1.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("DROP: context line");
+
+    let capture = read_capture_json(&capture_dir1, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert!(!text.contains("Capabilities:"), "Capabilities must be dropped");
+    assert!(!text.contains("Context:"), "Context must be dropped");
+    assert!(text.contains("Pricing:"), "Pricing must be kept");
+    assert!(text.contains("ID: opencode-go/m"), "ID must be kept");
+    assert!(text.chars().count() <= 300);
+
+    let _ = std::fs::remove_dir_all(&capture_dir1);
+
+    // Name of 195 chars: Pricing dropped too; only ID and URL remain of the
+    // optional fields.
+    let capture_dir2 = capture_dir();
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", rich_go_delta(&"X".repeat(195)))
+        .with_capture_dir(capture_dir2.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("DROP: pricing line");
+
+    let capture = read_capture_json(&capture_dir2, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert!(!text.contains("Capabilities:"), "Capabilities must be dropped");
+    assert!(!text.contains("Context:"), "Context must be dropped");
+    assert!(!text.contains("Pricing:"), "Pricing must be dropped");
+    assert!(text.contains("ID: opencode-go/m"), "ID must be kept");
+    assert!(text.ends_with("https://models.dev/providers/opencode-go/"), "URL must be kept");
+    assert!(capture["facets"].is_array(), "facets must be kept with the URL");
+    assert!(text.chars().count() <= 300);
+
+    let _ = std::fs::remove_dir_all(&capture_dir2);
+}
+
+#[test]
+fn broadcast_capture_rich_ladder_drops_url_and_omits_facets() {
+    let capture_dir = capture_dir();
+
+    // Name of 230 chars: every optional field is dropped; the URL line and
+    // its facet are omitted entirely.
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", rich_go_delta(&"X".repeat(230)))
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("DROP: url line");
+
+    let capture = read_capture_json(&capture_dir, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert!(!text.contains("Capabilities:"));
+    assert!(!text.contains("Context:"));
+    assert!(!text.contains("Pricing:"));
+    assert!(!text.contains("https://"), "URL must be dropped");
+    assert!(capture["facets"].is_null(), "facets must be omitted without a URL");
+    assert!(text.contains("ID: opencode-go/m"), "ID must be kept");
+    assert!(text.chars().count() <= 300);
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_rich_ladder_truncates_long_name() {
+    let capture_dir = capture_dir();
+
+    // Name of 300 chars: after every optional field is dropped the title
+    // name is truncated with an ellipsis; the ID stays intact and the text
+    // fits in 300 code points.
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", rich_go_delta(&"X".repeat(300)))
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("TRUNC: name");
+
+    let capture = read_capture_json(&capture_dir, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert!(text.chars().count() <= 300, "text must fit in 300 cp");
+    assert!(text.contains("…"), "truncated name must end in an ellipsis");
+    assert!(text.contains("ID: opencode-go/m"), "ID must be kept intact");
+
+    let _ = std::fs::remove_dir_all(&capture_dir);
+}
+
+#[test]
+fn broadcast_capture_rich_ladder_truncates_long_id() {
+    let capture_dir = capture_dir();
+
+    // ID of 290 chars: every optional field is dropped and the 1-char name
+    // cannot absorb the overflow, so the ID itself is truncated within the
+    // rich post instead of falling back to the legacy one-liner.
+    let long_id = format!("opencode-go/{}", "X".repeat(290));
+    let delta = format!(
+        r#"{{
+  "timestamp": "2026-08-09T07:00:03Z",
+  "added": ["{id}"],
+  "removed": [],
+  "changed": [],
+  "models": {{
+    "{id}": {{
+      "id": "m",
+      "name": "M",
+      "cost": {{"input": 0.4, "output": 1.6}},
+      "limit": {{"context": 1000000, "output": 131072}},
+      "tool_call": true,
+      "reasoning": true,
+      "attachment": true
+    }}
+  }}
+}}"#,
+        id = long_id
+    );
+
+    given_broadcast()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", delta)
+        .with_capture_dir(capture_dir.clone())
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_capture_count(1)
+        .expect_stderr_contains("TRUNC: model_id");
+
+    let capture = read_capture_json(&capture_dir, 1);
+    let text = capture["text"].as_str().unwrap();
+    assert!(text.chars().count() <= 300, "text must fit in 300 cp");
+    assert!(text.contains("ID: opencode-go/X"), "ID line must be kept");
+    assert!(text.contains("…"), "truncated ID must end in an ellipsis");
+    assert!(
+        !text.contains("is now available."),
+        "legacy fallback must not be used when the rich ID can be truncated"
+    );
 
     let _ = std::fs::remove_dir_all(&capture_dir);
 }

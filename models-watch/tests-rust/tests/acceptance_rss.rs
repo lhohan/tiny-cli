@@ -143,6 +143,35 @@ fn feed_should_exit_3_when_no_deltas() {
 }
 
 // ---------------------------------------------------------------------------
+// Tolerance: deltas carrying a `models` key (rich broadcast metadata)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn feed_tolerates_delta_models_key() {
+    let delta = r#"{
+      "timestamp": "2026-08-09T07:00:03Z",
+      "added": ["opencode-go/qwen3.8-max"],
+      "removed": [],
+      "changed": [],
+      "models": {
+        "opencode-go/qwen3.8-max": {
+          "name": "Qwen3.8 Max",
+          "cost": {"input": 2, "output": 6}
+        }
+      }
+    }"#;
+
+    given_feed()
+        .with_state_delta("change-2026-08-09T07:00:03Z.json", delta)
+        .when_run()
+        .then_result()
+        .should_succeed()
+        .expect_rss_file()
+        .expect_rss_item_count(1)
+        .expect_rss_contains("qwen3.8-max is now available.");
+}
+
+// ---------------------------------------------------------------------------
 // Custom --output path
 // ---------------------------------------------------------------------------
 

@@ -480,6 +480,27 @@ impl AppResult {
         self
     }
 
+    /// Assert that the delta contains a `models` object with an entry for `id`
+    /// whose value equals `expected` (the full models.dev model object).
+    pub fn expect_delta_model_meta(&self, id: &str, expected: &serde_json::Value) -> &Self {
+        self.expect_delta_file();
+        let delta = self.read_latest_delta();
+        let actual = delta["models"][id].clone();
+        if actual.is_null() {
+            fail(format!(
+                "expected delta.models['{}'] to exist, but it is missing",
+                id
+            ));
+        }
+        if &actual != expected {
+            fail(format!(
+                "expected delta.models['{}'] to be {}, got {}",
+                id, expected, actual
+            ));
+        }
+        self
+    }
+
     /// Return the full stdout content for direct inspection.
     pub fn stdout(&self) -> &str {
         &self.stdout

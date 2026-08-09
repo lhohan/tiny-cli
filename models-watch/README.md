@@ -70,7 +70,7 @@ All runtime state lives under `state/` relative to the script:
 | File | Purpose |
 |------|---------|
 | `state/latest.json` | Synthetic merged snapshot of watched models, keyed by provider-prefixed model ID (used for comparison on next run) |
-| `state/change-<timestamp>.json` | Delta file, written when models are added, removed, or renamed |
+| `state/change-<timestamp>.json` | Delta file, written when models are added, removed, or renamed. Added-model entries carry a `models` map (provider-prefixed ID → full models.dev model object) so the broadcaster can render rich announcements |
 | `state/posted.json` | Ledger of broadcast deltas, written by `models-broadcast.sh` |
 
 ## Public RSS Feed
@@ -166,10 +166,11 @@ endpoint.
 ### Capture mode (`--capture-dir`)
 
 Writes one JSON record per rendered post into the specified directory. Each
-record contains the delta filename, model ID, action type, and rendered post
-text. Capture mode performs no authentication, makes no network requests, and
-does not modify the posted ledger. It uses a fixed placeholder DID in the
-rendered record body.
+record contains the delta filename, model ID, action type, rendered post
+text, and — for rich added posts — the URL link `facets` array. Capture mode
+performs no authentication, makes no network requests, and does not modify
+the posted ledger. It uses a fixed placeholder DID in the rendered record
+body.
 
 Use capture mode to preview what would be posted before running live.
 
@@ -210,13 +211,86 @@ A missing ledger is treated as empty. A malformed ledger (wrong shape, invalid
 hashes, overlapping maps) causes the script to exit with an error before making
 any requests.
 
+### Post format
+
+Added models get a data-rich announcement; removed and changed posts keep
+the one-line format.
+
+Free Zen model:
+
+```text
+New on OpenCode Zen: Laguna S 2.1 Free
+
+ID: opencode/laguna-s-2.1-free
+Pricing: $0.00 / $0.00 per 1M tokens (free)
+Context: 262.1K, max output 32.7K
+Capabilities: Tool calling Yes | Structured output – | Reasoning Yes | Attachment support No
+
+https://models.dev/providers/opencode/
+```
+
+Paid Go model:
+
+```text
+New on OpenCode Go: Qwen3.8 Max
+
+ID: opencode-go/qwen3.8-max
+Pricing: $2.00 / $6.00 per 1M tokens
+Context: 1M, max output 131K
+Capabilities: Tool calling Yes | Structured output Yes | Reasoning Yes | Attachment support Yes
+
+https://models.dev/providers/opencode-go/
+```
+
+- **Title**: `New on <tier>: <name>` — tier is `OpenCode Zen`
+  (`opencode/` prefix) or `OpenCode Go` (`opencode-go/` prefix). Free models
+  (input and output cost both `0`) get a ` Free` title word unless the
+  display name already ends with ` Free` (which it usually does for free Zen
+  models).
+- **ID line**: the exact provider-prefixed ID from the delta
+  (`opencode/<slug>` / `opencode-go/<slug>`), copyable into opencode config.
+  The broadcaster never invents a `-free` suffix.
+- **Pricing**: input / output cost per 1M tokens, two decimals; free models
+  get a ` (free)` suffix.
+- **Context**: decimal K/M formatting (262144 → `262.1K`, 1000000 → `1M`,
+  65536 → `65.5K`) plus max output. The API exposes no separate max-input
+  figure.
+- **Capabilities**: tool calling, structured output, reasoning, attachment
+  support — each `Yes` when `true`, `No` when `false`, `–` when the key is
+  absent (`structured_output` is absent on many models).
+- **URL line**: the provider page, made clickable via an
+  `app.bsky.richtext.facet` link facet using UTF-8 **byte** offsets. Posts
+  without a URL omit the facet.
+
+The RSS feed descriptions intentionally keep the legacy one-line format;
+`models-feed.sh` ignores the delta `models` key.
+
+### 300-character inclusion ladder
+
+Posts are limited to 300 Unicode code points. A rich added post includes
+every field we have data for; if it overflows, the least-important
+still-present optional field is dropped and the text re-measured, in this
+order:
+
+1. `Capabilities` line
+2. `Context` line
+3. `Pricing` line
+4. `URL` line (and its preceding blank line; the link facet is omitted)
+
+The title, `ID` line, and blank-line separators are always retained. If the
+text still overflows, the display name is shortened (ending in `…`), then
+with the ID, and finally the legacy one-line format
+(`New: <id> is now available.`) is used. Drops and truncations are logged to
+stderr.
+
 ### Text truncation
 
-All posts are limited to 300 Unicode code points. For updated posts, the old
-name is shortened first, then the new name, then the model ID as a last resort.
-Added and removed posts shorten only the model ID. Every shortened non-empty
-value ends in `…`. The original and final values of shortened fields are
-logged to stderr.
+All posts are limited to 300 Unicode code points. Rich added posts follow
+the inclusion ladder above (drop fields, then shorten name, then ID). For
+updated posts, the old name is shortened first, then the new name, then the
+model ID as a last resort. Legacy added and removed posts shorten only the
+model ID. Every shortened non-empty value ends in `…`. The original and final
+values of shortened fields are logged to stderr.
 
 ### Risk: no retry on ambiguous failure
 
@@ -229,10 +303,15 @@ failure.
 
 ### Initial rollout
 
-The existing history contains 21 delta files. The 11 oldest deltas predate
-provider-prefixed IDs and have been recorded as skipped in the initial
-`state/posted.json`. The 10 newest deltas are eligible for broadcast. See
-`docs/plans/2026-07-20-bluesky-broadcast.md` for the bootstrap plan.
+The existing history contains 23 delta files. The 11 oldest deltas predate
+provider-prefixed IDs and are recorded as skipped (`pre-provider-prefix
+history`). The 12 deltas from 2026-06-04 through 2026-08-09 predate the rich
+announcement format and are recorded as skipped (`pre-rich-format backlog`)
+— the account's first posts use the new format. This intentionally drops the
+two most recent never-posted changes (`2026-07-21`, `2026-08-09`) as well;
+that is a decision, not a bug. See `docs/plans/2026-07-20-bluesky-broadcast.md`
+for the bootstrap plan and `docs/plans/2026-08-09-rich-bluesky-posts.md` for
+this change.
 
 ## GitHub Actions
 

@@ -245,10 +245,19 @@ if [[ "$change_detected" == "true" ]]; then
         removed_json="$(echo "$removed" | jq -R -s 'split("\n") | map(select(. != ""))')"
     fi
 
+    # Embed the full model object for each added ID so the broadcaster can
+    # render rich announcements without re-fetching or name-based joins.
+    # Additive key: existing consumers (feed, --report) ignore it.
+    models_json="$(jq -c --argjson added "$added_json" '
+        .models as $m |
+        [$added[] as $id | {($id): $m[$id]}] | add // {}
+    ' <<< "$current")"
+
     jq -n --argjson added "$added_json" --argjson removed "$removed_json" \
         --argjson changed "$changed_json" \
+        --argjson models "$models_json" \
         --arg ts "$TIMESTAMP" \
-        '{timestamp: $ts, added: $added, removed: $removed, changed: $changed}' \
+        '{timestamp: $ts, added: $added, removed: $removed, changed: $changed, models: $models}' \
         > "$CHANGE_FILE"
 
     # Build human-readable message

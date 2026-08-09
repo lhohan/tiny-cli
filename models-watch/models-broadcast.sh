@@ -135,7 +135,7 @@ truncate_value() {
     local field_name="${3:-}"
 
     local cp_count
-    cp_count=$(printf '%s' "$value" | wc -m)
+    cp_count=$(jq -nr --arg t "$value" '$t | length')
 
     if (( cp_count <= max_cp )); then
         echo "$value"
@@ -162,6 +162,187 @@ truncate_value() {
     echo "$result"
 }
 
+# Render the rich "added" announcement from delta metadata. Emits the
+# capture/ledger JSON record on stdout; returns 1 when the delta carries no
+# .models[id] entry so the caller falls back to the legacy one-line format.
+#
+# The post includes every field we have data for; if it exceeds POST_MAX code
+# points, optional fields are dropped in order of increasing importance
+# (Capabilities -> Context -> Pricing -> URL), then the title name and finally
+# the ID are truncated. The legacy one-line tail below is unreachable after the
+# ID-truncation step; it is retained as a defensive guard.
+render_rich_added() {
+    local delta_file="$1"
+    local model_id="$2"
+    local delta_name="$3"
+    local overshoot=0
+
+    if ! jq -e --arg id "$model_id" '.models | has($id)' "$delta_file" >/dev/null 2>&1; then
+        return 1
+    fi
+
+    local tier_name tier_url
+    case "$model_id" in
+        opencode/*)
+            tier_name="OpenCode Zen"
+            tier_url="https://models.dev/providers/opencode/"
+            ;;
+        opencode-go/*)
+            tier_name="OpenCode Go"
+            tier_url="https://models.dev/providers/opencode-go/"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    local meta
+    meta="$(jq -c --arg id "$model_id" '.models[$id]' "$delta_file")"
+
+    local name free in_cost out_cost
+    name="$(jq -r '.name // empty' <<< "$meta")"
+    if [[ -z "$name" ]]; then
+        name="${model_id#*/}"
+    fi
+    free="$(jq -r '(.cost.input == 0 and .cost.output == 0)' <<< "$meta")"
+    in_cost="$(jq -r '.cost.input // 0' <<< "$meta")"
+    out_cost="$(jq -r '.cost.output // 0' <<< "$meta")"
+
+    # The display name usually already ends with " Free" for free Zen models;
+    # only append the word when it is not already present.
+    local title_name="$name"
+    if [[ "$free" == "true" && "$name" != *" Free" ]]; then
+        title_name="${name} Free"
+    fi
+
+    local pricing_line
+    pricing_line="Pricing: \$$(printf '%.2f' "$in_cost") / \$$(printf '%.2f' "$out_cost") per 1M tokens"
+    if [[ "$free" == "true" ]]; then
+        pricing_line="${pricing_line} (free)"
+    fi
+
+    # Build all sections (title, blank, ID, pricing, context, capabilities,
+    # blank, URL) as a JSON array so the inclusion ladder can drop fields.
+    local sections
+    sections="$(jq -c \
+        --arg title "New on ${tier_name}: ${title_name}" \
+        --arg id "$model_id" \
+        --arg pricing "$pricing_line" \
+        --arg url "$tier_url" \
+        '
+        def fmt_ctx:
+          if . >= 1000000 then ((. / 1000000 * 10 | floor) / 10) as $v |
+            if $v == ($v | floor) then "\($v | floor)M" else "\($v)M" end
+          elif . >= 1000 then ((. / 1000 * 10 | floor) / 10) as $v |
+            if $v == ($v | floor) then "\($v | floor)K" else "\($v)K" end
+          else tostring end;
+        def fmt_limit($v): if $v == null then "–" else ($v | fmt_ctx) end;
+        def yn($k): if has($k) then (if .[$k] then "Yes" else "No" end) else "–" end;
+        [
+          {key: "title", text: $title},
+          {key: "blank1", text: ""},
+          {key: "id", text: ("ID: " + $id)},
+          {key: "pricing", text: $pricing},
+          {key: "context", text: ("Context: " + fmt_limit(.limit.context) + ", max output " + fmt_limit(.limit.output))},
+          {key: "caps", text: ("Capabilities: Tool calling " + yn("tool_call") + " | Structured output " + yn("structured_output") + " | Reasoning " + yn("reasoning") + " | Attachment support " + yn("attachment"))},
+          {key: "blank2", text: ""},
+          {key: "url", text: $url}
+        ]
+        ' <<< "$meta")"
+
+    local text total_cp
+    text="$(jq -r 'map(.text) | join("\n")' <<< "$sections")"
+    total_cp="$(jq -nr --arg t "$text" '$t | length')"
+
+    # Inclusion ladder: drop least-important optional fields until it fits.
+    local drop_order=("caps" "context" "pricing" "url")
+    local key
+    for key in "${drop_order[@]}"; do
+        if (( total_cp <= POST_MAX )); then
+            break
+        fi
+        if [[ "$key" == "url" ]]; then
+            sections="$(jq -c 'map(select(.key != "url" and .key != "blank2"))' <<< "$sections")"
+        else
+            sections="$(jq -c --arg key "$key" 'map(select(.key != $key))' <<< "$sections")"
+        fi
+        text="$(jq -r 'map(.text) | join("\n")' <<< "$sections")"
+        total_cp="$(jq -nr --arg t "$text" '$t | length')"
+        echo "DROP: ${key} line" >&2
+    done
+
+    # Residual overflow with no optional fields left: truncate the title
+    # name, then the ID.
+    if (( total_cp > POST_MAX )); then
+        overshoot=$(( total_cp - POST_MAX ))
+        local title_name_len max_name short_name new_title
+        title_name_len="$(jq -nr --arg t "$title_name" '$t | length')"
+        max_name=$(( title_name_len - overshoot - 1 ))
+        if (( max_name < 1 )); then max_name=1; fi
+        short_name="$(truncate_value "$title_name" "$max_name" "name")"
+        new_title="New on ${tier_name}: ${short_name}"
+        sections="$(jq -c --arg title "$new_title" 'map(if .key == "title" then .text = $title else . end)' <<< "$sections")"
+        text="$(jq -r 'map(.text) | join("\n")' <<< "$sections")"
+        total_cp="$(jq -nr --arg t "$text" '$t | length')"
+    fi
+
+    # The name could not absorb the overflow: truncate the ID itself.
+    if (( total_cp > POST_MAX )); then
+        local id_cp max_id short_id
+        id_cp="$(jq -nr --arg t "$model_id" '$t | length')"
+        max_id=$(( id_cp - overshoot - 1 ))
+        if (( max_id < 1 )); then max_id=1; fi
+        short_id="$(truncate_value "$model_id" "$max_id" "model_id")"
+        sections="$(jq -c --arg id "ID: ${short_id}" \
+            'map(if .key == "id" then .text = $id else . end)' <<< "$sections")"
+        text="$(jq -r 'map(.text) | join("\n")' <<< "$sections")"
+        total_cp="$(jq -nr --arg t "$text" '$t | length')"
+    fi
+
+    # Defensive tail: unreachable while the ID-truncation step above exists.
+    if (( total_cp > POST_MAX )); then
+        local mid_len max_mid mid full cp_count
+        mid="$model_id"
+        full="New: ${model_id} is now available."
+        cp_count="$(jq -nr --arg t "$full" '$t | length')"
+        if (( cp_count > POST_MAX )); then
+            overshoot=$(( cp_count - POST_MAX ))
+            mid_len="$(jq -nr --arg t "$mid" '$t | length')"
+            max_mid=$(( mid_len - overshoot - 1 ))
+            if (( max_mid < 1 )); then max_mid=1; fi
+            mid="$(truncate_value "$mid" "$max_mid" "model_id")"
+            full="New: ${mid} is now available."
+        fi
+        jq -n --arg delta "$delta_name" --arg model_id "$mid" \
+            --arg action "added" --arg text "$full" \
+            '{delta: $delta, model_id: $model_id, action: $action, text: $text}'
+        return
+    fi
+
+    # Link facet for the URL line. Bluesky facets use UTF-8 byte offsets; the
+    # URL is the final line with no trailing whitespace, so byteStart is the
+    # total byte length minus the URL's byte length and byteEnd is the total.
+    local facets_json=""
+    if jq -e '[.[] | select(.key == "url")] | length == 1' <<< "$sections" >/dev/null 2>&1; then
+        local total_bytes url_bytes byte_start
+        total_bytes="$(printf '%s' "$text" | wc -c | tr -d '[:space:]')"
+        url_bytes="$(printf '%s' "$tier_url" | wc -c | tr -d '[:space:]')"
+        byte_start=$(( total_bytes - url_bytes ))
+        facets_json="$(jq -n --arg uri "$tier_url" --argjson bs "$byte_start" --argjson be "$total_bytes" \
+            '[{index: {byteStart: $bs, byteEnd: $be}, features: [{"$type": "app.bsky.richtext.facet#link", uri: $uri}]}]')"
+    fi
+
+    if [[ -n "$facets_json" ]]; then
+        jq -n --arg delta "$delta_name" --arg model_id "$model_id" \
+            --arg action "added" --arg text "$text" --argjson facets "$facets_json" \
+            '{delta: $delta, model_id: $model_id, action: $action, text: $text, facets: $facets}'
+    else
+        jq -n --arg delta "$delta_name" --arg model_id "$model_id" \
+            --arg action "added" --arg text "$text" \
+            '{delta: $delta, model_id: $model_id, action: $action, text: $text}'
+    fi
+}
+
 # Render one post text for a model, with truncation to POST_MAX.
 render_post() {
     local delta_file="$1"
@@ -169,6 +350,11 @@ render_post() {
     local model_id="$3"
     local old_name="${4:-}"
     local new_name="${5:-}"
+
+    # `delta_file` is the full path (needed to read .models metadata); the
+    # emitted `delta` field keeps the basename so capture output is stable.
+    local delta_name
+    delta_name="$(basename "$delta_file")"
 
     local current_mid="$model_id"
     local current_old="$old_name"
@@ -184,7 +370,7 @@ render_post() {
 
             if (( cp_count <= POST_MAX )); then
                 # No truncation needed
-                jq -n --arg delta "$delta_file" --arg model_id "$current_mid" \
+                jq -n --arg delta "$delta_name" --arg model_id "$current_mid" \
                     --arg action "$action" --arg text "$full" \
                     '{delta: $delta, model_id: $model_id, action: $action, text: $text}'
                 return
@@ -202,7 +388,7 @@ render_post() {
             full="Updated: ${current_mid}: \"${current_old}\" → \"${current_new}\""
             cp_count=$(printf '%s' "$full" | wc -m)
             if (( cp_count <= POST_MAX )); then
-                jq -n --arg delta "$delta_file" --arg model_id "$current_mid" \
+                jq -n --arg delta "$delta_name" --arg model_id "$current_mid" \
                     --arg action "$action" --arg text "$full" \
                     '{delta: $delta, model_id: $model_id, action: $action, text: $text}'
                 return
@@ -220,7 +406,7 @@ render_post() {
             full="Updated: ${current_mid}: \"${current_old}\" → \"${current_new}\""
             cp_count=$(printf '%s' "$full" | wc -m)
             if (( cp_count <= POST_MAX )); then
-                jq -n --arg delta "$delta_file" --arg model_id "$current_mid" \
+                jq -n --arg delta "$delta_name" --arg model_id "$current_mid" \
                     --arg action "$action" --arg text "$full" \
                     '{delta: $delta, model_id: $model_id, action: $action, text: $text}'
                 return
@@ -235,12 +421,22 @@ render_post() {
             current_mid=$(truncate_value "$current_mid" "$max_mid" "model_id")
 
             full="Updated: ${current_mid}: \"${current_old}\" → \"${current_new}\""
-            jq -n --arg delta "$delta_file" --arg model_id "$current_mid" \
+            jq -n --arg delta "$delta_name" --arg model_id "$current_mid" \
                 --arg action "$action" --arg text "$full" \
                 '{delta: $delta, model_id: $model_id, action: $action, text: $text}'
             ;;
 
         added|removed)
+            # Rich announcement when the delta carries metadata for this model;
+            # otherwise the legacy one-line format.
+            if [[ "$action" == "added" ]]; then
+                local rich
+                if rich="$(render_rich_added "$delta_file" "$model_id" "$delta_name")"; then
+                    echo "$rich"
+                    return
+                fi
+            fi
+
             local prefix="New: "
             local suffix=" is now available."
             if [[ "$action" == "removed" ]]; then
@@ -252,7 +448,7 @@ render_post() {
             cp_count=$(printf '%s' "$full" | wc -m)
 
             if (( cp_count <= POST_MAX )); then
-                jq -n --arg delta "$delta_file" --arg model_id "$current_mid" \
+                jq -n --arg delta "$delta_name" --arg model_id "$current_mid" \
                     --arg action "$action" --arg text "$full" \
                     '{delta: $delta, model_id: $model_id, action: $action, text: $text}'
                 return
@@ -266,7 +462,7 @@ render_post() {
             current_mid=$(truncate_value "$current_mid" "$max_mid" "model_id")
 
             full="${prefix}${current_mid}${suffix}"
-            jq -n --arg delta "$delta_file" --arg model_id "$current_mid" \
+            jq -n --arg delta "$delta_name" --arg model_id "$current_mid" \
                 --arg action "$action" --arg text "$full" \
                 '{delta: $delta, model_id: $model_id, action: $action, text: $text}'
             ;;
@@ -360,7 +556,7 @@ if [[ -n "$CAPTURE_DIR" ]]; then
         # Removed
         while IFS=$'\n' read -r model_id; do
             [[ -z "$model_id" ]] && continue
-            render_post "$basename_df" "removed" "$model_id" \
+            render_post "$df" "removed" "$model_id" \
                 > "${CAPTURE_DIR}/${file_counter}.json"
             file_counter=$((file_counter + 1))
         done < <(jq -r '.removed | sort[]' "$df")
@@ -372,7 +568,7 @@ if [[ -n "$CAPTURE_DIR" ]]; then
             mid="$(echo "$line" | jq -r '.id')"
             old="$(echo "$line" | jq -r '.old_name')"
             new="$(echo "$line" | jq -r '.new_name')"
-            render_post "$basename_df" "changed" "$mid" "$old" "$new" \
+            render_post "$df" "changed" "$mid" "$old" "$new" \
                 > "${CAPTURE_DIR}/${file_counter}.json"
             file_counter=$((file_counter + 1))
         done < <(jq -c '.changed | sort_by(.id)[]' "$df")
@@ -380,7 +576,7 @@ if [[ -n "$CAPTURE_DIR" ]]; then
         # Added
         while IFS=$'\n' read -r model_id; do
             [[ -z "$model_id" ]] && continue
-            render_post "$basename_df" "added" "$model_id" \
+            render_post "$df" "added" "$model_id" \
                 > "${CAPTURE_DIR}/${file_counter}.json"
             file_counter=$((file_counter + 1))
         done < <(jq -r '.added | sort[]' "$df")
@@ -415,8 +611,15 @@ pds_record_body() {
     local did="$1"
     local text="$2"
     local created_at="$3"
-    jq -n --arg did "$did" --arg text "$text" --arg ts "$created_at" \
-        '{repo: $did, collection: "app.bsky.feed.post", record: {text: $text, createdAt: $ts}}'
+    local facets_json="${4:-}"
+    if [[ -n "$facets_json" && "$facets_json" != "[]" ]]; then
+        jq -n --arg did "$did" --arg text "$text" --arg ts "$created_at" \
+            --argjson facets "$facets_json" \
+            '{repo: $did, collection: "app.bsky.feed.post", record: {text: $text, createdAt: $ts, facets: $facets}}'
+    else
+        jq -n --arg did "$did" --arg text "$text" --arg ts "$created_at" \
+            '{repo: $did, collection: "app.bsky.feed.post", record: {text: $text, createdAt: $ts}}'
+    fi
 }
 
 pds_request() {
@@ -558,11 +761,12 @@ for df in "${eligible[@]}"; do
     # Removed (alphabetical)
     while IFS=$'\n' read -r model_id; do
         [[ -z "$model_id" ]] && continue
-        post_json="$(render_post "$basename_df" "removed" "$model_id")"
+        post_json="$(render_post "$df" "removed" "$model_id")"
         text="$(echo "$post_json" | jq -r '.text')"
+        facets="$(echo "$post_json" | jq -c '.facets // empty')"
         post_texts+=("$text")
         created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        record_body="$(pds_record_body "$DID" "$text" "$created_at")"
+        record_body="$(pds_record_body "$DID" "$text" "$created_at" "$facets")"
         if ! resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"; then
             echo "ERROR: createRecord request failed for $model_id" >&2
             exit 1
@@ -581,11 +785,12 @@ for df in "${eligible[@]}"; do
         mid="$(echo "$line" | jq -r '.id')"
         old="$(echo "$line" | jq -r '.old_name')"
         new="$(echo "$line" | jq -r '.new_name')"
-        post_json="$(render_post "$basename_df" "changed" "$mid" "$old" "$new")"
+        post_json="$(render_post "$df" "changed" "$mid" "$old" "$new")"
         text="$(echo "$post_json" | jq -r '.text')"
+        facets="$(echo "$post_json" | jq -c '.facets // empty')"
         post_texts+=("$text")
         created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        record_body="$(pds_record_body "$DID" "$text" "$created_at")"
+        record_body="$(pds_record_body "$DID" "$text" "$created_at" "$facets")"
         if ! resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"; then
             echo "ERROR: createRecord request failed for $mid" >&2
             exit 1
@@ -601,11 +806,12 @@ for df in "${eligible[@]}"; do
     # Added (alphabetical)
     while IFS=$'\n' read -r model_id; do
         [[ -z "$model_id" ]] && continue
-        post_json="$(render_post "$basename_df" "added" "$model_id")"
+        post_json="$(render_post "$df" "added" "$model_id")"
         text="$(echo "$post_json" | jq -r '.text')"
+        facets="$(echo "$post_json" | jq -c '.facets // empty')"
         post_texts+=("$text")
         created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        record_body="$(pds_record_body "$DID" "$text" "$created_at")"
+        record_body="$(pds_record_body "$DID" "$text" "$created_at" "$facets")"
         if ! resp="$(pds_request "com.atproto.repo.createRecord" "$request_counter" "$ACCESS_JWT" "$record_body")"; then
             echo "ERROR: createRecord request failed for $model_id" >&2
             exit 1
