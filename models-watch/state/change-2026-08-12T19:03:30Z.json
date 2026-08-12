@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-08-12T19:03:30Z",
+  "added": [],
+  "removed": [],
+  "changed": [
+    {
+      "id": "opencode-go/deepseek-v4-pro",
+      "old_name": "DeepSeek V4 Pro",
+      "new_name": "DeepSeek V4 Pro (New)"
+    }
+  ]
+}

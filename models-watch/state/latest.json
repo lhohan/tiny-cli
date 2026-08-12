@@ -612,7 +612,7 @@
     },
     "opencode-go/deepseek-v4-pro": {
       "id": "deepseek-v4-pro",
-      "name": "DeepSeek V4 Pro",
+      "name": "DeepSeek V4 Pro (New)",
       "description": "Flagship DeepSeek model for coding, reasoning, and agentic work",
       "family": "deepseek-thinking",
       "attachment": false,
@@ -847,7 +847,7 @@
     "opencode-go/grok-4.5": {
       "id": "grok-4.5",
       "name": "Grok 4.5",
-      "description": "xAI's latest Grok for chat, coding, agentic tools, and lower hallucination risk",
+      "description": "xAI's Grok model for chat, coding, agentic tools, and lower hallucination risk",
       "family": "grok",
       "attachment": true,
       "reasoning": true,
