@@ -162,9 +162,9 @@
         "output": 384000
       },
       "cost": {
-        "input": 0.14,
-        "output": 0.28,
-        "cache_read": 0.0028
+        "input": 0.22,
+        "output": 0.66,
+        "cache_read": 0.007
       }
     },
     "opencode-go/mimo-v2.5": {
@@ -305,9 +305,9 @@
         "output": 384000
       },
       "cost": {
-        "input": 0.435,
-        "output": 0.87,
-        "cache_read": 0.003625
+        "input": 0.66,
+        "output": 1.98,
+        "cache_read": 0.022
       }
     },
     "opencode-go/qwen3.5-plus": {
