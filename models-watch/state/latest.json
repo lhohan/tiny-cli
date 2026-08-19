@@ -356,7 +356,7 @@
     },
     "opencode-go/gpt-5.6-luna": {
       "id": "gpt-5.6-luna",
-      "name": "GPT-5.6 Luna (2x usage)",
+      "name": "GPT-5.6 Luna",
       "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
       "family": "gpt-luna",
       "attachment": true,
@@ -400,16 +400,16 @@
         "npm": "@ai-sdk/openai"
       },
       "cost": {
-        "input": 0.1,
-        "output": 0.6,
-        "cache_read": 0.01,
-        "cache_write": 0.125,
+        "input": 0.2,
+        "output": 1.2,
+        "cache_read": 0.02,
+        "cache_write": 0.25,
         "tiers": [
           {
-            "input": 0.2,
-            "output": 0.9,
-            "cache_read": 0.02,
-            "cache_write": 0.25,
+            "input": 0.4,
+            "output": 1.8,
+            "cache_read": 0.04,
+            "cache_write": 0.5,
             "tier": {
               "type": "context",
               "size": 272000
@@ -417,10 +417,10 @@
           }
         ],
         "context_over_200k": {
-          "input": 0.2,
-          "output": 0.9,
-          "cache_read": 0.02,
-          "cache_write": 0.25
+          "input": 0.4,
+          "output": 1.8,
+          "cache_read": 0.04,
+          "cache_write": 0.5
         }
       }
     },
@@ -705,6 +705,56 @@
           "cache_read": 0.12,
           "cache_write": 1.5
         }
+      }
+    },
+    "opencode-go/muse-spark-1.2": {
+      "id": "muse-spark-1.2",
+      "name": "Muse Spark 1.2",
+      "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
+      "family": "muse",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "structured_output": true,
+      "temperature": true,
+      "release_date": "2026-08-05",
+      "last_updated": "2026-08-05",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf",
+          "audio"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1048576,
+        "output": 131072
+      },
+      "provider": {
+        "npm": "@ai-sdk/openai"
+      },
+      "cost": {
+        "input": 0.1,
+        "output": 0.2,
+        "cache_read": 0.002
       }
     },
     "opencode-go/glm-5.3": {
