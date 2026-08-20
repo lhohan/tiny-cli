@@ -1797,6 +1797,51 @@
         "cache_read": 0
       }
     },
+    "opencode/x-preview-f-free": {
+      "id": "x-preview-f-free",
+      "name": "Ox Alpha Free",
+      "description": "Stealth reasoning model for coding, agentic tasks, and tool use",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "high",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "structured_output": true,
+      "temperature": true,
+      "release_date": "2026-08-21",
+      "last_updated": "2026-08-21",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 131072
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    },
     "opencode/ling-2.6-flash-free": {
       "id": "ling-2.6-flash-free",
       "name": "Ling 2.6 Flash Free",
