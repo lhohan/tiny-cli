@@ -1480,6 +1480,7 @@
         "context": 200000,
         "output": 128000
       },
+      "status": "deprecated",
       "cost": {
         "input": 0,
         "output": 0,
