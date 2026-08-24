@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-08-24T12:52:47Z",
+  "added": [
+    "opencode-go/longcat-2.0"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode-go/longcat-2.0": {
+      "id": "longcat-2.0",
+      "name": "LongCat-2.0",
+      "description": "Meituan LongCat-2.0, a reasoning model with tool calling and a 1M-token context window",
+      "family": "longcat",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "toggle"
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "temperature": true,
+      "release_date": "2026-06-30",
+      "last_updated": "2026-06-30",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 131072
+      },
+      "cost": {
+        "input": 0.3,
+        "output": 1.2,
+        "cache_read": 0.006
+      }
+    }
+  }
+}
