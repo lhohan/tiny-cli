@@ -810,6 +810,7 @@
         "context": 1000000,
         "output": 131072
       },
+      "status": "deprecated",
       "cost": {
         "input": 0,
         "output": 0,
@@ -1358,6 +1359,53 @@
         "input": 0.22,
         "output": 0.66,
         "cache_read": 0.007
+      }
+    },
+    "opencode-go/glm-5.3-flash": {
+      "id": "glm-5.3-flash",
+      "name": "GLM-5.3-Flash (2x usage)",
+      "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+      "family": "glm",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "high",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "structured_output": true,
+      "temperature": true,
+      "release_date": "2026-08-26",
+      "last_updated": "2026-08-26",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 131072
+      },
+      "cost": {
+        "input": 0.075,
+        "output": 0.25,
+        "cache_read": 0.015
       }
     },
     "opencode/ling-3.0-flash-free": {
@@ -2032,6 +2080,7 @@
         "context": 1000000,
         "output": 131072
       },
+      "status": "deprecated",
       "cost": {
         "input": 0,
         "output": 0,
