@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-08-28T21:48:04Z",
+  "added": [
+    "opencode-go/hy4-preview",
+    "opencode/ling-3.0-flash-fin-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode-go/hy4-preview": {
+      "id": "hy4-preview",
+      "name": "Hy4 preview",
+      "description": "A next-generation productivity model with significantly enhanced Agent and complex task execution capabilities.",
+      "family": "Hy",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "none",
+            "high"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "temperature": true,
+      "release_date": "2026-08-28",
+      "last_updated": "2026-08-28",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 1024000,
+        "output": 64000
+      },
+      "cost": {
+        "input": 0.834,
+        "output": 2.501,
+        "cache_read": 0.042
+      }
+    },
+    "opencode/ling-3.0-flash-fin-free": {
+      "id": "ling-3.0-flash-fin-free",
+      "name": "Ling 3.0 Flash Fin Free",
+      "description": "Finance-enhanced model for financial research, multi-step investment workflows, and long-horizon planning and execution",
+      "family": "ling",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "toggle"
+        }
+      ],
+      "tool_call": true,
+      "structured_output": false,
+      "temperature": true,
+      "release_date": "2026-08-27",
+      "last_updated": "2026-08-27",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 262144,
+        "output": 32768
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    }
+  }
+}
