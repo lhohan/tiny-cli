@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-08-30T04:14:53Z",
+  "added": [],
+  "removed": [],
+  "changed": [
+    {
+      "id": "opencode-go/hy3",
+      "old_name": "Hy3 (8x usage)",
+      "new_name": "Hy3"
+    }
+  ],
+  "models": {}
+}
