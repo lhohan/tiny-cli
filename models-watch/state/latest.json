@@ -163,7 +163,6 @@
         "context": 1048576,
         "output": 131072
       },
-      "status": "deprecated",
       "provider": {
         "npm": "@ai-sdk/openai"
       },
@@ -1369,7 +1368,8 @@
       "open_weights": true,
       "limit": {
         "context": 256000,
-        "output": 64000
+        "input": 192000,
+        "output": 128000
       },
       "cost": {
         "input": 0.14,
@@ -2170,6 +2170,7 @@
       "open_weights": true,
       "limit": {
         "context": 190000,
+        "input": 192000,
         "output": 64000
       },
       "status": "deprecated",
@@ -2495,7 +2496,6 @@
         "context": 1048576,
         "output": 131072
       },
-      "status": "deprecated",
       "provider": {
         "npm": "@ai-sdk/openai"
       },
