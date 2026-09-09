@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-09-09T16:06:19Z",
+  "added": [],
+  "removed": [],
+  "changed": [
+    {
+      "id": "opencode-go/glm-5.3-flash",
+      "old_name": "GLM-5.3-Flash (2x usage)",
+      "new_name": "GLM-5.3-Flash"
+    }
+  ],
+  "models": {}
+}
