@@ -2049,6 +2049,35 @@
         "cache_read": 0
       }
     },
+    "opencode/jev-1.13-free": {
+      "id": "jev-1.13-free",
+      "name": "Jev 1.13 Free",
+      "description": "System One model for fast, typed probabilistic decisions over text or structured state",
+      "attachment": false,
+      "reasoning": false,
+      "tool_call": false,
+      "structured_output": true,
+      "temperature": false,
+      "release_date": "2026-09-15",
+      "last_updated": "2026-09-15",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 64000,
+        "output": 0
+      },
+      "cost": {
+        "input": 0,
+        "output": 0
+      }
+    },
     "opencode/muse-spark-1.2-contributor-free": {
       "id": "muse-spark-1.2-contributor-free",
       "name": "Muse Spark 1.2 Free",
