@@ -250,7 +250,6 @@
         "field": "reasoning_content"
       },
       "temperature": true,
-      "knowledge": "2026-09-22",
       "release_date": "2026-09-22",
       "last_updated": "2026-09-22",
       "modalities": {
@@ -258,14 +257,13 @@
           "text",
           "image",
           "audio",
-          "video",
-          "pdf"
+          "video"
         ],
         "output": [
           "text"
         ]
       },
-      "open_weights": false,
+      "open_weights": true,
       "limit": {
         "context": 1048576,
         "output": 131072
@@ -1176,7 +1174,6 @@
         "field": "reasoning_content"
       },
       "temperature": true,
-      "knowledge": "2026-09-22",
       "release_date": "2026-09-22",
       "last_updated": "2026-09-22",
       "modalities": {
@@ -1184,14 +1181,13 @@
           "text",
           "image",
           "audio",
-          "video",
-          "pdf"
+          "video"
         ],
         "output": [
           "text"
         ]
       },
-      "open_weights": false,
+      "open_weights": true,
       "limit": {
         "context": 1048576,
         "output": 131072
@@ -2037,7 +2033,6 @@
         "field": "reasoning_content"
       },
       "temperature": true,
-      "knowledge": "2026-09-22",
       "release_date": "2026-09-22",
       "last_updated": "2026-09-22",
       "modalities": {
@@ -2045,14 +2040,13 @@
           "text",
           "image",
           "audio",
-          "video",
-          "pdf"
+          "video"
         ],
         "output": [
           "text"
         ]
       },
-      "open_weights": false,
+      "open_weights": true,
       "limit": {
         "context": 200000,
         "output": 32000
