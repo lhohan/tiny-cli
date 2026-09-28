@@ -35,7 +35,8 @@
         "input": 0.435,
         "output": 0.87,
         "cache_read": 0.003625
-      }
+      },
+      "canonical_model_id": "xiaomi/mimo-v2.6-pro"
     },
     "opencode-go/qwen3.7-max": {
       "id": "qwen3.7-max",
@@ -70,6 +71,7 @@
         "context": 1000000,
         "output": 65536
       },
+      "status": "deprecated",
       "cost": {
         "input": 2.5,
         "output": 7.5,
@@ -177,7 +179,8 @@
           "output": 12,
           "cache_read": 1
         }
-      }
+      },
+      "canonical_model_id": "xai/grok-4.7"
     },
     "opencode-go/longcat-2.5-preview-free": {
       "id": "longcat-2.5-preview-free",
@@ -216,46 +219,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
-    },
-    "opencode-go/mimo-v2-omni": {
-      "id": "mimo-v2-omni",
-      "name": "MiMo V2 Omni",
-      "description": "Legacy model retained for compatibility with older integrations",
-      "family": "mimo-v2-omni",
-      "attachment": true,
-      "reasoning": true,
-      "reasoning_options": [],
-      "tool_call": true,
-      "interleaved": {
-        "field": "reasoning_content"
       },
-      "temperature": true,
-      "knowledge": "2024-12",
-      "release_date": "2026-03-18",
-      "last_updated": "2026-03-18",
-      "modalities": {
-        "input": [
-          "text",
-          "image",
-          "audio",
-          "pdf"
-        ],
-        "output": [
-          "text"
-        ]
-      },
-      "open_weights": true,
-      "limit": {
-        "context": 262144,
-        "output": 128000
-      },
-      "status": "deprecated",
-      "cost": {
-        "input": 0.4,
-        "output": 2,
-        "cache_read": 0.08
-      }
+      "canonical_model_id": "meituan/longcat-2.5-preview"
     },
     "opencode-go/glm-5.3-flash": {
       "id": "glm-5.3-flash",
@@ -302,7 +267,8 @@
         "input": 0.15,
         "output": 0.5,
         "cache_read": 0.03
-      }
+      },
+      "canonical_model_id": "zhipuai/glm-5.3-flash"
     },
     "opencode-go/qwen3.8-max": {
       "id": "qwen3.8-max",
@@ -353,7 +319,8 @@
         "output": 6,
         "cache_read": 0.25,
         "cache_write": 2.5
-      }
+      },
+      "canonical_model_id": "alibaba/qwen3.8-max"
     },
     "opencode-go/kimi-k3": {
       "id": "kimi-k3",
@@ -397,87 +364,8 @@
         "input": 3,
         "output": 15,
         "cache_read": 0.3
-      }
-    },
-    "opencode-go/qwen3.5-plus": {
-      "id": "qwen3.5-plus",
-      "name": "Qwen3.5 Plus",
-      "description": "Legacy model retained for compatibility with older integrations",
-      "family": "qwen3.5",
-      "attachment": true,
-      "reasoning": true,
-      "reasoning_options": [
-        {
-          "type": "toggle"
-        },
-        {
-          "type": "budget_tokens",
-          "max": 81920
-        }
-      ],
-      "tool_call": true,
-      "temperature": true,
-      "knowledge": "2025-04",
-      "release_date": "2026-02-16",
-      "last_updated": "2026-02-16",
-      "modalities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ]
       },
-      "open_weights": false,
-      "limit": {
-        "context": 262144,
-        "output": 65536
-      },
-      "status": "deprecated",
-      "cost": {
-        "input": 0.2,
-        "output": 1.2,
-        "cache_read": 0.02,
-        "cache_write": 0.25
-      }
-    },
-    "opencode-go/glm-5": {
-      "id": "glm-5",
-      "name": "GLM-5",
-      "description": "Legacy model retained for compatibility with older integrations",
-      "family": "glm",
-      "attachment": false,
-      "reasoning": true,
-      "reasoning_options": [],
-      "tool_call": true,
-      "interleaved": {
-        "field": "reasoning_content"
-      },
-      "temperature": true,
-      "knowledge": "2025-04",
-      "release_date": "2026-02-11",
-      "last_updated": "2026-02-11",
-      "modalities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ]
-      },
-      "open_weights": true,
-      "limit": {
-        "context": 202752,
-        "output": 32768
-      },
-      "status": "deprecated",
-      "cost": {
-        "input": 1,
-        "output": 3.2,
-        "cache_read": 0.2
-      }
+      "canonical_model_id": "moonshotai/kimi-k3"
     },
     "opencode-go/deepseek-v4.1-flash": {
       "id": "deepseek-v4.1-flash",
@@ -523,44 +411,8 @@
         "input": 0.15,
         "output": 0.6,
         "cache_read": 0.003
-      }
-    },
-    "opencode-go/minimax-m2.5": {
-      "id": "minimax-m2.5",
-      "name": "MiniMax-M2.5",
-      "description": "Legacy model retained for compatibility with older integrations",
-      "family": "minimax-m2.5",
-      "attachment": false,
-      "reasoning": true,
-      "reasoning_options": [],
-      "tool_call": true,
-      "temperature": true,
-      "knowledge": "2025-01",
-      "release_date": "2026-02-12",
-      "last_updated": "2026-02-12",
-      "modalities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ]
       },
-      "open_weights": true,
-      "limit": {
-        "context": 204800,
-        "output": 65536
-      },
-      "status": "deprecated",
-      "provider": {
-        "npm": "@ai-sdk/anthropic"
-      },
-      "cost": {
-        "input": 0.3,
-        "output": 1.2,
-        "cache_read": 0.06,
-        "cache_write": 0.375
-      }
+      "canonical_model_id": "deepseek/deepseek-v4.1-flash"
     },
     "opencode-go/deepseek-v4-flash-vision-exp": {
       "id": "deepseek-v4-flash-vision-exp",
@@ -608,7 +460,8 @@
         "input": 0.15,
         "output": 0.6,
         "cache_read": 0.003
-      }
+      },
+      "canonical_model_id": "deepseek/deepseek-v4-flash-vision-exp"
     },
     "opencode-go/kimi-k2.6": {
       "id": "kimi-k2.6",
@@ -641,6 +494,7 @@
         "context": 262144,
         "output": 65536
       },
+      "status": "deprecated",
       "cost": {
         "input": 0.95,
         "output": 4,
@@ -683,53 +537,8 @@
         "input": 0.3,
         "output": 1.2,
         "cache_read": 0.006
-      }
-    },
-    "opencode-go/ox-alpha-free": {
-      "id": "ox-alpha-free",
-      "name": "Ox Alpha Free (Unlimited)",
-      "description": "Stealth reasoning model for coding, agentic tasks, and tool use",
-      "attachment": true,
-      "reasoning": true,
-      "reasoning_options": [
-        {
-          "type": "effort",
-          "values": [
-            "low",
-            "high",
-            "max"
-          ]
-        }
-      ],
-      "tool_call": true,
-      "interleaved": {
-        "field": "reasoning_content"
       },
-      "structured_output": true,
-      "temperature": true,
-      "release_date": "2026-08-21",
-      "last_updated": "2026-08-21",
-      "modalities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ]
-      },
-      "open_weights": false,
-      "limit": {
-        "context": 1000000,
-        "output": 131072
-      },
-      "status": "deprecated",
-      "cost": {
-        "input": 0,
-        "output": 0,
-        "cache_read": 0
-      }
+      "canonical_model_id": "meituan/longcat-2.0"
     },
     "opencode-go/grok-4.5": {
       "id": "grok-4.5",
@@ -791,97 +600,8 @@
           "output": 12,
           "cache_read": 0.6
         }
-      }
-    },
-    "opencode-go/kimi-k2.5": {
-      "id": "kimi-k2.5",
-      "name": "Kimi K2.5",
-      "description": "Legacy model retained for compatibility with older integrations",
-      "family": "kimi-k2",
-      "attachment": true,
-      "reasoning": true,
-      "reasoning_options": [],
-      "tool_call": true,
-      "interleaved": {
-        "field": "reasoning_content"
       },
-      "temperature": true,
-      "knowledge": "2024-10",
-      "release_date": "2026-01-27",
-      "last_updated": "2026-01-27",
-      "modalities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ]
-      },
-      "open_weights": true,
-      "limit": {
-        "context": 262144,
-        "output": 65536
-      },
-      "status": "deprecated",
-      "cost": {
-        "input": 0.6,
-        "output": 3,
-        "cache_read": 0.1
-      }
-    },
-    "opencode-go/mimo-v2-pro": {
-      "id": "mimo-v2-pro",
-      "name": "MiMo V2 Pro",
-      "description": "Legacy model retained for compatibility with older integrations",
-      "family": "mimo-v2-pro",
-      "attachment": true,
-      "reasoning": true,
-      "reasoning_options": [],
-      "tool_call": true,
-      "interleaved": {
-        "field": "reasoning_content"
-      },
-      "temperature": true,
-      "knowledge": "2024-12",
-      "release_date": "2026-03-18",
-      "last_updated": "2026-03-18",
-      "modalities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ]
-      },
-      "open_weights": true,
-      "limit": {
-        "context": 1048576,
-        "output": 128000
-      },
-      "status": "deprecated",
-      "cost": {
-        "input": 1,
-        "output": 3,
-        "cache_read": 0.2,
-        "tiers": [
-          {
-            "input": 2,
-            "output": 6,
-            "cache_read": 0.4,
-            "tier": {
-              "type": "context",
-              "size": 256000
-            }
-          }
-        ],
-        "context_over_200k": {
-          "input": 2,
-          "output": 6,
-          "cache_read": 0.4
-        }
-      }
+      "canonical_model_id": "xai/grok-4.5"
     },
     "opencode-go/minimax-m2.7": {
       "id": "minimax-m2.7",
@@ -1036,7 +756,8 @@
         "input": 0.14,
         "output": 0.28,
         "cache_read": 0.0028
-      }
+      },
+      "canonical_model_id": "xiaomi/mimo-v2.6-flash"
     },
     "opencode-go/minimax-m3": {
       "id": "minimax-m3",
@@ -1163,7 +884,8 @@
           "cache_read": 0.04,
           "cache_write": 0.5
         }
-      }
+      },
+      "canonical_model_id": "openai/gpt-5.6-luna"
     },
     "opencode-go/qwen3.8-flash": {
       "id": "qwen3.8-flash",
@@ -1216,7 +938,8 @@
         "output": 0.47,
         "cache_read": 0.016,
         "cache_write": 0.2
-      }
+      },
+      "canonical_model_id": "alibaba/qwen3.8-flash"
     },
     "opencode-go/glm-5.2": {
       "id": "glm-5.2",
@@ -1259,7 +982,8 @@
         "input": 1.4,
         "output": 4.4,
         "cache_read": 0.26
-      }
+      },
+      "canonical_model_id": "zhipuai/glm-5.2"
     },
     "opencode-go/hy3": {
       "id": "hy3",
@@ -1300,86 +1024,8 @@
         "input": 0.14,
         "output": 0.58,
         "cache_read": 0.035
-      }
-    },
-    "opencode-go/glm-5.1": {
-      "id": "glm-5.1",
-      "name": "GLM-5.1",
-      "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
-      "family": "glm",
-      "attachment": false,
-      "reasoning": true,
-      "reasoning_options": [],
-      "tool_call": true,
-      "interleaved": {
-        "field": "reasoning_content"
       },
-      "temperature": true,
-      "knowledge": "2025-04",
-      "release_date": "2026-04-07",
-      "last_updated": "2026-04-07",
-      "modalities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ]
-      },
-      "open_weights": true,
-      "limit": {
-        "context": 202752,
-        "output": 32768
-      },
-      "cost": {
-        "input": 1.4,
-        "output": 4.4,
-        "cache_read": 0.26
-      }
-    },
-    "opencode-go/omen-alpha": {
-      "id": "omen-alpha",
-      "name": "Omen Alpha",
-      "description": "oH man anothEr aLPha ModEl",
-      "attachment": true,
-      "reasoning": true,
-      "reasoning_options": [
-        {
-          "type": "effort",
-          "values": [
-            "low",
-            "high"
-          ]
-        }
-      ],
-      "tool_call": true,
-      "interleaved": {
-        "field": "reasoning_content"
-      },
-      "structured_output": true,
-      "temperature": true,
-      "release_date": "2026-09-04",
-      "last_updated": "2026-09-04",
-      "modalities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ]
-      },
-      "open_weights": false,
-      "limit": {
-        "context": 500000,
-        "output": 128000
-      },
-      "status": "deprecated",
-      "cost": {
-        "input": 0.2,
-        "output": 0.66,
-        "cache_read": 0.04
-      }
+      "canonical_model_id": "tencent/hy3"
     },
     "opencode-go/muse-spark-1.2-contributor": {
       "id": "muse-spark-1.2-contributor",
@@ -1429,7 +1075,8 @@
         "input": 0.1,
         "output": 0.2,
         "cache_read": 0.002
-      }
+      },
+      "canonical_model_id": "meta/muse-spark-1.2"
     },
     "opencode-go/gpt-6-luna": {
       "id": "gpt-6-luna",
@@ -1499,7 +1146,8 @@
           "cache_read": 0.02,
           "cache_write": 0.25
         }
-      }
+      },
+      "canonical_model_id": "openai/gpt-6-luna"
     },
     "opencode-go/deepseek-v4-pro": {
       "id": "deepseek-v4-pro",
@@ -1581,6 +1229,7 @@
         "context": 1000000,
         "output": 65536
       },
+      "status": "deprecated",
       "cost": {
         "input": 0.5,
         "output": 3,
@@ -1643,7 +1292,8 @@
         "input": 0.834,
         "output": 2.501,
         "cache_read": 0.042
-      }
+      },
+      "canonical_model_id": "tencent/hy4-preview"
     },
     "opencode-go/muse-spark-1.3-contributor": {
       "id": "muse-spark-1.3-contributor",
@@ -1737,7 +1387,8 @@
         "input": 1.4,
         "output": 4.4,
         "cache_read": 0.26
-      }
+      },
+      "canonical_model_id": "zhipuai/glm-5.3"
     },
     "opencode-go/kimi-k2.7-code": {
       "id": "kimi-k2.7-code",
@@ -1775,7 +1426,8 @@
         "input": 0.95,
         "output": 4,
         "cache_read": 0.19
-      }
+      },
+      "canonical_model_id": "moonshotai/kimi-k2.7-code"
     },
     "opencode-go/grok-4.6": {
       "id": "grok-4.6",
@@ -1838,7 +1490,8 @@
           "output": 12,
           "cache_read": 1
         }
-      }
+      },
+      "canonical_model_id": "xai/grok-4.6"
     },
     "opencode-go/qwen3.7-plus": {
       "id": "qwen3.7-plus",
@@ -1943,7 +1596,8 @@
         "input": 0.15,
         "output": 0.6,
         "cache_read": 0.003
-      }
+      },
+      "canonical_model_id": "deepseek/deepseek-v4-flash-0731"
     },
     "opencode/ling-3.0-flash-fin-free": {
       "id": "ling-3.0-flash-fin-free",
@@ -1979,7 +1633,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "inclusionai/ling-3.0-flash-fin"
     },
     "opencode/qwen3.6-plus-free": {
       "id": "qwen3.6-plus-free",
@@ -2112,7 +1767,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "meta/muse-spark-1.2"
     },
     "opencode/glm-5-free": {
       "id": "glm-5-free",
@@ -2183,7 +1839,8 @@
       "cost": {
         "input": 0,
         "output": 0
-      }
+      },
+      "canonical_model_id": "arcee-ai/trinity-large-preview"
     },
     "opencode/longcat-2.5-preview-free": {
       "id": "longcat-2.5-preview-free",
@@ -2222,7 +1879,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "meituan/longcat-2.5-preview"
     },
     "opencode/ling-3.0-tiny-free": {
       "id": "ling-3.0-tiny-free",
@@ -2378,7 +2036,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "poolside/laguna-s-2.1"
     },
     "opencode/minimax-m3-free": {
       "id": "minimax-m3-free",
@@ -2530,7 +2189,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "meituan/longcat-2.0"
     },
     "opencode/hy3-preview-free": {
       "id": "hy3-preview-free",
@@ -2646,7 +2306,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "nvidia/nemotron-3-super-120b-a12b"
     },
     "opencode/minimax-m2.1-free": {
       "id": "minimax-m2.1-free",
@@ -2719,7 +2380,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "xiaomi/mimo-v2.6-flash"
     },
     "opencode/nemotron-3-ultra-free": {
       "id": "nemotron-3-ultra-free",
@@ -2754,7 +2416,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "nvidia/nemotron-3-ultra-550b-a55b"
     },
     "opencode/mimo-v2.5-free": {
       "id": "mimo-v2.5-free",
@@ -2903,7 +2566,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "deepseek/deepseek-v4-flash-0731"
     },
     "opencode/hy3-free": {
       "id": "hy3-free",
@@ -2952,7 +2616,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "tencent/hy3"
     },
     "opencode/nemotron-3.5-lightning-free": {
       "id": "nemotron-3.5-lightning-free",
@@ -2987,7 +2652,8 @@
         "input": 0,
         "output": 0,
         "cache_read": 0
-      }
+      },
+      "canonical_model_id": "nvidia/nemotron-3.5-lightning"
     },
     "opencode/mimo-v2-omni-free": {
       "id": "mimo-v2-omni-free",
@@ -3112,7 +2778,8 @@
       "cost": {
         "input": 0,
         "output": 0
-      }
+      },
+      "canonical_model_id": "cohere/north-mini-code-1-0"
     },
     "opencode/big-pickle": {
       "id": "big-pickle",

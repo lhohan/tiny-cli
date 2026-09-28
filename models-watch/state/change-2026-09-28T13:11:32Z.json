@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-09-28T13:11:32Z",
+  "added": [],
+  "removed": [
+    "opencode-go/glm-5",
+    "opencode-go/glm-5.1",
+    "opencode-go/kimi-k2.5",
+    "opencode-go/mimo-v2-omni",
+    "opencode-go/mimo-v2-pro",
+    "opencode-go/minimax-m2.5",
+    "opencode-go/omen-alpha",
+    "opencode-go/ox-alpha-free",
+    "opencode-go/qwen3.5-plus"
+  ],
+  "changed": [],
+  "models": {}
+}
