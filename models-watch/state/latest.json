@@ -1809,6 +1809,43 @@
       },
       "canonical_model_id": "meta/muse-spark-1.2"
     },
+    "opencode/ling-3.1-flash-free": {
+      "id": "ling-3.1-flash-free",
+      "name": "Ling 3.1 Flash Free",
+      "description": "Efficient model for low-latency assistance, extraction, and routine automation",
+      "family": "ling",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "toggle"
+        }
+      ],
+      "tool_call": true,
+      "structured_output": false,
+      "temperature": true,
+      "release_date": "2026-09-29",
+      "last_updated": "2026-09-29",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 262144,
+        "output": 32768
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      },
+      "canonical_model_id": "inclusionai/ling-3.1-flash"
+    },
     "opencode/glm-5-free": {
       "id": "glm-5-free",
       "name": "GLM-5 Free",
