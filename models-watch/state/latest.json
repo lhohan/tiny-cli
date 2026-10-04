@@ -314,6 +314,9 @@
         "context": 1000000,
         "output": 131072
       },
+      "provider": {
+        "npm": "@ai-sdk/anthropic"
+      },
       "cost": {
         "input": 2,
         "output": 6,
@@ -1527,6 +1530,9 @@
       "limit": {
         "context": 1000000,
         "output": 65536
+      },
+      "provider": {
+        "npm": "@ai-sdk/anthropic"
       },
       "cost": {
         "input": 0.4,
