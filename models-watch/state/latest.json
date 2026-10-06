@@ -682,6 +682,7 @@
         "input": 524288,
         "output": 524288
       },
+      "status": "deprecated",
       "cost": {
         "input": 0,
         "output": 0,
