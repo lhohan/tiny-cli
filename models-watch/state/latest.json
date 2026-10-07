@@ -2211,6 +2211,43 @@
         "cache_read": 0
       }
     },
+    "opencode/exo-free": {
+      "id": "exo-free",
+      "name": "Exo Free",
+      "description": "Free-tier preview reasoning model with text and image input and tool use",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "high"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "temperature": false,
+      "release_date": "2026-10-06",
+      "last_updated": "2026-10-06",
+      "modalities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1048576,
+        "output": 131072
+      },
+      "cost": {
+        "input": 0,
+        "output": 0
+      }
+    },
     "opencode/minimax-m2.5-free": {
       "id": "minimax-m2.5-free",
       "name": "MiniMax-M2.5 Free",
