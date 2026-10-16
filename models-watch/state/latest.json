@@ -31,6 +31,9 @@
         "context": 1048576,
         "output": 131072
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 0.435,
         "output": 0.87,
@@ -69,6 +72,9 @@
       "limit": {
         "context": 1000000,
         "output": 128000
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.14,
@@ -116,7 +122,8 @@
         "output": 500000
       },
       "provider": {
-        "npm": "@ai-sdk/openai"
+        "npm": "@ai-sdk/openai",
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 2,
@@ -174,6 +181,9 @@
         "context": 1000000,
         "output": 131072
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -222,7 +232,8 @@
         "output": 65536
       },
       "provider": {
-        "npm": "@ai-sdk/google"
+        "npm": "@ai-sdk/google",
+        "api": "https://opencode.ai/inference/go/google/v1beta"
       },
       "cost": {
         "input": 4,
@@ -272,6 +283,9 @@
       "limit": {
         "context": 1000000,
         "output": 131072
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.15,
@@ -325,7 +339,8 @@
         "output": 131072
       },
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/go/anthropic/v1"
       },
       "cost": {
         "input": 2,
@@ -372,6 +387,9 @@
       "limit": {
         "context": 1048576,
         "output": 131072
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 3,
@@ -420,6 +438,9 @@
         "context": 1000000,
         "output": 384000
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 0.15,
         "output": 0.6,
@@ -466,6 +487,9 @@
         "input": 1000000,
         "output": 65536
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 1,
         "output": 2.7,
@@ -504,6 +528,9 @@
       "limit": {
         "context": 1000000,
         "output": 131072
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.3,
@@ -551,6 +578,9 @@
         "context": 1048576,
         "output": 131072
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -597,6 +627,9 @@
         "input": 524288,
         "output": 524288
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 0.15,
         "output": 0.6,
@@ -632,7 +665,8 @@
       },
       "status": "deprecated",
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/go/anthropic/v1"
       },
       "cost": {
         "input": 0.3,
@@ -670,6 +704,9 @@
         "context": 1048576,
         "output": 128000
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 0.435,
         "output": 0.87,
@@ -706,6 +743,9 @@
       "limit": {
         "context": 1048576,
         "output": 131072
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.14,
@@ -747,7 +787,8 @@
         "output": 131072
       },
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/go/anthropic/v1"
       },
       "cost": {
         "input": 0.3,
@@ -814,7 +855,8 @@
         "output": 128000
       },
       "provider": {
-        "npm": "@ai-sdk/openai"
+        "npm": "@ai-sdk/openai",
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.2,
@@ -886,7 +928,8 @@
         "output": 131072
       },
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/go/anthropic/v1"
       },
       "cost": {
         "input": 0.15,
@@ -933,6 +976,9 @@
         "context": 1000000,
         "output": 131072
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 1.4,
         "output": 4.4,
@@ -974,6 +1020,9 @@
         "context": 256000,
         "input": 192000,
         "output": 128000
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.14,
@@ -1024,7 +1073,8 @@
         "output": 131072
       },
       "provider": {
-        "npm": "@ai-sdk/openai"
+        "npm": "@ai-sdk/openai",
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.1,
@@ -1077,7 +1127,8 @@
         "output": 128000
       },
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/go/anthropic/v1"
       },
       "cost": {
         "input": 0.1,
@@ -1142,7 +1193,8 @@
         "output": 128000
       },
       "provider": {
-        "npm": "@ai-sdk/openai"
+        "npm": "@ai-sdk/openai",
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.1,
@@ -1208,6 +1260,9 @@
         "context": 1000000,
         "output": 384000
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 0.66,
         "output": 1.98,
@@ -1246,6 +1301,9 @@
       "limit": {
         "context": 1024000,
         "output": 64000
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.834,
@@ -1296,7 +1354,8 @@
         "output": 131072
       },
       "provider": {
-        "npm": "@ai-sdk/openai"
+        "npm": "@ai-sdk/openai",
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.1,
@@ -1344,6 +1403,9 @@
         "output": 65536
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -1389,6 +1451,9 @@
         "context": 1000000,
         "output": 131072
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
       "cost": {
         "input": 1.4,
         "output": 4.4,
@@ -1427,6 +1492,9 @@
       "limit": {
         "context": 262144,
         "output": 262144
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
       },
       "cost": {
         "input": 0.95,
@@ -1471,7 +1539,8 @@
         "output": 65536
       },
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/go/anthropic/v1"
       },
       "cost": {
         "input": 0.4,
@@ -1529,6 +1598,9 @@
         "output": 32768
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -1571,6 +1643,9 @@
         "output": 131072
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0
@@ -1614,7 +1689,8 @@
       },
       "status": "deprecated",
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/anthropic/v1"
       },
       "cost": {
         "input": 0,
@@ -1652,6 +1728,9 @@
         "output": 64000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -1701,7 +1780,8 @@
       },
       "status": "deprecated",
       "provider": {
-        "npm": "@ai-sdk/openai"
+        "npm": "@ai-sdk/openai",
+        "api": "https://opencode.ai/inference/openai/v1"
       },
       "cost": {
         "input": 0,
@@ -1741,6 +1821,9 @@
         "output": 32768
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -1782,6 +1865,9 @@
         "output": 131072
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -1814,6 +1900,9 @@
         "output": 131072
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0
@@ -1853,6 +1942,9 @@
         "context": 1000000,
         "output": 131072
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -1887,6 +1979,9 @@
         "output": 32768
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0
@@ -1928,6 +2023,9 @@
         "output": 262144
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -1968,6 +2066,9 @@
         "output": 131072
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2010,6 +2111,9 @@
         "output": 32000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2051,7 +2155,8 @@
       },
       "status": "deprecated",
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/anthropic/v1"
       },
       "cost": {
         "input": 0,
@@ -2092,6 +2197,9 @@
         "output": 131072
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0
@@ -2125,7 +2233,8 @@
       },
       "status": "deprecated",
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/anthropic/v1"
       },
       "cost": {
         "input": 0,
@@ -2172,6 +2281,9 @@
         "context": 1048576,
         "output": 131072
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2208,6 +2320,9 @@
         "output": 66000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0
@@ -2246,6 +2361,9 @@
         "output": 131072
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2280,6 +2398,9 @@
         "output": 64000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2326,11 +2447,63 @@
         "input": 524288,
         "output": 524288
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
         "cache_read": 0,
         "cache_write": 0
+      }
+    },
+    "opencode/ll-alpha-free": {
+      "id": "ll-alpha-free",
+      "name": "LL Alpha Free",
+      "description": "Best in class local model",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "structured_output": true,
+      "temperature": true,
+      "knowledge": "2026-06",
+      "release_date": "2026-10-15",
+      "last_updated": "2026-10-15",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 262144,
+        "output": 65536
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
       }
     },
     "opencode/nemotron-3-super-free": {
@@ -2363,6 +2536,9 @@
         "output": 128000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2398,7 +2574,8 @@
       },
       "status": "deprecated",
       "provider": {
-        "npm": "@ai-sdk/anthropic"
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/anthropic/v1"
       },
       "cost": {
         "input": 0,
@@ -2437,6 +2614,9 @@
         "context": 200000,
         "output": 32000
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2472,6 +2652,9 @@
       "limit": {
         "context": 1000000,
         "output": 128000
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
       },
       "cost": {
         "input": 0,
@@ -2513,6 +2696,9 @@
         "output": 32000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2545,6 +2731,9 @@
         "output": 256000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2578,10 +2767,64 @@
         "output": 32800
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0
       }
+    },
+    "opencode/glm-5.3-flash-free": {
+      "id": "glm-5.3-flash-free",
+      "name": "GLM-5.3-Flash Free",
+      "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+      "family": "glm-flash",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "high",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "structured_output": true,
+      "temperature": true,
+      "release_date": "2026-08-26",
+      "last_updated": "2026-08-26",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 200000,
+        "output": 32000
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      },
+      "canonical_model_id": "zhipuai/glm-5.3-flash"
     },
     "opencode/deepseek-v4-flash-free": {
       "id": "deepseek-v4-flash-free",
@@ -2623,6 +2866,9 @@
         "output": 128000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2673,6 +2919,9 @@
         "output": 64000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2708,6 +2957,9 @@
       "limit": {
         "context": 262144,
         "output": 262144
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
       },
       "cost": {
         "input": 0,
@@ -2758,6 +3010,9 @@
         "input": 1048576,
         "output": 131072
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2798,6 +3053,9 @@
         "output": 64000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2844,6 +3102,9 @@
         "context": 200000,
         "output": 32000
       },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2887,6 +3148,9 @@
         "output": 32768
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -2932,6 +3196,9 @@
         "output": 64000
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0
@@ -2968,6 +3235,9 @@
         "context": 200000,
         "input": 160000,
         "output": 32000
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
       },
       "cost": {
         "input": 0,
@@ -3006,6 +3276,9 @@
         "output": 65536
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -3052,6 +3325,9 @@
         "output": 65536
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -3099,6 +3375,9 @@
         "output": 131072
       },
       "status": "deprecated",
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
       "cost": {
         "input": 0,
         "output": 0,
@@ -3147,7 +3426,8 @@
         "output": 131072
       },
       "provider": {
-        "npm": "@ai-sdk/openai"
+        "npm": "@ai-sdk/openai",
+        "api": "https://opencode.ai/inference/openai/v1"
       },
       "cost": {
         "input": 0,

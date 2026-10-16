@@ -1,0 +1,111 @@
+{
+  "timestamp": "2026-10-16T10:55:47Z",
+  "added": [
+    "opencode/glm-5.3-flash-free",
+    "opencode/ll-alpha-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode/glm-5.3-flash-free": {
+      "id": "glm-5.3-flash-free",
+      "name": "GLM-5.3-Flash Free",
+      "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+      "family": "glm-flash",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "high",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "structured_output": true,
+      "temperature": true,
+      "release_date": "2026-08-26",
+      "last_updated": "2026-08-26",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 200000,
+        "output": 32000
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      },
+      "canonical_model_id": "zhipuai/glm-5.3-flash"
+    },
+    "opencode/ll-alpha-free": {
+      "id": "ll-alpha-free",
+      "name": "LL Alpha Free",
+      "description": "Best in class local model",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "structured_output": true,
+      "temperature": true,
+      "knowledge": "2026-06",
+      "release_date": "2026-10-15",
+      "last_updated": "2026-10-15",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 262144,
+        "output": 65536
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    }
+  }
+}
