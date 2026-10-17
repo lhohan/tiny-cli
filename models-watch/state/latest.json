@@ -2550,6 +2550,7 @@
         "context": 262144,
         "output": 65536
       },
+      "status": "deprecated",
       "provider": {
         "api": "https://opencode.ai/inference/openai/v1"
       },
@@ -3529,6 +3530,7 @@
         "context": 1048576,
         "output": 131072
       },
+      "status": "deprecated",
       "provider": {
         "npm": "@ai-sdk/openai",
         "api": "https://opencode.ai/inference/openai/v1"
