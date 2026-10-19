@@ -65,7 +65,8 @@
     "change-2026-10-15T16:30:01Z.json": "f2306be75e23e11254708aa188a70afaa11faa6bb929c6ae10fcb769e0947de0",
     "change-2026-10-16T03:36:17Z.json": "f557d0db8116d5b23a7dd21f7a356ca0024a4fddd43359d80733b99bcc3620b9",
     "change-2026-10-16T10:55:47Z.json": "201cd18956ccc5826c9f946d6e68be7c4f2582cbf0c7f1d93106f3ccef67355c",
-    "change-2026-10-16T16:15:25Z.json": "09e069bcf754d9aa0a02a16aa6eb7ffc871ebc46df8af30c3f760811cf8fb63d"
+    "change-2026-10-16T16:15:25Z.json": "09e069bcf754d9aa0a02a16aa6eb7ffc871ebc46df8af30c3f760811cf8fb63d",
+    "change-2026-10-19T12:27:31Z.json": "6a3860d1cb8a5726b25a7423811944842bee99a63cb26376a891abf78e0a61ba"
   },
   "skipped": {
     "change-2026-04-29T12:16:38Z.json": "pre-provider-prefix history",
