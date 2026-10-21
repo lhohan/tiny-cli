@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-10-21T21:22:12Z",
+  "added": [
+    "opencode/flint-40b-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode/flint-40b-free": {
+      "id": "flint-40b-free",
+      "name": "Flint 40B Free",
+      "description": "Open-weight mixture-of-experts model with about 2.5B active parameters for local coding agents",
+      "family": "flint",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "structured_output": true,
+      "temperature": true,
+      "knowledge": "2026-06",
+      "release_date": "2026-10-21",
+      "last_updated": "2026-10-21",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 262144,
+        "output": 65536
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      },
+      "canonical_model_id": "recursive/flint"
+    }
+  }
+}
