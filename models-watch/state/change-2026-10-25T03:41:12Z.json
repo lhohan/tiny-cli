@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-10-25T03:41:12Z",
+  "added": [
+    "opencode-go/iceman-contributor-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode-go/iceman-contributor-free": {
+      "id": "iceman-contributor-free",
+      "name": "Iceman Contributor Free",
+      "description": "Stealth model, free for a limited time",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [],
+      "tool_call": true,
+      "release_date": "2026-10-24",
+      "last_updated": "2026-10-24",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 262144,
+        "output": 131072
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    }
+  }
+}
