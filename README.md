@@ -9,3 +9,5 @@ A collection of small, standalone command-line tools and scripts.
 - [`skill-sync`](skill-sync) – syncs selected local skills into `.agents/skills` based on configured source roots; supports discovery (`--list-all`), machine-readable output (`--json`), and no-op preview (`--dry-run`).
 
 - [`models-watch`](models-watch) – polls `https://models.dev/api.json`, extracts the `opencode-go` model block, and notifies when models are added or removed; writes JSON delta files only on change and supports `osascript` popups or `--notify-file` for scripting.
+
+- [`usage-watch`](usage-watch) – prints remaining usage for AI subscriptions (OpenCode Go, ChatGPT Go/Plus, Mistral, Vibe), reading credentials from environment variables; supports `--json` for scripting.
