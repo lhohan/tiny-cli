@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-11-03T22:58:49Z",
+  "added": [
+    "opencode/crouton-alpha-free"
+  ],
+  "removed": [],
+  "changed": [
+    {
+      "id": "opencode-go/deepseek-v4-pro",
+      "old_name": "DeepSeek V4 Pro (New)",
+      "new_name": "DeepSeek V4 Pro"
+    }
+  ],
+  "models": {
+    "opencode/crouton-alpha-free": {
+      "id": "crouton-alpha-free",
+      "name": "Crouton Alpha Free",
+      "description": "Stealth reasoning model with text, image, video and PDF input and tool use",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "structured_output": true,
+      "temperature": true,
+      "release_date": "2026-11-03",
+      "last_updated": "2026-11-03",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1048576,
+        "output": 270000
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    }
+  }
+}
