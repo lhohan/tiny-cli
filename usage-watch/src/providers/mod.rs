@@ -43,3 +43,17 @@ pub fn env_nonempty(name: &str) -> Option<String> {
 pub fn env_any(names: &[&str]) -> Option<String> {
     names.iter().find_map(|n| env_nonempty(n))
 }
+
+/// Read one cookie value out of a full `Cookie:` header.
+pub fn cookie_value(cookie_header: &str, name: &str) -> Option<String> {
+    cookie_header.split(';').find_map(|pair| {
+        let mut it = pair.trim().splitn(2, '=');
+        let k = it.next()?.trim();
+        let v = it.next()?.trim();
+        if k == name {
+            Some(v.to_string())
+        } else {
+            None
+        }
+    })
+}

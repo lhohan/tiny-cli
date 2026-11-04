@@ -2,6 +2,15 @@ use usage_watch::providers::{chatgpt, mistral, opencode, vibe};
 use usage_watch::timeutil::{epoch_to_utc, fmt_duration, format_ymd_hms, parse_iso8601};
 
 const OPENCODE_FIXTURE: &str = r#"{
+  "usage": {
+    "rolling": {"percent": 74.0, "resetsAt": "2026-11-03T12:00:00Z"},
+    "weekly": {"percent": 27.0, "resetsAt": "2026-11-07T00:00:00Z"},
+    "monthly": {"percent": 25.0, "resetsAt": "2026-11-19T07:00:00Z"}
+  },
+  "renewAt": "2026-12-03T00:00:00Z"
+}"#;
+
+const OPENCODE_LEGACY: &str = r#"{
   "rolling5h": {"usageDollars": 2.34, "limitDollars": 12, "usagePercent": 19.5, "resetInSec": 7200},
   "weekly": {"usageDollars": 8.91, "limitDollars": 30, "usagePercent": 29.7, "resetInSec": 345600},
   "monthly": {"usageDollars": 15.00, "limitDollars": 60, "usagePercent": 25.0, "resetInSec": 1414800},
@@ -9,18 +18,34 @@ const OPENCODE_FIXTURE: &str = r#"{
 }"#;
 
 #[test]
-fn opencode_parse_and_metrics() {
+fn opencode_parse_current_shape() {
     let u = opencode::parse(OPENCODE_FIXTURE).expect("parse");
-    assert_eq!(u.subscribed_at.as_deref(), Some("2026-05-22T14:30:00Z"));
-    let m = opencode::metrics(&u);
+    assert_eq!(u.rolling.used_percent, 74.0);
+    assert_eq!(u.weekly.as_ref().map(|w| w.used_percent), Some(27.0));
+    assert_eq!(u.renew_at.as_deref(), Some("2026-12-03T00:00:00Z"));
+    let now = parse_iso8601("2026-11-03T10:00:00Z").expect("now");
+    let m = opencode::metrics(&u, now);
     assert_eq!(m.len(), 3);
     assert_eq!(m[0].name, "5h window");
+    assert_eq!(m[0].remaining, "26% left");
+    assert_eq!(m[0].used_percent, Some(74.0));
+    assert_eq!(m[0].reset.as_deref(), Some("in 2h00m"));
+    assert_eq!(m[1].remaining, "73% left");
+    assert_eq!(m[1].reset.as_deref(), Some("in 3d14h"));
+    assert_eq!(m[2].name, "monthly");
+    assert_eq!(m[2].reset.as_deref(), Some("in 15d21h"));
+}
+
+#[test]
+fn opencode_parse_legacy_shape() {
+    let u = opencode::parse(OPENCODE_LEGACY).expect("parse");
+    assert_eq!(u.subscribed_at.as_deref(), Some("2026-05-22T14:30:00Z"));
+    let m = opencode::metrics(&u, 0);
+    assert_eq!(m.len(), 3);
     assert_eq!(m[0].remaining, "$9.66 of $12.00 left");
-    assert_eq!(m[0].used_percent, Some(19.5));
     assert_eq!(m[0].reset.as_deref(), Some("in 2h00m"));
     assert_eq!(m[1].remaining, "$21.09 of $30.00 left");
     assert_eq!(m[1].reset.as_deref(), Some("in 4d00h"));
-    assert_eq!(m[2].name, "monthly");
     assert_eq!(m[2].remaining, "$45.00 of $60.00 left");
     assert_eq!(m[2].reset.as_deref(), Some("in 16d09h"));
 }
@@ -93,45 +118,42 @@ fn chatgpt_reset_from_epoch_when_no_reset_after() {
     assert!(m_late[0].reset.as_deref().unwrap().starts_with("at "));
 }
 
-const MISTRAL_SUB: &str =
-    r#"{"plan_name": "scale", "monthly_budget": 20.0, "credit_balance": 12.34, "currency": "EUR"}"#;
-const MISTRAL_USAGE: &str = r#"{"data": [
-  {"total_cost": 1.1, "input_tokens": 1000000, "output_tokens": 500000},
-  {"total_cost": 2.5, "input_tokens": 200000, "output_tokens": 100000}
-]}"#;
+const MISTRAL_SUB: &str = r#"{"plan_name": "INDIVIDUAL", "payg_enabled": false, "vibe_payg_enabled": false, "enterprise": false}"#;
+const MISTRAL_USAGE: &str = r#"{
+  "currency": "EUR",
+  "completion": {"models": {"mistral-large-3": {"input": [{"value": 1000000}], "output": [{"value": 500000}]}}},
+  "chat": {"models": {"mistral-small-4": {"input": [{"value": 200000}], "output": [{"value": 100000}]}}},
+  "vibe_code": {"completion": {"models": {"codestral": {"input": [{"value": 1000}], "output": [{"value": 500}]}}}},
+  "audio": {"models": {"voxtral": {"input": [{"value": 999999}]}}}
+}"#;
+const MISTRAL_CREDITS: &str =
+    r#"{"wallet_amount": 12.34, "credit_notes_amount": 1.0, "currency": "EUR"}"#;
 
 #[test]
 fn mistral_parse_and_metrics() {
     let sub = mistral::parse_subscription(MISTRAL_SUB).expect("parse sub");
-    assert_eq!(sub.plan_name.as_deref(), Some("scale"));
+    assert_eq!(sub.plan_name.as_deref(), Some("INDIVIDUAL"));
+    assert_eq!(sub.payg_enabled, Some(false));
     let usage = mistral::parse_usage(MISTRAL_USAGE).expect("parse usage");
-    let m = mistral::metrics(Some(&sub), Some(&usage));
-    let credits = m.iter().find(|m| m.name == "credits").expect("credits");
-    assert_eq!(credits.remaining, "€12.34 left");
-    let budget = m
-        .iter()
-        .find(|m| m.name == "monthly budget")
-        .expect("budget");
-    assert_eq!(budget.remaining, "€16.40 of €20.00 left");
-    assert_eq!(budget.used_percent, Some(18.0));
+    assert_eq!(usage.input_tokens, 1_201_000);
+    assert_eq!(usage.output_tokens, 600_500);
+    let credits = mistral::parse_credits(MISTRAL_CREDITS).expect("parse credits");
+    let m = mistral::metrics(Some(&usage), Some(&credits), None);
     let tokens = m
         .iter()
         .find(|m| m.name == "tokens this month")
         .expect("tokens");
-    assert_eq!(tokens.remaining, "1.20M in / 600.0K out");
+    assert_eq!(tokens.remaining, "1.20M in / 600.5K out");
+    let credits = m.iter().find(|m| m.name == "credits").expect("credits");
+    assert_eq!(credits.remaining, "€13.34 left");
 }
 
 #[test]
-fn mistral_metrics_without_subscription() {
-    let usage = mistral::parse_usage(MISTRAL_USAGE).expect("parse usage");
-    let m = mistral::metrics(None, Some(&usage));
-    assert!(m.iter().all(|m| m.name != "credits"));
-    let budget = m
-        .iter()
-        .find(|m| m.name == "monthly budget")
-        .expect("budget");
-    assert_eq!(budget.remaining, "€3.60 spent");
-    assert_eq!(budget.used_percent, None);
+fn mistral_metrics_without_cookie() {
+    let m = mistral::metrics(None, None, None);
+    assert_eq!(m.len(), 1);
+    assert_eq!(m[0].name, "usage");
+    assert!(m[0].remaining.contains("MISTRAL_ADMIN_COOKIE"));
 }
 
 const VIBE_WHOAMI: &str =

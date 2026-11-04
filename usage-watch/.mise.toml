@@ -6,6 +6,10 @@ run = "cargo run --manifest-path Cargo.toml"
 description = "Build a release binary"
 run = "cargo build --release --manifest-path Cargo.toml"
 
+[tasks.install]
+description = "Install the release binary to ~/.local/bin"
+run = "cargo install --path . --root \"$HOME/.local\" --locked"
+
 [tasks.test]
 description = "Run tests"
 run = "cargo test --manifest-path Cargo.toml"

@@ -76,16 +76,7 @@ pub fn parse_credits(body: &str) -> Result<Credits, String> {
 }
 
 pub fn cookie_value(cookie_header: &str, name: &str) -> Option<String> {
-    cookie_header.split(';').find_map(|pair| {
-        let mut it = pair.trim().splitn(2, '=');
-        let k = it.next()?.trim();
-        let v = it.next()?.trim();
-        if k == name {
-            Some(v.to_string())
-        } else {
-            None
-        }
-    })
+    crate::providers::cookie_value(cookie_header, name)
 }
 
 /// Keep only the cookies console.mistral.ai needs: csrftoken + ory_session_*.
@@ -104,14 +95,20 @@ pub fn console_cookie(cookie_header: &str) -> String {
 fn fetch(http: &Http) -> Result<Report, String> {
     let key = env_any(ENV_KEYS).ok_or("no API key in environment")?;
     let auth = format!("Bearer {key}");
-    let whoami_body = http.get(
+    let (status, whoami_body) = http.get(
         WHOAMI_URL,
         &[
             ("Authorization", auth.as_str()),
             ("Accept", "application/json"),
         ],
     )?;
-    let whoami = parse_whoami(&whoami_body.1)?;
+    if !(200..300).contains(&status) {
+        return Err(format!(
+            "whoami failed: HTTP {status}: {}",
+            crate::http::truncate(&whoami_body, 400)
+        ));
+    }
+    let whoami = parse_whoami(&whoami_body)?;
     let plan = match (whoami.plan_name, whoami.plan_type) {
         (Some(n), Some(t)) => Some(format!("{n} ({t})")),
         (Some(n), None) => Some(n),
