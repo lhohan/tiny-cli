@@ -44,6 +44,23 @@ pub fn env_any(names: &[&str]) -> Option<String> {
     names.iter().find_map(|n| env_nonempty(n))
 }
 
+/// Normalise a pasted `Cookie:` header into a header value.
+///
+/// People copy the whole header line out of DevTools, so the value often
+/// starts with a literal `Cookie:` label. Sending that as the value of a
+/// `Cookie` header produces `Cookie: Cookie: …`, which servers reject by
+/// bouncing to the login page. Fold newlines too, so a multi-line paste
+/// cannot split the header.
+pub fn cookie_header(raw: &str) -> String {
+    let folded = raw.replace(['\r', '\n'], " ");
+    let trimmed = folded.trim();
+    let value = match trimmed.get(..7) {
+        Some(prefix) if prefix.eq_ignore_ascii_case("cookie:") => &trimmed[7..],
+        _ => trimmed,
+    };
+    value.trim().to_string()
+}
+
 /// Read one cookie value out of a full `Cookie:` header.
 pub fn cookie_value(cookie_header: &str, name: &str) -> Option<String> {
     cookie_header.split(';').find_map(|pair| {

@@ -148,6 +148,9 @@ Only two cookies matter: `ory_session_*` (the login) and `csrftoken` (CSRF for
 the usage endpoints). `__cf_bm`, `intercom-*`, `browser-session-id` and
 `csrf_token_*` are noise; leaving them in is harmless.
 
+Paste the whole header line if that is easier: a leading `Cookie:` label and
+any line breaks are stripped before the value is sent.
+
 ## Vibe
 
 Same cookie as above, different key.
@@ -183,7 +186,8 @@ Mistral rotates it.
 
 Symptoms:
 
-- `usage failed: too many redirects` — the request bounced to `auth.mistral.ai`.
+- `HTTP 302 → https://auth.mistral.ai/self-service/login/browser…` — the request
+  bounced to the login page, so the session was not accepted.
 - `HTTP 401` from `billing/v2/usage`.
 
 Fix, exactly:
@@ -245,7 +249,7 @@ Already wired this way: `mistral-api-key` → `MISTRAL_API_KEY` and `opencode-go
 | Output                                         | Cause                                  | Fix                                            |
 | ---------------------------------------------- | -------------------------------------- | ---------------------------------------------- |
 | `set MISTRAL_ADMIN_COOKIE ... to fetch`        | cookie not set                         | follow [Cookie](#cookie)                       |
-| `usage failed: too many redirects`             | session expired                        | [re-copy the cookie](#when-the-cookie-expires) |
+| `HTTP 302 → https://auth.mistral.ai/...`       | session expired or not accepted        | [re-copy the cookie](#when-the-cookie-expires) |
 | `HTTP 401` from `billing/v2/usage`             | session expired or wrong account       | re-copy the cookie while signed in             |
 | `MISTRAL_ADMIN_COOKIE has no csrftoken cookie` | header copied without `csrftoken`      | copy the whole `Cookie` header                 |
 | `whoami failed: HTTP 401`                      | bad `VIBE_API_KEY` / `MISTRAL_API_KEY` | create a new key                               |

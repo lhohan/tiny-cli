@@ -132,20 +132,21 @@ pub fn metrics(u: &GoUsage, now: u64) -> Vec<Metric> {
 fn fetch(http: &Http) -> Result<Report, String> {
     let key = env_any(ENV_KEYS).ok_or("no API key in environment")?;
     let auth = format!("Bearer {key}");
-    let (status, body) = http.get(
+    let resp = http.get(
         USAGE_URL,
         &[
             ("Authorization", auth.as_str()),
             ("Accept", "application/json"),
         ],
     )?;
-    if !(200..300).contains(&status) {
+    if !(200..300).contains(&resp.status) {
         return Err(format!(
-            "usage failed: HTTP {status}: {}",
-            crate::http::truncate(&body, 400)
+            "usage failed: HTTP {}: {}",
+            resp.status,
+            crate::http::truncate(&resp.body, 400)
         ));
     }
-    let usage = parse(&body)?;
+    let usage = parse(&resp.body)?;
     let plan = usage
         .subscribed_at
         .as_ref()

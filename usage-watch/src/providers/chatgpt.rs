@@ -158,14 +158,15 @@ fn fetch(http: &Http) -> Result<Report, String> {
     if let Some(acc) = &account {
         headers.push(("ChatGPT-Account-Id", acc.as_str()));
     }
-    let (status, body) = http.get(USAGE_URL, &headers)?;
-    if !(200..300).contains(&status) {
+    let resp = http.get(USAGE_URL, &headers)?;
+    if !(200..300).contains(&resp.status) {
         return Err(format!(
-            "usage failed: HTTP {status}: {}",
-            crate::http::truncate(&body, 400)
+            "usage failed: HTTP {}: {}",
+            resp.status,
+            crate::http::truncate(&resp.body, 400)
         ));
     }
-    let (plan, wins) = parse(&body)?;
+    let (plan, wins) = parse(&resp.body)?;
     if wins.is_empty() {
         return Err(format!(
             "no rate-limit windows in response from {USAGE_URL}"

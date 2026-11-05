@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use crate::http::Http;
 use crate::model::{human_count, money, Metric, Report};
-use crate::providers::{cookie_value, env_nonempty, ProviderSpec};
+use crate::providers::{cookie_header, cookie_value, env_nonempty, ProviderSpec};
 use crate::timeutil::utc_now;
 
 pub const ID: &str = "mistral";
@@ -196,7 +196,7 @@ fn fetch(http: &Http) -> Result<Report, String> {
     let mut usage = None;
     let mut credits = None;
     let mut usage_error = None;
-    if let Some(cookie) = env_nonempty(ENV_COOKIE) {
+    if let Some(cookie) = env_nonempty(ENV_COOKIE).map(|c| cookie_header(&c)) {
         let csrf = cookie_value(&cookie, "csrftoken");
         let now = utc_now();
         let usage_url = format!(

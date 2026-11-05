@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use crate::http::Http;
 use crate::model::{money, Metric, Report};
-use crate::providers::{env_any, env_nonempty, ProviderSpec};
+use crate::providers::{cookie_header, env_any, env_nonempty, ProviderSpec};
 use crate::timeutil::{epoch_to_utc, format_ymd_hms, parse_iso8601};
 
 pub const ID: &str = "vibe";
@@ -95,20 +95,21 @@ pub fn console_cookie(cookie_header: &str) -> String {
 fn fetch(http: &Http) -> Result<Report, String> {
     let key = env_any(ENV_KEYS).ok_or("no API key in environment")?;
     let auth = format!("Bearer {key}");
-    let (status, whoami_body) = http.get(
+    let resp = http.get(
         WHOAMI_URL,
         &[
             ("Authorization", auth.as_str()),
             ("Accept", "application/json"),
         ],
     )?;
-    if !(200..300).contains(&status) {
+    if !(200..300).contains(&resp.status) {
         return Err(format!(
-            "whoami failed: HTTP {status}: {}",
-            crate::http::truncate(&whoami_body, 400)
+            "whoami failed: HTTP {}: {}",
+            resp.status,
+            crate::http::truncate(&resp.body, 400)
         ));
     }
-    let whoami = parse_whoami(&whoami_body)?;
+    let whoami = parse_whoami(&resp.body)?;
     let plan = match (whoami.plan_name, whoami.plan_type) {
         (Some(n), Some(t)) => Some(format!("{n} ({t})")),
         (Some(n), None) => Some(n),
@@ -117,7 +118,7 @@ fn fetch(http: &Http) -> Result<Report, String> {
     };
 
     let mut metrics = Vec::new();
-    match env_nonempty(ENV_COOKIE) {
+    match env_nonempty(ENV_COOKIE).map(|c| cookie_header(&c)) {
         None => metrics.push(Metric {
             name: "monthly plan".to_string(),
             remaining: format!("set {ENV_COOKIE} (Cookie header from admin.mistral.ai) to fetch"),

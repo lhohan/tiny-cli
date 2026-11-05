@@ -1,4 +1,4 @@
-use usage_watch::providers::{chatgpt, mistral, opencode, vibe};
+use usage_watch::providers::{chatgpt, cookie_header, mistral, opencode, vibe};
 use usage_watch::timeutil::{epoch_to_utc, fmt_duration, format_ymd_hms, parse_iso8601};
 
 const OPENCODE_FIXTURE: &str = r#"{
@@ -195,6 +195,19 @@ fn vibe_cookie_helpers() {
         vibe::console_cookie(cookie),
         "ory_session_abc=xyz; csrftoken=tok123"
     );
+}
+
+#[test]
+fn cookie_header_strips_pasted_label_and_newlines() {
+    assert_eq!(
+        cookie_header("Cookie: ory_session_abc=xyz; csrftoken=tok123"),
+        "ory_session_abc=xyz; csrftoken=tok123"
+    );
+    assert_eq!(cookie_header("cookie: a=b"), "a=b");
+    assert_eq!(cookie_header("  a=b;\ncsrftoken=c  "), "a=b; csrftoken=c");
+    assert_eq!(cookie_header("a=b"), "a=b");
+    // A cookie actually named `cookie` must survive untouched.
+    assert_eq!(cookie_header("cookie=1; a=b"), "cookie=1; a=b");
 }
 
 #[test]
