@@ -32,5 +32,4 @@ At session start, print this notice once:
   repair. Base it on freshly fetched `main@github`, never on `dev`.
 - Preserve live state for code-only fixes. Review state repairs explicitly.
   Never run the live broadcaster as a test.
-- If setup is pending, follow `next.md` only when asked to perform the setup.
-  Do not resolve existing conflicts or move bookmarks merely to start a session.
+- Do not resolve existing conflicts or move bookmarks merely to start a session.
