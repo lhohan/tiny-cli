@@ -95,7 +95,8 @@ Setup is complete only when:
    refs confirms full commit IDs for `dev` and each selected safety bookmark.
 4. Ordinary development push configuration excludes GitHub. A dry run for `dev`
    targets only Codeberg, Musonius, and pushin.
-5. No setup operation writes GitHub branches, workflows, or live state. Bot
-   advancement on GitHub is expected and is not a setup change.
+5. No setup operation writes GitHub `main`, workflows, or live state. The
+   explicit `dev` publication is the only GitHub write. Bot advancement on
+   GitHub is expected and is not a setup change.
 6. `AGENTS.md` links this ADR and includes the startup notice and maintenance
    exception.
