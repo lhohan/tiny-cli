@@ -22,15 +22,16 @@ running service or spending time on a state-storage migration.
   Treat it as the live models-watch service branch, not the general development
   branch. Do not change GitHub's default branch as part of this setup.
 - Use a local `dev` bookmark for normal development. Publish `dev` to Codeberg
-  (`origin`) and Musonius (`musonius`). Initially create a new Codeberg branch;
-  do not replace its existing `main` or change its default branch.
+  (`origin`), Musonius (`musonius`), and pushin (`pushin`). Initially create a
+  new Codeberg branch; do not replace its existing `main` or change its default
+  branch.
 - Preserve the divergent local work and current working-copy revision with
   explicit safety bookmarks before selecting a development tip or resolving
   the local `main` conflict. Push the selected preservation bookmarks to
   Musonius explicitly; a local bookmark alone is not a backup.
-- Configure ordinary development pushes for Codeberg and Musonius only.
-  Exclude GitHub from `git.push`; use an explicit `dev` bookmark selection.
-  Inspect a dry run before the first publication.
+- Configure ordinary development pushes for Codeberg, Musonius, and pushin
+  only. Exclude GitHub from `git.push`; use an explicit `dev` bookmark
+  selection. Inspect a dry run before the first publication.
 - GitHub may receive `dev` as an explicit, one-off publication
   (`jj git push --remote github --branch dev`). It is not an ordinary push
   destination: `git.push` excludes GitHub, so no default push can reach it, and
@@ -76,9 +77,9 @@ histories and would retain the bot-state churn in normal development.
 - Models-watch fixes may need selective application to both lines. The GitHub
   version must always be prepared against its latest live state.
 - Existing tools and historical state remain in the repository.
-- Musonius is one backup copy. Backing up `dev` does not back up the latest
-  GitHub-generated ledger. A live-state backup needs a separate, explicit
-  refresh and verified publication; automation for that is deferred.
+- Musonius and pushin are backup copies. Backing up `dev` does not back up the
+  latest GitHub-generated ledger. A live-state backup needs a separate,
+  explicit refresh and verified publication; automation for that is deferred.
 - Existing Codeberg `main` remains available. Changing the default branch is a
   separate decision, not required for safe publication of `dev`.
 
@@ -93,7 +94,7 @@ Setup is complete only when:
 3. Musonius is on the mounted external volume. Reading back its bare repository
    refs confirms full commit IDs for `dev` and each selected safety bookmark.
 4. Ordinary development push configuration excludes GitHub. A dry run for `dev`
-   targets only Codeberg and Musonius.
+   targets only Codeberg, Musonius, and pushin.
 5. No setup operation writes GitHub branches, workflows, or live state. Bot
    advancement on GitHub is expected and is not a setup change.
 6. `AGENTS.md` links this ADR and includes the startup notice and maintenance

@@ -21,10 +21,11 @@ configuration rather than assuming the described state.
 
 At session start, print this notice once:
 
-> Branch policy: use `dev` for normal work and publish it to Codeberg and
-> Musonius. GitHub `main` is the live models-watch service; change it only for
-> deliberate maintenance, never from a development copy. GitHub may hold an
-> explicit `dev` copy, but it is excluded from ordinary pushes. See ADR-001.
+> Branch policy: use `dev` for normal work and publish it to Codeberg,
+> Musonius, and pushin. GitHub `main` is the live models-watch service; change
+> it only for deliberate maintenance, never from a development copy. GitHub may
+> hold an explicit `dev` copy, but it is excluded from ordinary pushes. See
+> ADR-001.
 
 - Normal work belongs on `dev`; GitHub is not an ordinary push destination.
   Publishing `dev` there is an explicit one-off, never part of `git.push`.
