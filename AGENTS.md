@@ -16,16 +16,18 @@ Detect if Jujutsu is available. When both Git and Jujutsu are available, use Juj
 
 Read [ADR-001](docs/adr/001-separate-development-from-live-models-watch.md) before
 bookmark changes, push configuration, publication, or live models-watch work.
-The decision is accepted, but setup may still be pending. Inspect actual
-bookmarks and configuration; do not assume `dev` exists.
+The decision is accepted and setup is applied. Inspect actual bookmarks and
+configuration rather than assuming the described state.
 
 At session start, print this notice once:
 
 > Branch policy: use `dev` for normal work and publish it to Codeberg and
-> Musonius. Use GitHub `main` only for deliberate live models-watch maintenance.
-> Never replace its state with a development copy. See ADR-001.
+> Musonius. GitHub `main` is the live models-watch service; change it only for
+> deliberate maintenance, never from a development copy. GitHub may hold an
+> explicit `dev` copy, but it is excluded from ordinary pushes. See ADR-001.
 
 - Normal work belongs on `dev`; GitHub is not an ordinary push destination.
+  Publishing `dev` there is an explicit one-off, never part of `git.push`.
 - Live maintenance includes models-watch code, workflows, and necessary state
   repair. Base it on freshly fetched `main@github`, never on `dev`.
 - Preserve live state for code-only fixes. Review state repairs explicitly.

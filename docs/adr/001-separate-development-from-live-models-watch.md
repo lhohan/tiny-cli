@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Bookmark, remote, and push-policy setup is pending.
+Accepted. Bookmark, remote, and push-policy setup is applied.
 
 ## Context
 
@@ -31,6 +31,10 @@ running service or spending time on a state-storage migration.
 - Configure ordinary development pushes for Codeberg and Musonius only.
   Exclude GitHub from `git.push`; use an explicit `dev` bookmark selection.
   Inspect a dry run before the first publication.
+- GitHub may receive `dev` as an explicit, one-off publication
+  (`jj git push --remote github --branch dev`). It is not an ordinary push
+  destination: `git.push` excludes GitHub, so no default push can reach it, and
+  the live `main` branch is never a target.
 - Change GitHub `main` only for deliberate live models-watch maintenance:
   script fixes, workflow fixes, or necessary state repair. Fetch its latest tip
   and base the maintenance change on `main@github`, not on `dev` or an old local
@@ -49,8 +53,8 @@ running service or spending time on a state-storage migration.
 
 The root `AGENTS.md` must reference this ADR and instruct agents to print a short
 branch-policy notice once at session start. This notice is guidance, not a
-technical push guard. Agents must inspect actual bookmarks and configuration;
-this decision does not prove that setup has been applied.
+technical push guard. Agents must inspect actual bookmarks and configuration
+rather than assuming the described state.
 
 ## Rationale and alternatives
 
@@ -67,6 +71,8 @@ histories and would retain the bot-state churn in normal development.
 ## Consequences
 
 - Codeberg and GitHub intentionally carry different lines; they are not mirrors.
+  GitHub also carries an explicit `dev` copy for visibility; `main` remains the
+  live service branch.
 - Models-watch fixes may need selective application to both lines. The GitHub
   version must always be prepared against its latest live state.
 - Existing tools and historical state remain in the repository.
