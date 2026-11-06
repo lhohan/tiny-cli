@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-11-06T05:35:40Z",
+  "added": [
+    "opencode-go/crouton-alpha-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode-go/crouton-alpha-free": {
+      "id": "crouton-alpha-free",
+      "name": "Crouton Alpha Free",
+      "description": "Stealth reasoning model with text, image, video and PDF input and tool use",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "structured_output": true,
+      "temperature": true,
+      "release_date": "2026-11-03",
+      "last_updated": "2026-11-03",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1048576,
+        "output": 270000
+      },
+      "provider": {
+        "npm": "@ai-sdk/openai",
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    }
+  }
+}
