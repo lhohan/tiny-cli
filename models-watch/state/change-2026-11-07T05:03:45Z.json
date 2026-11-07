@@ -1,0 +1,95 @@
+{
+  "timestamp": "2026-11-07T05:03:45Z",
+  "added": [
+    "opencode/iceman-free",
+    "opencode/inkling-2-small-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode/iceman-free": {
+      "id": "iceman-free",
+      "name": "Iceman Free",
+      "description": "Stealth model, free for a limited time",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [],
+      "tool_call": true,
+      "release_date": "2026-11-06",
+      "last_updated": "2026-11-06",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 262144,
+        "output": 131072
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    },
+    "opencode/inkling-2-small-free": {
+      "id": "inkling-2-small-free",
+      "name": "Inkling 2 Small Free",
+      "description": "Inkling 2 Small, free for a limited time",
+      "family": "ling",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "temperature": true,
+      "release_date": "2026-11-05",
+      "last_updated": "2026-11-05",
+      "modalities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1048576,
+        "output": 131072
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "canonical_model_id": "thinkingmachines/inkling-2-small"
+    }
+  }
+}
