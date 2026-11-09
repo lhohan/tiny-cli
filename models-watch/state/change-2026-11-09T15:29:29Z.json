@@ -1,0 +1,97 @@
+{
+  "timestamp": "2026-11-09T15:29:29Z",
+  "added": [
+    "opencode-go/longcat-2.5-free",
+    "opencode/longcat-2.5-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode-go/longcat-2.5-free": {
+      "id": "longcat-2.5-free",
+      "name": "LongCat 2.5 Free",
+      "description": "Meituan's multimodal reasoning model for long-horizon coding and agent tasks, with visual understanding and a 1M-token context window",
+      "family": "longcat",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "toggle"
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "temperature": false,
+      "release_date": "2026-11-02",
+      "last_updated": "2026-11-02",
+      "modalities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 262144
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/go/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      },
+      "canonical_model_id": "meituan/longcat-2.5"
+    },
+    "opencode/longcat-2.5-free": {
+      "id": "longcat-2.5-free",
+      "name": "LongCat 2.5 Free",
+      "description": "Meituan's multimodal reasoning model for long-horizon coding and agent tasks, with visual understanding and a 1M-token context window",
+      "family": "longcat",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "toggle"
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "temperature": false,
+      "release_date": "2026-11-02",
+      "last_updated": "2026-11-02",
+      "modalities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 262144
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      },
+      "canonical_model_id": "meituan/longcat-2.5"
+    }
+  }
+}
