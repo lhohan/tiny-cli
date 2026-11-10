@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-11-10T22:56:47Z",
+  "added": [],
+  "removed": [],
+  "changed": [
+    {
+      "id": "opencode-go/deepseek-v4.1-flash",
+      "old_name": "DeepSeek V4.1 Flash",
+      "new_name": "DeepSeek V4.1 Flash 1017"
+    }
+  ],
+  "models": {}
+}
