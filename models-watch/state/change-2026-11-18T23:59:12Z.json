@@ -1,0 +1,58 @@
+{
+  "timestamp": "2026-11-18T23:59:12Z",
+  "added": [
+    "opencode/tidepool-alpha-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode/tidepool-alpha-free": {
+      "id": "tidepool-alpha-free",
+      "name": "Tidepool Alpha Free",
+      "description": "Stealth reasoning model, free for a limited time",
+      "attachment": false,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "interleaved": {
+        "field": "reasoning_content"
+      },
+      "temperature": true,
+      "release_date": "2026-11-18",
+      "last_updated": "2026-11-18",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1048576,
+        "output": 131072
+      },
+      "provider": {
+        "api": "https://opencode.ai/inference/openai/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0
+      }
+    }
+  }
+}
