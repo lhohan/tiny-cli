@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-11-23T23:31:19Z",
+  "added": [
+    "opencode/qwen4-max-free"
+  ],
+  "removed": [],
+  "changed": [],
+  "models": {
+    "opencode/qwen4-max-free": {
+      "id": "qwen4-max-free",
+      "name": "Qwen4 Max Free",
+      "description": "Flagship multimodal model for coding, office productivity, frontend design, and complex agentic tasks",
+      "family": "qwen-max-free",
+      "attachment": true,
+      "reasoning": true,
+      "reasoning_options": [
+        {
+          "type": "toggle"
+        },
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "high",
+            "xhigh"
+          ]
+        },
+        {
+          "type": "budget_tokens",
+          "max": 262144
+        }
+      ],
+      "tool_call": true,
+      "structured_output": true,
+      "temperature": true,
+      "release_date": "2026-11-16",
+      "last_updated": "2026-11-16",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 262144
+      },
+      "status": "deprecated",
+      "provider": {
+        "npm": "@ai-sdk/anthropic",
+        "api": "https://opencode.ai/inference/anthropic/v1"
+      },
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "canonical_model_id": "alibaba/qwen4-max"
+    }
+  }
+}
